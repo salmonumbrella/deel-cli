@@ -1,0 +1,100 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+var benefitsCmd = &cobra.Command{
+	Use:   "benefits",
+	Short: "Manage employee benefits",
+	Long:  "View available benefits by country and employee benefit enrollments.",
+}
+
+var benefitsCountryFlag string
+var benefitsEmployeeFlag string
+
+var benefitsListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List benefits by country",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if benefitsCountryFlag == "" {
+			f.PrintError("--country is required")
+			return fmt.Errorf("missing required flag")
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		benefits, err := client.ListBenefitsByCountry(cmd.Context(), benefitsCountryFlag)
+		if err != nil {
+			f.PrintError("Failed to list benefits: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			if len(benefits) == 0 {
+				f.PrintText("No benefits found.")
+				return
+			}
+			table := f.NewTable("ID", "NAME", "TYPE", "PROVIDER", "COST")
+			for _, b := range benefits {
+				cost := fmt.Sprintf("%.2f %s", b.Cost, b.Currency)
+				table.AddRow(b.ID, b.Name, b.Type, b.Provider, cost)
+			}
+			table.Render()
+		}, benefits)
+	},
+}
+
+var benefitsEmployeeCmd = &cobra.Command{
+	Use:   "employee",
+	Short: "List benefits for an employee",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if benefitsEmployeeFlag == "" {
+			f.PrintError("--employee is required")
+			return fmt.Errorf("missing required flag")
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		benefits, err := client.GetEmployeeBenefits(cmd.Context(), benefitsEmployeeFlag)
+		if err != nil {
+			f.PrintError("Failed to get benefits: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			if len(benefits) == 0 {
+				f.PrintText("No benefits found.")
+				return
+			}
+			table := f.NewTable("ID", "BENEFIT", "STATUS", "ENROLLED", "COST")
+			for _, b := range benefits {
+				cost := fmt.Sprintf("%.2f %s", b.Cost, b.Currency)
+				table.AddRow(b.ID, b.BenefitName, b.Status, b.EnrolledDate, cost)
+			}
+			table.Render()
+		}, benefits)
+	},
+}
+
+func init() {
+	benefitsListCmd.Flags().StringVar(&benefitsCountryFlag, "country", "", "Country code (required)")
+	benefitsEmployeeCmd.Flags().StringVar(&benefitsEmployeeFlag, "employee", "", "Employee ID (required)")
+
+	benefitsCmd.AddCommand(benefitsListCmd)
+	benefitsCmd.AddCommand(benefitsEmployeeCmd)
+}

@@ -1,0 +1,121 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// mockServer creates a test server that returns the given response
+func mockServer(t *testing.T, method, path string, statusCode int, response any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, method, r.Method)
+		assert.Equal(t, path, r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		if response != nil {
+			json.NewEncoder(w).Encode(response)
+		}
+	}))
+}
+
+// mockServerWithBody creates a test server that validates request body
+func mockServerWithBody(t *testing.T, method, path string, validateBody func(t *testing.T, body map[string]any), statusCode int, response any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, method, r.Method)
+		assert.Equal(t, path, r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		if validateBody != nil {
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			validateBody(t, body)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		if response != nil {
+			json.NewEncoder(w).Encode(response)
+		}
+	}))
+}
+
+// mockServerWithQuery creates a test server that validates query parameters
+func mockServerWithQuery(t *testing.T, method, path string, validateQuery func(t *testing.T, query map[string]string), statusCode int, response any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, method, r.Method)
+		assert.Equal(t, path, r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		if validateQuery != nil {
+			query := make(map[string]string)
+			for key, values := range r.URL.Query() {
+				if len(values) > 0 {
+					query[key] = values[0]
+				}
+			}
+			validateQuery(t, query)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		if response != nil {
+			json.NewEncoder(w).Encode(response)
+		}
+	}))
+}
+
+// testClient creates a client pointing to the test server
+func testClient(server *httptest.Server) *Client {
+	c := NewClient("test-token")
+	c.baseURL = server.URL
+	return c
+}
+
+func TestClient_Get_Success(t *testing.T) {
+	expected := map[string]any{"data": "test"}
+	server := mockServer(t, "GET", "/test", 200, expected)
+	defer server.Close()
+
+	client := testClient(server)
+	resp, err := client.Get(context.Background(), "/test")
+
+	require.NoError(t, err)
+	assert.Contains(t, string(resp), "test")
+}
+
+func TestClient_Get_APIError(t *testing.T) {
+	server := mockServer(t, "GET", "/test", 404, map[string]string{"error": "not found"})
+	defer server.Close()
+
+	client := testClient(server)
+	_, err := client.Get(context.Background(), "/test")
+
+	require.Error(t, err)
+	apiErr, ok := err.(*APIError)
+	require.True(t, ok)
+	assert.Equal(t, 404, apiErr.StatusCode)
+}
+
+func TestClient_Post_Success(t *testing.T) {
+	server := mockServerWithBody(t, "POST", "/test", func(t *testing.T, body map[string]any) {
+		assert.Equal(t, "value", body["key"])
+	}, 201, map[string]any{"id": "123"})
+	defer server.Close()
+
+	client := testClient(server)
+	resp, err := client.Post(context.Background(), "/test", map[string]string{"key": "value"})
+
+	require.NoError(t, err)
+	assert.Contains(t, string(resp), "123")
+}
