@@ -7,13 +7,31 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/deel
+  # Darwin build with CGO enabled for macOS keychain access
+  - id: darwin
+    main: ./cmd/deel
+    binary: deel
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/salmonumbrella/deel-cli/internal/cmd.Version={{.Version}}
+      - -X github.com/salmonumbrella/deel-cli/internal/cmd.Commit={{.Commit}}
+      - -X github.com/salmonumbrella/deel-cli/internal/cmd.BuildDate={{.Date}}
+
+  # Linux and Windows builds without CGO
+  - id: other
+    main: ./cmd/deel
     binary: deel
     env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
       - windows
     goarch:
       - amd64
@@ -54,3 +72,18 @@ release:
     name: deel-cli
   draft: false
   prerelease: auto
+
+brews:
+  - name: deel-cli
+    repository:
+      owner: salmonumbrella
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/salmonumbrella/deel-cli"
+    description: "CLI for Deel API"
+    license: "MIT"
+    install: |
+      bin.install "deel"
+    test: |
+      system "#{bin}/deel", "--help"
