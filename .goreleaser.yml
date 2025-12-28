@@ -75,6 +75,7 @@ release:
 
 brews:
   - name: deel-cli
+    skip_upload: true
     repository:
       owner: salmonumbrella
       name: homebrew-tap
