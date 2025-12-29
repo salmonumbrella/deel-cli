@@ -580,6 +580,16 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Check rate limit per client IP
+	clientIP := getClientIP(r)
+	if err := s.limiter.check(clientIP, "/remove-account"); err != nil {
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
 	var req struct {
 		Name string `json:"name"`
 	}
