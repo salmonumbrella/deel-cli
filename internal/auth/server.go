@@ -144,8 +144,9 @@ func ValidateToken(token string) error {
 	return nil
 }
 
-// sanitizeToken cleans a token by trimming whitespace and removing control characters
-func sanitizeToken(token string) string {
+// SanitizeToken cleans a token by trimming whitespace and removing control characters.
+// It is exported for use by CLI commands that accept token input directly.
+func SanitizeToken(token string) string {
 	token = strings.TrimSpace(token)
 	// Remove any invisible characters that might have been pasted
 	token = strings.Map(func(r rune) rune {
@@ -364,7 +365,7 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	// Normalize inputs
 	req.AccountName = strings.ToLower(strings.TrimSpace(req.AccountName))
-	req.Token = sanitizeToken(req.Token)
+	req.Token = SanitizeToken(req.Token)
 
 	// Validate input format
 	if err := ValidateAccountName(req.AccountName); err != nil {
@@ -439,7 +440,7 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// Normalize inputs
 	req.AccountName = strings.ToLower(strings.TrimSpace(req.AccountName))
-	req.Token = sanitizeToken(req.Token)
+	req.Token = SanitizeToken(req.Token)
 
 	// Validate input format
 	if err := ValidateAccountName(req.AccountName); err != nil {

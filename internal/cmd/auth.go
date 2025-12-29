@@ -85,7 +85,7 @@ var authAddCmd = &cobra.Command{
 				f.PrintError("Failed to read token: %v", err)
 				return err
 			}
-			token = string(tokenBytes)
+			token = auth.SanitizeToken(string(tokenBytes))
 			f.PrintText("") // New line after hidden input
 		} else {
 			// Non-interactive (pipe)
@@ -95,7 +95,7 @@ var authAddCmd = &cobra.Command{
 				f.PrintError("Failed to read token: %v", err)
 				return err
 			}
-			token = strings.TrimSpace(line)
+			token = auth.SanitizeToken(line)
 		}
 
 		if err := auth.ValidateToken(token); err != nil {
