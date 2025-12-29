@@ -529,12 +529,14 @@ func (s *SetupServer) handleComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.pendingMu.Lock()
-	if s.pendingResult != nil {
-		s.result <- *s.pendingResult
-	}
-	s.pendingMu.Unlock()
-	s.shutdownOnce.Do(func() { close(s.shutdown) })
+	s.shutdownOnce.Do(func() {
+		s.pendingMu.Lock()
+		if s.pendingResult != nil {
+			s.result <- *s.pendingResult
+		}
+		s.pendingMu.Unlock()
+		close(s.shutdown)
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
