@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var eorCmd = &cobra.Command{
@@ -17,17 +18,17 @@ var eorCmd = &cobra.Command{
 
 // Flags for create command
 var (
-	eorCreateTitleFlag         string
-	eorCreateWorkerEmailFlag   string
-	eorCreateWorkerNameFlag    string
-	eorCreateCountryFlag       string
-	eorCreateStartDateFlag     string
-	eorCreateSalaryFlag        string
-	eorCreateCurrencyFlag      string
-	eorCreatePayFrequencyFlag  string
-	eorCreateJobTitleFlag      string
-	eorCreateSeniorityFlag     string
-	eorCreateScopeFlag         string
+	eorCreateTitleFlag        string
+	eorCreateWorkerEmailFlag  string
+	eorCreateWorkerNameFlag   string
+	eorCreateCountryFlag      string
+	eorCreateStartDateFlag    string
+	eorCreateSalaryFlag       string
+	eorCreateCurrencyFlag     string
+	eorCreatePayFrequencyFlag string
+	eorCreateJobTitleFlag     string
+	eorCreateSeniorityFlag    string
+	eorCreateScopeFlag        string
 )
 
 var eorCreateCmd = &cobra.Command{
@@ -82,6 +83,25 @@ var eorCreateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --salary value: %w", err)
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "EORContract",
+			Description: "Create EOR contract",
+			Details: map[string]string{
+				"Title":        eorCreateTitleFlag,
+				"WorkerEmail":  eorCreateWorkerEmailFlag,
+				"WorkerName":   eorCreateWorkerNameFlag,
+				"Country":      eorCreateCountryFlag,
+				"StartDate":    eorCreateStartDateFlag,
+				"Salary":       fmt.Sprintf("%.2f %s", salary, eorCreateCurrencyFlag),
+				"PayFrequency": eorCreatePayFrequencyFlag,
+				"JobTitle":     eorCreateJobTitleFlag,
+				"Seniority":    eorCreateSeniorityFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -134,6 +154,17 @@ var eorGetCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "SIGN",
+			Resource:    "EORContract",
+			Description: "Sign EOR contract",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -232,6 +263,18 @@ var eorCancelCmd = &cobra.Command{
 			return fmt.Errorf("--reason flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CANCEL",
+			Resource:    "EORContract",
+			Description: "Cancel EOR contract",
+			Details: map[string]string{
+				"ID":     args[0],
+				"Reason": eorCancelReasonFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -289,12 +332,6 @@ var eorAmendCmd = &cobra.Command{
 			return fmt.Errorf("--reason flag is required")
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
 		// Build changes map
 		changes := make(map[string]interface{})
 		if eorAmendSalaryFlag != "" {
@@ -318,6 +355,26 @@ var eorAmendCmd = &cobra.Command{
 		if len(changes) == 0 {
 			f.PrintError("At least one change flag (--salary, --job-title, --seniority, --scope) is required")
 			return fmt.Errorf("at least one change flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "AMEND",
+			Resource:    "EORContract",
+			Description: "Create EOR amendment",
+			Details: map[string]string{
+				"ID":            args[0],
+				"Type":          eorAmendTypeFlag,
+				"EffectiveDate": eorAmendEffectiveDateFlag,
+				"Reason":        eorAmendReasonFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
 		}
 
 		params := api.CreateEORAmendmentParams{
@@ -375,6 +432,20 @@ var eorTerminateCmd = &cobra.Command{
 		if eorTerminateEffectiveDateFlag == "" {
 			f.PrintError("--effective-date flag is required")
 			return fmt.Errorf("--effective-date flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "TERMINATE",
+			Resource:    "EORContract",
+			Description: "Request EOR termination",
+			Details: map[string]string{
+				"ID":            args[0],
+				"Reason":        eorTerminateReasonFlag,
+				"EffectiveDate": eorTerminateEffectiveDateFlag,
+				"WithCause":     fmt.Sprintf("%t", eorTerminateWithCauseFlag),
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -452,6 +523,22 @@ var workersCreateCmd = &cobra.Command{
 		if workersCreateCountryFlag == "" {
 			f.PrintError("--country flag is required")
 			return fmt.Errorf("--country flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "EORWorker",
+			Description: "Create EOR worker",
+			Details: map[string]string{
+				"Email":     workersCreateEmailFlag,
+				"FirstName": workersCreateFirstNameFlag,
+				"LastName":  workersCreateLastNameFlag,
+				"Country":   workersCreateCountryFlag,
+				"DOB":       workersCreateDOBFlag,
+				"Phone":     workersCreatePhoneFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -536,6 +623,25 @@ var bankAccountsAddCmd = &cobra.Command{
 		if bankAccountAddCurrencyFlag == "" {
 			f.PrintError("--currency flag is required")
 			return fmt.Errorf("--currency flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "EORBankAccount",
+			Description: "Add EOR bank account",
+			Details: map[string]string{
+				"WorkerID":      args[0],
+				"AccountHolder": bankAccountAddAccountHolderFlag,
+				"BankName":      bankAccountAddBankNameFlag,
+				"AccountNumber": bankAccountAddAccountNumberFlag,
+				"RoutingNumber": bankAccountAddRoutingNumberFlag,
+				"IBAN":          bankAccountAddIBANFlag,
+				"SWIFT":         bankAccountAddSwiftFlag,
+				"Currency":      bankAccountAddCurrencyFlag,
+				"Primary":       fmt.Sprintf("%t", bankAccountAddIsPrimaryFlag),
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

@@ -78,6 +78,7 @@ type UpdateWebhookParams struct {
 	URL         string   `json:"url,omitempty"`
 	Events      []string `json:"events,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Status      string   `json:"status,omitempty"`
 }
 
 // UpdateWebhook updates an existing webhook

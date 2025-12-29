@@ -1,12 +1,17 @@
 package cmd
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var webhooksCmd = &cobra.Command{
@@ -106,6 +111,19 @@ var webhooksCreateCmd = &cobra.Command{
 			return fmt.Errorf("--events flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Webhook",
+			Description: "Create webhook",
+			Details: map[string]string{
+				"URL":         webhooksURLFlag,
+				"Events":      strings.Join(webhooksEventsFlag, ","),
+				"Description": webhooksDescriptionFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -152,6 +170,28 @@ var webhooksUpdateCmd = &cobra.Command{
 			return fmt.Errorf("no update flags provided")
 		}
 
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if cmd.Flags().Changed("url") {
+			details["URL"] = webhooksURLFlag
+		}
+		if cmd.Flags().Changed("events") {
+			details["Events"] = strings.Join(webhooksEventsFlag, ",")
+		}
+		if cmd.Flags().Changed("description") {
+			details["Description"] = webhooksDescriptionFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Webhook",
+			Description: "Update webhook",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -188,12 +228,105 @@ var webhooksUpdateCmd = &cobra.Command{
 	},
 }
 
+var webhooksEnableCmd = &cobra.Command{
+	Use:   "enable <webhook-id>",
+	Short: "Enable a webhook",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Webhook",
+			Description: "Enable webhook",
+			Details: map[string]string{
+				"ID":     args[0],
+				"Status": "active",
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		webhook, err := client.UpdateWebhook(cmd.Context(), args[0], api.UpdateWebhookParams{
+			Status: "active",
+		})
+		if err != nil {
+			f.PrintError("Failed to enable webhook: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Webhook enabled successfully")
+			f.PrintText("ID:     " + webhook.ID)
+			f.PrintText("Status: " + webhook.Status)
+		}, webhook)
+	},
+}
+
+var webhooksDisableCmd = &cobra.Command{
+	Use:   "disable <webhook-id>",
+	Short: "Disable a webhook",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Webhook",
+			Description: "Disable webhook",
+			Details: map[string]string{
+				"ID":     args[0],
+				"Status": "disabled",
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		webhook, err := client.UpdateWebhook(cmd.Context(), args[0], api.UpdateWebhookParams{
+			Status: "disabled",
+		})
+		if err != nil {
+			f.PrintError("Failed to disable webhook: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Webhook disabled successfully")
+			f.PrintText("ID:     " + webhook.ID)
+			f.PrintText("Status: " + webhook.Status)
+		}, webhook)
+	},
+}
+
 var webhooksDeleteCmd = &cobra.Command{
 	Use:   "delete <webhook-id>",
 	Short: "Delete a webhook",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "Webhook",
+			Description: "Delete webhook",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -243,6 +376,70 @@ var webhooksEventTypesCmd = &cobra.Command{
 	},
 }
 
+// Flags for verify command
+var (
+	webhooksVerifySecretFlag        string
+	webhooksVerifySignatureFlag     string
+	webhooksVerifyPayloadFlag       string
+	webhooksVerifyPayloadFileFlag   string
+	webhooksVerifySignedPayloadFlag string
+)
+
+var webhooksVerifyCmd = &cobra.Command{
+	Use:   "verify",
+	Short: "Verify a webhook signature",
+	Long:  "Verify a webhook signature using HMAC-SHA256. Provide --secret and --signature, plus --payload/--payload-file or --signed-payload.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if webhooksVerifySecretFlag == "" {
+			f.PrintError("--secret is required")
+			return fmt.Errorf("--secret is required")
+		}
+		if webhooksVerifySignatureFlag == "" {
+			f.PrintError("--signature is required")
+			return fmt.Errorf("--signature is required")
+		}
+
+		var payload string
+		if webhooksVerifySignedPayloadFlag != "" {
+			payload = webhooksVerifySignedPayloadFlag
+		} else if webhooksVerifyPayloadFileFlag != "" {
+			data, err := os.ReadFile(webhooksVerifyPayloadFileFlag)
+			if err != nil {
+				f.PrintError("Failed to read payload file: %v", err)
+				return err
+			}
+			payload = string(data)
+		} else if webhooksVerifyPayloadFlag != "" {
+			payload = webhooksVerifyPayloadFlag
+		} else {
+			f.PrintError("Provide --payload, --payload-file, or --signed-payload")
+			return fmt.Errorf("payload is required")
+		}
+
+		provided := extractSignatureValue(webhooksVerifySignatureFlag)
+		computed := computeHMACSHA256(webhooksVerifySecretFlag, payload)
+
+		match := hmac.Equal([]byte(strings.ToLower(provided)), []byte(computed))
+		result := map[string]any{
+			"match":              match,
+			"computed_signature": computed,
+			"provided_signature": provided,
+		}
+
+		return f.Output(func() {
+			if match {
+				f.PrintSuccess("Signature is valid")
+			} else {
+				f.PrintError("Signature does not match")
+			}
+			f.PrintText("Computed: " + computed)
+			f.PrintText("Provided: " + provided)
+		}, result)
+	},
+}
+
 func init() {
 	// Create command flags
 	webhooksCreateCmd.Flags().StringVar(&webhooksURLFlag, "url", "", "Webhook URL (required)")
@@ -259,6 +456,37 @@ func init() {
 	webhooksCmd.AddCommand(webhooksGetCmd)
 	webhooksCmd.AddCommand(webhooksCreateCmd)
 	webhooksCmd.AddCommand(webhooksUpdateCmd)
+	webhooksCmd.AddCommand(webhooksEnableCmd)
+	webhooksCmd.AddCommand(webhooksDisableCmd)
 	webhooksCmd.AddCommand(webhooksDeleteCmd)
 	webhooksCmd.AddCommand(webhooksEventTypesCmd)
+	webhooksCmd.AddCommand(webhooksVerifyCmd)
+
+	webhooksVerifyCmd.Flags().StringVar(&webhooksVerifySecretFlag, "secret", "", "Webhook secret (required)")
+	webhooksVerifyCmd.Flags().StringVar(&webhooksVerifySignatureFlag, "signature", "", "Signature header or value (required)")
+	webhooksVerifyCmd.Flags().StringVar(&webhooksVerifyPayloadFlag, "payload", "", "Raw payload string")
+	webhooksVerifyCmd.Flags().StringVar(&webhooksVerifyPayloadFileFlag, "payload-file", "", "Path to payload file")
+	webhooksVerifyCmd.Flags().StringVar(&webhooksVerifySignedPayloadFlag, "signed-payload", "", "Exact payload string to sign")
+}
+
+func computeHMACSHA256(secret, payload string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(payload))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func extractSignatureValue(signature string) string {
+	sig := strings.TrimSpace(signature)
+	if strings.Contains(sig, ",") {
+		parts := strings.Split(sig, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if strings.HasPrefix(part, "v1=") {
+				return strings.TrimSpace(strings.TrimPrefix(part, "v1="))
+			}
+		}
+	}
+	sig = strings.TrimPrefix(sig, "sha256=")
+	sig = strings.TrimPrefix(sig, "v1=")
+	return strings.TrimSpace(sig)
 }

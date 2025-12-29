@@ -9,17 +9,17 @@ import (
 
 // Contract represents a Deel contract
 type Contract struct {
-	ID              string `json:"id"`
-	Title           string `json:"title"`
-	Type            string `json:"type"`
-	Status          string `json:"status"`
-	WorkerName      string `json:"worker_name"`
-	WorkerEmail     string `json:"worker_email"`
-	StartDate       string `json:"start_date"`
-	EndDate         string `json:"end_date"`
-	Currency        string `json:"currency"`
+	ID                 string  `json:"id"`
+	Title              string  `json:"title"`
+	Type               string  `json:"type"`
+	Status             string  `json:"status"`
+	WorkerName         string  `json:"worker_name"`
+	WorkerEmail        string  `json:"worker_email"`
+	StartDate          string  `json:"start_date"`
+	EndDate            string  `json:"end_date"`
+	Currency           string  `json:"currency"`
 	CompensationAmount float64 `json:"compensation_amount"`
-	Country         string `json:"country"`
+	Country            string  `json:"country"`
 }
 
 // ContractsListResponse is the response from list contracts
@@ -140,18 +140,18 @@ func (c *Client) GetContractPaymentDates(ctx context.Context, contractID string)
 
 // CreateContractParams are params for creating a contract
 type CreateContractParams struct {
-	Title         string  `json:"title"`
-	Type          string  `json:"type"` // fixed_rate, pay_as_you_go, milestone, task_based
-	WorkerEmail   string  `json:"worker_email"`
-	Currency      string  `json:"currency"`
-	Rate          float64 `json:"rate,omitempty"`
-	Country       string  `json:"country"`
-	JobTitle      string  `json:"job_title,omitempty"`
-	ScopeOfWork   string  `json:"scope_of_work,omitempty"`
-	StartDate     string  `json:"start_date,omitempty"`
-	EndDate       string  `json:"end_date,omitempty"`
-	PaymentCycle  string  `json:"payment_cycle,omitempty"` // weekly, bi_weekly, monthly
-	SeniorityLevel string `json:"seniority_level,omitempty"`
+	Title          string  `json:"title"`
+	Type           string  `json:"type"` // fixed_rate, pay_as_you_go, milestone, task_based
+	WorkerEmail    string  `json:"worker_email"`
+	Currency       string  `json:"currency"`
+	Rate           float64 `json:"rate,omitempty"`
+	Country        string  `json:"country"`
+	JobTitle       string  `json:"job_title,omitempty"`
+	ScopeOfWork    string  `json:"scope_of_work,omitempty"`
+	StartDate      string  `json:"start_date,omitempty"`
+	EndDate        string  `json:"end_date,omitempty"`
+	PaymentCycle   string  `json:"payment_cycle,omitempty"` // weekly, bi_weekly, monthly
+	SeniorityLevel string  `json:"seniority_level,omitempty"`
 }
 
 // CreateContract creates a new contractor contract

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var screeningsCmd = &cobra.Command{
@@ -15,16 +16,16 @@ var screeningsCmd = &cobra.Command{
 }
 
 var (
-	screeningWorkerIDFlag     string
-	screeningCallbackFlag     string
-	screeningProviderFlag     string
-	screeningVerifiedAtFlag   string
-	screeningDocTypeFlag      string
-	screeningDocIDFlag        string
-	screeningExpiryFlag       string
-	screeningVerifiedByFlag   string
-	screeningNotesFlag        string
-	screeningDocURLsFlag      []string
+	screeningWorkerIDFlag   string
+	screeningCallbackFlag   string
+	screeningProviderFlag   string
+	screeningVerifiedAtFlag string
+	screeningDocTypeFlag    string
+	screeningDocIDFlag      string
+	screeningExpiryFlag     string
+	screeningVerifiedByFlag string
+	screeningNotesFlag      string
+	screeningDocURLsFlag    []string
 )
 
 var screeningsVeriffCmd = &cobra.Command{
@@ -37,6 +38,18 @@ var screeningsVeriffCmd = &cobra.Command{
 		if screeningWorkerIDFlag == "" {
 			f.PrintError("--worker-id is required")
 			return fmt.Errorf("missing required flag")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "VeriffSession",
+			Description: "Create Veriff session",
+			Details: map[string]string{
+				"WorkerID": screeningWorkerIDFlag,
+				"Callback": screeningCallbackFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -154,6 +167,22 @@ var screeningsExternalKYCCmd = &cobra.Command{
 			return fmt.Errorf("missing required flags")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "SUBMIT",
+			Resource:    "ExternalKYC",
+			Description: "Submit external KYC",
+			Details: map[string]string{
+				"WorkerID":     screeningWorkerIDFlag,
+				"Provider":     screeningProviderFlag,
+				"VerifiedAt":   screeningVerifiedAtFlag,
+				"DocumentType": screeningDocTypeFlag,
+				"DocumentID":   screeningDocIDFlag,
+				"ExpiresAt":    screeningExpiryFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -193,6 +222,19 @@ var screeningsManualVerifyCmd = &cobra.Command{
 		if screeningWorkerIDFlag == "" || screeningVerifiedByFlag == "" {
 			f.PrintError("--worker-id and --verified-by are required")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "ManualVerification",
+			Description: "Create manual verification",
+			Details: map[string]string{
+				"WorkerID":   screeningWorkerIDFlag,
+				"VerifiedBy": screeningVerifiedByFlag,
+				"Notes":      screeningNotesFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

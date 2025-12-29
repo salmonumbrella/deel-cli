@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var immigrationCmd = &cobra.Command{
@@ -188,6 +189,20 @@ var immigrationCreateCmd = &cobra.Command{
 			return fmt.Errorf("missing required flags")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "ImmigrationCase",
+			Description: "Create immigration case",
+			Details: map[string]string{
+				"ContractID": immigrationContractFlag,
+				"Type":       immigrationTypeFlag,
+				"Country":    immigrationCountryFlag,
+				"StartDate":  immigrationStartFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -232,6 +247,20 @@ var immigrationUploadCmd = &cobra.Command{
 			immigrationDocTypeFlag == "" || immigrationDocURLFlag == "" {
 			f.PrintError("--case, --name, --type, and --doc-url are required")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPLOAD",
+			Resource:    "ImmigrationDocument",
+			Description: "Upload immigration document",
+			Details: map[string]string{
+				"CaseID": immigrationCaseFlag,
+				"Name":   immigrationDocNameFlag,
+				"Type":   immigrationDocTypeFlag,
+				"DocURL": immigrationDocURLFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

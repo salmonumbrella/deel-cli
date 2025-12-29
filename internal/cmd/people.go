@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var peopleCmd = &cobra.Command{
@@ -20,34 +20,75 @@ var (
 	peopleEmailFlag string
 )
 
-var peopleListCmd = NewListCommand(ListConfig[api.Person]{
-	Use:          "list",
-	Short:        "List all people",
-	Headers:      []string{"ID", "NAME", "EMAIL", "JOB TITLE", "STATUS"},
-	EmptyMessage: "No people found.",
-	RowFunc: func(p api.Person) []string {
-		return []string{
-			p.HRISProfileID,
-			p.FirstName + " " + p.LastName,
-			p.Email,
-			p.JobTitle,
-			p.Status,
-		}
-	},
-	Fetch: func(ctx context.Context, client *api.Client, page, pageSize int) (ListResult[api.Person], error) {
-		resp, err := client.ListPeople(ctx, api.PeopleListParams{
-			Limit:  pageSize,
-			Cursor: "", // TODO: implement cursor-based pagination
-		})
+var (
+	peopleLimitFlag  int
+	peopleCursorFlag string
+	peopleAllFlag    bool
+)
+
+var peopleListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all people",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
 		if err != nil {
-			return ListResult[api.Person]{}, err
+			f.PrintError("Failed to get client: %v", err)
+			return err
 		}
-		return ListResult[api.Person]{
-			Items:   resp.Data,
-			HasMore: resp.Page.Next != "",
-		}, nil
+
+		cursor := peopleCursorFlag
+		var allPeople []api.Person
+		var pageTotal int
+		for {
+			resp, err := client.ListPeople(cmd.Context(), api.PeopleListParams{
+				Limit:  peopleLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list people: %v", err)
+				return err
+			}
+			allPeople = append(allPeople, resp.Data...)
+			pageTotal = resp.Page.Total
+			if !peopleAllFlag || resp.Page.Next == "" {
+				if !peopleAllFlag {
+					allPeople = resp.Data
+					pageTotal = resp.Page.Total
+					cursor = resp.Page.Next
+				}
+				break
+			}
+			cursor = resp.Page.Next
+		}
+
+		response := api.PeopleListResponse{
+			Data: allPeople,
+		}
+		response.Page.Next = ""
+		response.Page.Total = pageTotal
+		if peopleAllFlag {
+			response.Page.Total = len(allPeople)
+		}
+
+		return f.Output(func() {
+			if len(allPeople) == 0 {
+				f.PrintText("No people found.")
+				return
+			}
+			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
+			for _, p := range allPeople {
+				name := p.FirstName + " " + p.LastName
+				table.AddRow(p.HRISProfileID, name, p.Email, p.JobTitle, p.Status)
+			}
+			table.Render()
+			if !peopleAllFlag && cursor != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
-}, getClient)
+}
 
 var peopleGetCmd = &cobra.Command{
 	Use:   "get <hris-profile-id>",
@@ -210,6 +251,21 @@ var peopleCreateCmd = &cobra.Command{
 			return fmt.Errorf("--country flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Person",
+			Description: "Create a new person",
+			Details: map[string]string{
+				"Email":     peopleCreateEmailFlag,
+				"FirstName": peopleCreateFirstNameFlag,
+				"LastName":  peopleCreateLastNameFlag,
+				"Type":      peopleCreateTypeFlag,
+				"Country":   peopleCreateCountryFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -260,6 +316,30 @@ var peopleUpdateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if peopleUpdateFirstNameFlag != "" {
+			details["FirstName"] = peopleUpdateFirstNameFlag
+		}
+		if peopleUpdateLastNameFlag != "" {
+			details["LastName"] = peopleUpdateLastNameFlag
+		}
+		if peopleUpdatePhoneFlag != "" {
+			details["Phone"] = peopleUpdatePhoneFlag
+		}
+		if peopleUpdateNationalityFlag != "" {
+			details["Nationality"] = peopleUpdateNationalityFlag
+		}
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Person",
+			Description: "Update personal info",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -300,6 +380,102 @@ var peopleUpdateCmd = &cobra.Command{
 	},
 }
 
+// Flags for working location update command
+var (
+	peopleLocationCountryFlag    string
+	peopleLocationStateFlag      string
+	peopleLocationCityFlag       string
+	peopleLocationAddressFlag    string
+	peopleLocationPostalCodeFlag string
+	peopleLocationTimezoneFlag   string
+)
+
+var peopleLocationCmd = &cobra.Command{
+	Use:   "working-location <id>",
+	Short: "Update working location",
+	Long:  "Update the working location for a person. Requires --country.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if peopleLocationCountryFlag == "" {
+			f.PrintError("--country flag is required")
+			return fmt.Errorf("--country flag is required")
+		}
+
+		details := map[string]string{
+			"ID":      args[0],
+			"Country": peopleLocationCountryFlag,
+		}
+		if peopleLocationStateFlag != "" {
+			details["State"] = peopleLocationStateFlag
+		}
+		if peopleLocationCityFlag != "" {
+			details["City"] = peopleLocationCityFlag
+		}
+		if peopleLocationAddressFlag != "" {
+			details["Address"] = peopleLocationAddressFlag
+		}
+		if peopleLocationPostalCodeFlag != "" {
+			details["PostalCode"] = peopleLocationPostalCodeFlag
+		}
+		if peopleLocationTimezoneFlag != "" {
+			details["Timezone"] = peopleLocationTimezoneFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "WorkingLocation",
+			Description: "Update working location",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		location := api.WorkingLocation{
+			Country:    peopleLocationCountryFlag,
+			State:      peopleLocationStateFlag,
+			City:       peopleLocationCityFlag,
+			Address:    peopleLocationAddressFlag,
+			PostalCode: peopleLocationPostalCodeFlag,
+			Timezone:   peopleLocationTimezoneFlag,
+		}
+
+		updated, err := client.UpdateWorkingLocation(cmd.Context(), args[0], location)
+		if err != nil {
+			f.PrintError("Failed to update working location: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Working location updated successfully")
+			f.PrintText("ID:          " + updated.ID)
+			f.PrintText("Country:     " + updated.Country)
+			if updated.State != "" {
+				f.PrintText("State:       " + updated.State)
+			}
+			if updated.City != "" {
+				f.PrintText("City:        " + updated.City)
+			}
+			if updated.Address != "" {
+				f.PrintText("Address:     " + updated.Address)
+			}
+			if updated.PostalCode != "" {
+				f.PrintText("Postal Code: " + updated.PostalCode)
+			}
+			if updated.Timezone != "" {
+				f.PrintText("Timezone:    " + updated.Timezone)
+			}
+		}, updated)
+	},
+}
+
 // Adjustments subcommand
 var adjustmentsCmd = &cobra.Command{
 	Use:   "adjustments",
@@ -319,6 +495,17 @@ var adjustmentsListCmd = &cobra.Command{
 	Long:  "List adjustments with optional filters. Optional flags: --contract-id, --category-id.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "Adjustment",
+			Description: "Delete adjustment",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -408,6 +595,21 @@ var adjustmentsCreateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --amount value: %w", err)
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Adjustment",
+			Description: "Create adjustment",
+			Details: map[string]string{
+				"ContractID":  adjustmentsCreateContractIDFlag,
+				"CategoryID":  adjustmentsCreateCategoryIDFlag,
+				"Amount":      dryrun.FormatAmount(amount, adjustmentsCreateCurrencyFlag),
+				"Description": adjustmentsCreateDescriptionFlag,
+				"Date":        adjustmentsCreateDateFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -443,6 +645,147 @@ var adjustmentsCreateCmd = &cobra.Command{
 	},
 }
 
+var adjustmentsGetCmd = &cobra.Command{
+	Use:   "get <id>",
+	Short: "Get adjustment",
+	Long:  "Get an adjustment by ID.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		adjustment, err := client.GetAdjustment(cmd.Context(), args[0])
+		if err != nil {
+			f.PrintError("Failed to get adjustment: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintText("ID:          " + adjustment.ID)
+			f.PrintText("Contract ID: " + adjustment.ContractID)
+			f.PrintText("Category ID: " + adjustment.CategoryID)
+			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", adjustment.Amount, adjustment.Currency))
+			f.PrintText("Description: " + adjustment.Description)
+			f.PrintText("Date:        " + adjustment.Date)
+			f.PrintText("Status:      " + adjustment.Status)
+			f.PrintText("Created:     " + adjustment.CreatedAt)
+		}, adjustment)
+	},
+}
+
+// Flags for adjustments update command
+var (
+	adjustmentsUpdateAmountFlag      string
+	adjustmentsUpdateDescriptionFlag string
+	adjustmentsUpdateDateFlag        string
+)
+
+var adjustmentsUpdateCmd = &cobra.Command{
+	Use:   "update <id>",
+	Short: "Update adjustment",
+	Long:  "Update an adjustment. Optional flags: --amount, --description, --date.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		var amount float64
+		if adjustmentsUpdateAmountFlag != "" {
+			parsed, err := strconv.ParseFloat(adjustmentsUpdateAmountFlag, 64)
+			if err != nil {
+				f.PrintError("Invalid --amount value: %v", err)
+				return fmt.Errorf("invalid --amount value: %w", err)
+			}
+			amount = parsed
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if adjustmentsUpdateAmountFlag != "" {
+			details["Amount"] = adjustmentsUpdateAmountFlag
+		}
+		if adjustmentsUpdateDescriptionFlag != "" {
+			details["Description"] = adjustmentsUpdateDescriptionFlag
+		}
+		if adjustmentsUpdateDateFlag != "" {
+			details["Date"] = adjustmentsUpdateDateFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Adjustment",
+			Description: "Update adjustment",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		params := api.UpdateAdjustmentParams{
+			Amount:      amount,
+			Description: adjustmentsUpdateDescriptionFlag,
+			Date:        adjustmentsUpdateDateFlag,
+		}
+
+		adjustment, err := client.UpdateAdjustment(cmd.Context(), args[0], params)
+		if err != nil {
+			f.PrintError("Failed to update adjustment: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Adjustment updated successfully")
+			f.PrintText("ID:          " + adjustment.ID)
+			f.PrintText("Contract ID: " + adjustment.ContractID)
+			f.PrintText("Category ID: " + adjustment.CategoryID)
+			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", adjustment.Amount, adjustment.Currency))
+			f.PrintText("Description: " + adjustment.Description)
+			f.PrintText("Date:        " + adjustment.Date)
+			f.PrintText("Status:      " + adjustment.Status)
+		}, adjustment)
+	},
+}
+
+var adjustmentsCategoriesCmd = &cobra.Command{
+	Use:   "categories",
+	Short: "List adjustment categories",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		categories, err := client.ListAdjustmentCategories(cmd.Context())
+		if err != nil {
+			f.PrintError("Failed to list adjustment categories: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			if len(categories) == 0 {
+				f.PrintText("No adjustment categories found")
+				return
+			}
+			table := f.NewTable("ID", "NAME", "TYPE", "DESCRIPTION")
+			for _, c := range categories {
+				table.AddRow(c.ID, c.Name, c.Type, c.Description)
+			}
+			table.Render()
+		}, categories)
+	},
+}
+
 var adjustmentsDeleteCmd = &cobra.Command{
 	Use:   "delete <id>",
 	Short: "Delete adjustment",
@@ -450,6 +793,17 @@ var adjustmentsDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "WorkerRelation",
+			Description: "Delete worker relation",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -547,6 +901,20 @@ var managersCreateCmd = &cobra.Command{
 		if managersCreateRoleFlag == "" {
 			f.PrintError("--role flag is required")
 			return fmt.Errorf("--role flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Manager",
+			Description: "Create manager",
+			Details: map[string]string{
+				"Email":     managersCreateEmailFlag,
+				"FirstName": managersCreateFirstNameFlag,
+				"LastName":  managersCreateLastNameFlag,
+				"Role":      managersCreateRoleFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -661,6 +1029,20 @@ var relationsCreateCmd = &cobra.Command{
 			return fmt.Errorf("--start-date flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "WorkerRelation",
+			Description: "Create worker relation",
+			Details: map[string]string{
+				"ProfileID":    relationsCreateProfileIDFlag,
+				"ManagerID":    relationsCreateManagerIDFlag,
+				"RelationType": relationsCreateRelationTypeFlag,
+				"StartDate":    relationsCreateStartDateFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -721,7 +1103,10 @@ var relationsDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	// Note: peopleListCmd flags are added by NewListCommand (--page, --limit)
+	peopleListCmd.Flags().IntVar(&peopleLimitFlag, "limit", 50, "Maximum results")
+	peopleListCmd.Flags().StringVar(&peopleCursorFlag, "cursor", "", "Pagination cursor")
+	peopleListCmd.Flags().BoolVar(&peopleAllFlag, "all", false, "Fetch all pages")
+
 	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for")
 
 	// People create command flags
@@ -737,6 +1122,14 @@ func init() {
 	peopleUpdateCmd.Flags().StringVar(&peopleUpdatePhoneFlag, "phone", "", "Phone number (optional)")
 	peopleUpdateCmd.Flags().StringVar(&peopleUpdateNationalityFlag, "nationality", "", "Nationality (optional)")
 
+	// Working location command flags
+	peopleLocationCmd.Flags().StringVar(&peopleLocationCountryFlag, "country", "", "Country code (required)")
+	peopleLocationCmd.Flags().StringVar(&peopleLocationStateFlag, "state", "", "State (optional)")
+	peopleLocationCmd.Flags().StringVar(&peopleLocationCityFlag, "city", "", "City (optional)")
+	peopleLocationCmd.Flags().StringVar(&peopleLocationAddressFlag, "address", "", "Address (optional)")
+	peopleLocationCmd.Flags().StringVar(&peopleLocationPostalCodeFlag, "postal-code", "", "Postal code (optional)")
+	peopleLocationCmd.Flags().StringVar(&peopleLocationTimezoneFlag, "timezone", "", "Timezone (optional)")
+
 	// Adjustments list command flags
 	adjustmentsListCmd.Flags().StringVar(&adjustmentsListContractIDFlag, "contract-id", "", "Contract ID (optional)")
 	adjustmentsListCmd.Flags().StringVar(&adjustmentsListCategoryIDFlag, "category-id", "", "Category ID (optional)")
@@ -748,6 +1141,11 @@ func init() {
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateCurrencyFlag, "currency", "", "Currency code (required)")
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateDescriptionFlag, "description", "", "Description (required)")
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateDateFlag, "date", "", "Date YYYY-MM-DD (required)")
+
+	// Adjustments update command flags
+	adjustmentsUpdateCmd.Flags().StringVar(&adjustmentsUpdateAmountFlag, "amount", "", "Amount (optional)")
+	adjustmentsUpdateCmd.Flags().StringVar(&adjustmentsUpdateDescriptionFlag, "description", "", "Description (optional)")
+	adjustmentsUpdateCmd.Flags().StringVar(&adjustmentsUpdateDateFlag, "date", "", "Date YYYY-MM-DD (optional)")
 
 	// Managers create command flags
 	managersCreateCmd.Flags().StringVar(&managersCreateEmailFlag, "email", "", "Email (required)")
@@ -763,8 +1161,11 @@ func init() {
 
 	// Add subcommands to adjustments
 	adjustmentsCmd.AddCommand(adjustmentsListCmd)
+	adjustmentsCmd.AddCommand(adjustmentsGetCmd)
 	adjustmentsCmd.AddCommand(adjustmentsCreateCmd)
+	adjustmentsCmd.AddCommand(adjustmentsUpdateCmd)
 	adjustmentsCmd.AddCommand(adjustmentsDeleteCmd)
+	adjustmentsCmd.AddCommand(adjustmentsCategoriesCmd)
 
 	// Add subcommands to managers
 	managersCmd.AddCommand(managersListCmd)
@@ -783,6 +1184,7 @@ func init() {
 	peopleCmd.AddCommand(peopleSearchCmd)
 	peopleCmd.AddCommand(peopleCreateCmd)
 	peopleCmd.AddCommand(peopleUpdateCmd)
+	peopleCmd.AddCommand(peopleLocationCmd)
 	peopleCmd.AddCommand(customFieldsCmd)
 	peopleCmd.AddCommand(adjustmentsCmd)
 	peopleCmd.AddCommand(managersCmd)

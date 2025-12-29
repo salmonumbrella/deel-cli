@@ -12,14 +12,14 @@ func TestListHourlyPresets(t *testing.T) {
 	response := map[string]any{
 		"data": []map[string]any{
 			{
-				"id":              "hp1",
-				"name":            "Standard 40h",
-				"description":     "Standard full-time hours",
-				"hours_per_day":   8.0,
-				"hours_per_week":  40.0,
-				"rate":            50.0,
-				"currency":        "USD",
-				"created_at":      "2024-01-01T00:00:00Z",
+				"id":             "hp1",
+				"name":           "Standard 40h",
+				"description":    "Standard full-time hours",
+				"hours_per_day":  8.0,
+				"hours_per_week": 40.0,
+				"rate":           50.0,
+				"currency":       "USD",
+				"created_at":     "2024-01-01T00:00:00Z",
 			},
 		},
 	}
@@ -59,14 +59,14 @@ func TestCreateHourlyPreset(t *testing.T) {
 		assert.Equal(t, "EUR", body["currency"])
 	}, 201, map[string]any{
 		"data": map[string]any{
-			"id":              "hp-new",
-			"name":            "Part-time 20h",
-			"description":     "Part-time preset",
-			"hours_per_day":   4.0,
-			"hours_per_week":  20.0,
-			"rate":            45.0,
-			"currency":        "EUR",
-			"created_at":      "2024-01-01T00:00:00Z",
+			"id":             "hp-new",
+			"name":           "Part-time 20h",
+			"description":    "Part-time preset",
+			"hours_per_day":  4.0,
+			"hours_per_week": 20.0,
+			"rate":           45.0,
+			"currency":       "EUR",
+			"created_at":     "2024-01-01T00:00:00Z",
 		},
 	})
 	defer server.Close()
@@ -110,13 +110,13 @@ func TestUpdateHourlyPreset(t *testing.T) {
 		assert.Equal(t, 50.0, body["rate"])
 	}, 200, map[string]any{
 		"data": map[string]any{
-			"id":              "hp1",
-			"name":            "Updated name",
-			"hours_per_day":   8.0,
-			"hours_per_week":  40.0,
-			"rate":            50.0,
-			"currency":        "USD",
-			"created_at":      "2024-01-01T00:00:00Z",
+			"id":             "hp1",
+			"name":           "Updated name",
+			"hours_per_day":  8.0,
+			"hours_per_week": 40.0,
+			"rate":           50.0,
+			"currency":       "USD",
+			"created_at":     "2024-01-01T00:00:00Z",
 		},
 	})
 	defer server.Close()

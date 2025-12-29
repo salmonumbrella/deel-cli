@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var costCentersCmd = &cobra.Command{
@@ -94,6 +95,18 @@ The JSON file should contain an array of cost centers:
 		if len(centers) == 0 {
 			f.PrintError("No cost centers found in file")
 			return fmt.Errorf("empty cost centers array")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "SYNC",
+			Resource:    "CostCenters",
+			Description: "Sync cost centers",
+			Details: map[string]string{
+				"File":       costCenterFileFlag,
+				"TotalItems": fmt.Sprintf("%d", len(centers)),
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

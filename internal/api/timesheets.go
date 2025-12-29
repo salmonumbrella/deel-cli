@@ -36,6 +36,14 @@ type TimesheetsListParams struct {
 	Limit      int
 }
 
+// TimesheetsListResponse is the response from list timesheets
+type TimesheetsListResponse struct {
+	Data []Timesheet `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
 // CreateTimesheetEntryParams are parameters for creating a timesheet entry
 type CreateTimesheetEntryParams struct {
 	TimesheetID string  `json:"timesheet_id"`
@@ -57,7 +65,7 @@ type ReviewTimesheetParams struct {
 }
 
 // ListTimesheets returns timesheets for a contract
-func (c *Client) ListTimesheets(ctx context.Context, params TimesheetsListParams) ([]Timesheet, error) {
+func (c *Client) ListTimesheets(ctx context.Context, params TimesheetsListParams) (*TimesheetsListResponse, error) {
 	q := url.Values{}
 	if params.ContractID != "" {
 		q.Set("contract_id", params.ContractID)
@@ -82,13 +90,11 @@ func (c *Client) ListTimesheets(ctx context.Context, params TimesheetsListParams
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Timesheet `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result TimesheetsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // GetTimesheet returns a single timesheet

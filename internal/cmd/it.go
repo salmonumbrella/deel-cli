@@ -19,6 +19,7 @@ var (
 	itAssetsTypeFlag   string
 	itAssetsLimitFlag  int
 	itAssetsCursorFlag string
+	itAssetsAllFlag    bool
 	itOrdersLimitFlag  int
 )
 
@@ -33,28 +34,52 @@ var itAssetsCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListITAssets(cmd.Context(), api.ITAssetsListParams{
-			Status: itAssetsStatusFlag,
-			Type:   itAssetsTypeFlag,
-			Limit:  itAssetsLimitFlag,
-			Cursor: itAssetsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list assets: %v", err)
-			return err
+		cursor := itAssetsCursorFlag
+		var allAssets []api.ITAsset
+		var next string
+
+		for {
+			resp, err := client.ListITAssets(cmd.Context(), api.ITAssetsListParams{
+				Status: itAssetsStatusFlag,
+				Type:   itAssetsTypeFlag,
+				Limit:  itAssetsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list assets: %v", err)
+				return err
+			}
+			allAssets = append(allAssets, resp.Data...)
+			next = resp.Page.Next
+			if !itAssetsAllFlag || next == "" {
+				if !itAssetsAllFlag {
+					allAssets = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ITAssetsListResponse{
+			Data: allAssets,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allAssets) == 0 {
 				f.PrintText("No IT assets found.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "TYPE", "SERIAL", "STATUS", "ASSIGNED TO")
-			for _, a := range resp.Data {
+			for _, a := range allAssets {
 				table.AddRow(a.ID, a.Name, a.Type, a.SerialNumber, a.Status, a.AssignedTo)
 			}
 			table.Render()
-		}, resp)
+			if !itAssetsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -127,6 +152,7 @@ func init() {
 	itAssetsCmd.Flags().StringVar(&itAssetsTypeFlag, "type", "", "Filter by type")
 	itAssetsCmd.Flags().IntVar(&itAssetsLimitFlag, "limit", 50, "Maximum results")
 	itAssetsCmd.Flags().StringVar(&itAssetsCursorFlag, "cursor", "", "Pagination cursor")
+	itAssetsCmd.Flags().BoolVar(&itAssetsAllFlag, "all", false, "Fetch all pages")
 
 	itOrdersCmd.Flags().IntVar(&itOrdersLimitFlag, "limit", 50, "Maximum results")
 

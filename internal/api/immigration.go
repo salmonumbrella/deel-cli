@@ -8,15 +8,15 @@ import (
 
 // ImmigrationCase represents an immigration case
 type ImmigrationCase struct {
-	ID           string `json:"id"`
-	ContractID   string `json:"contract_id"`
-	WorkerName   string `json:"worker_name"`
-	Type         string `json:"type"`
-	Status       string `json:"status"`
-	Country      string `json:"country"`
-	StartDate    string `json:"start_date"`
-	ExpiryDate   string `json:"expiry_date"`
-	CaseNumber   string `json:"case_number"`
+	ID         string `json:"id"`
+	ContractID string `json:"contract_id"`
+	WorkerName string `json:"worker_name"`
+	Type       string `json:"type"`
+	Status     string `json:"status"`
+	Country    string `json:"country"`
+	StartDate  string `json:"start_date"`
+	ExpiryDate string `json:"expiry_date"`
+	CaseNumber string `json:"case_number"`
 }
 
 // GetImmigrationCaseDetails returns case details
@@ -65,11 +65,11 @@ func (c *Client) ListImmigrationDocs(ctx context.Context, caseID string) ([]Immi
 
 // VisaType represents a visa type
 type VisaType struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Country     string `json:"country"`
-	Category    string `json:"category"`
-	Duration    string `json:"max_duration"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Country      string `json:"country"`
+	Category     string `json:"category"`
+	Duration     string `json:"max_duration"`
 	Requirements string `json:"requirements_summary"`
 }
 
@@ -92,10 +92,10 @@ func (c *Client) ListVisaTypes(ctx context.Context, country string) ([]VisaType,
 
 // VisaRequirement represents a visa requirement check
 type VisaRequirement struct {
-	Required    bool   `json:"visa_required"`
-	Type        string `json:"suggested_type"`
-	Duration    string `json:"max_stay"`
-	Notes       string `json:"notes"`
+	Required bool   `json:"visa_required"`
+	Type     string `json:"suggested_type"`
+	Duration string `json:"max_stay"`
+	Notes    string `json:"notes"`
 }
 
 // CheckVisaRequirement checks if visa is required
@@ -141,8 +141,8 @@ func (c *Client) CreateImmigrationCase(ctx context.Context, params CreateImmigra
 
 // UploadImmigrationDocumentParams are params for uploading an immigration document
 type UploadImmigrationDocumentParams struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
 	DocumentURL string `json:"document_url"`
 }
 

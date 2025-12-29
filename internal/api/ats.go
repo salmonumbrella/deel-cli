@@ -164,8 +164,64 @@ type ATSOffersListParams struct {
 	Cursor string
 }
 
+// ATSOffersListResponse is the response from list offers
+type ATSOffersListResponse struct {
+	Data []ATSOffer `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSJobsListResponse is the response from list jobs
+type ATSJobsListResponse struct {
+	Data []ATSJob `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSJobPostingsListResponse is the response from list job postings
+type ATSJobPostingsListResponse struct {
+	Data []ATSJobPosting `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSApplicationsListResponse is the response from list applications
+type ATSApplicationsListResponse struct {
+	Data []ATSApplication `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSCandidatesListResponse is the response from list candidates
+type ATSCandidatesListResponse struct {
+	Data []ATSCandidate `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSDepartmentsListResponse is the response from list departments
+type ATSDepartmentsListResponse struct {
+	Data []ATSDepartment `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
+// ATSLocationsListResponse is the response from list locations
+type ATSLocationsListResponse struct {
+	Data []ATSLocation `json:"data"`
+	Page struct {
+		Next string `json:"next"`
+	} `json:"page"`
+}
+
 // ListATSOffers returns ATS offers
-func (c *Client) ListATSOffers(ctx context.Context, params ATSOffersListParams) ([]ATSOffer, error) {
+func (c *Client) ListATSOffers(ctx context.Context, params ATSOffersListParams) (*ATSOffersListResponse, error) {
 	q := url.Values{}
 	if params.Status != "" {
 		q.Set("status", params.Status)
@@ -187,17 +243,15 @@ func (c *Client) ListATSOffers(ctx context.Context, params ATSOffersListParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSOffer `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSOffersListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // ListATSJobs returns ATS jobs
-func (c *Client) ListATSJobs(ctx context.Context, params ATSJobsListParams) ([]ATSJob, error) {
+func (c *Client) ListATSJobs(ctx context.Context, params ATSJobsListParams) (*ATSJobsListResponse, error) {
 	q := url.Values{}
 	if params.Status != "" {
 		q.Set("status", params.Status)
@@ -225,13 +279,11 @@ func (c *Client) ListATSJobs(ctx context.Context, params ATSJobsListParams) ([]A
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSJob `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSJobsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // CreateATSJob creates a new ATS job
@@ -251,7 +303,7 @@ func (c *Client) CreateATSJob(ctx context.Context, params CreateATSJobParams) (*
 }
 
 // ListATSJobPostings returns ATS job postings
-func (c *Client) ListATSJobPostings(ctx context.Context, params ATSJobPostingsListParams) ([]ATSJobPosting, error) {
+func (c *Client) ListATSJobPostings(ctx context.Context, params ATSJobPostingsListParams) (*ATSJobPostingsListResponse, error) {
 	q := url.Values{}
 	if params.Status != "" {
 		q.Set("status", params.Status)
@@ -276,13 +328,11 @@ func (c *Client) ListATSJobPostings(ctx context.Context, params ATSJobPostingsLi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSJobPosting `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSJobPostingsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // GetATSJobPosting returns a single job posting by ID
@@ -303,7 +353,7 @@ func (c *Client) GetATSJobPosting(ctx context.Context, id string) (*ATSJobPostin
 }
 
 // ListATSApplications returns ATS applications
-func (c *Client) ListATSApplications(ctx context.Context, params ATSApplicationsListParams) ([]ATSApplication, error) {
+func (c *Client) ListATSApplications(ctx context.Context, params ATSApplicationsListParams) (*ATSApplicationsListResponse, error) {
 	q := url.Values{}
 	if params.Status != "" {
 		q.Set("status", params.Status)
@@ -334,17 +384,15 @@ func (c *Client) ListATSApplications(ctx context.Context, params ATSApplications
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSApplication `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSApplicationsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // ListATSCandidates returns ATS candidates
-func (c *Client) ListATSCandidates(ctx context.Context, params ATSCandidatesListParams) ([]ATSCandidate, error) {
+func (c *Client) ListATSCandidates(ctx context.Context, params ATSCandidatesListParams) (*ATSCandidatesListResponse, error) {
 	q := url.Values{}
 	if params.Search != "" {
 		q.Set("search", params.Search)
@@ -366,17 +414,15 @@ func (c *Client) ListATSCandidates(ctx context.Context, params ATSCandidatesList
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSCandidate `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSCandidatesListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // ListATSDepartments returns ATS departments
-func (c *Client) ListATSDepartments(ctx context.Context, params ATSDepartmentsListParams) ([]ATSDepartment, error) {
+func (c *Client) ListATSDepartments(ctx context.Context, params ATSDepartmentsListParams) (*ATSDepartmentsListResponse, error) {
 	q := url.Values{}
 	if params.Limit > 0 {
 		q.Set("limit", fmt.Sprintf("%d", params.Limit))
@@ -395,17 +441,15 @@ func (c *Client) ListATSDepartments(ctx context.Context, params ATSDepartmentsLi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSDepartment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSDepartmentsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // ListATSLocations returns ATS locations
-func (c *Client) ListATSLocations(ctx context.Context, params ATSLocationsListParams) ([]ATSLocation, error) {
+func (c *Client) ListATSLocations(ctx context.Context, params ATSLocationsListParams) (*ATSLocationsListResponse, error) {
 	q := url.Values{}
 	if params.Remote != nil {
 		q.Set("remote", strconv.FormatBool(*params.Remote))
@@ -427,13 +471,11 @@ func (c *Client) ListATSLocations(ctx context.Context, params ATSLocationsListPa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ATSLocation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	var result ATSLocationsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &result, nil
 }
 
 // ListRejectionReasons returns rejection reasons

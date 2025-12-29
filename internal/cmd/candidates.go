@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var candidatesCmd = &cobra.Command{
@@ -32,6 +33,20 @@ var candidatesAddCmd = &cobra.Command{
 		if candidateFirstNameFlag == "" || candidateLastNameFlag == "" || candidateEmailFlag == "" {
 			f.PrintError("--first-name, --last-name, and --email are required")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Candidate",
+			Description: "Add candidate",
+			Details: map[string]string{
+				"FirstName": candidateFirstNameFlag,
+				"LastName":  candidateLastNameFlag,
+				"Email":     candidateEmailFlag,
+				"Phone":     candidatePhoneFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -81,6 +96,34 @@ var candidatesUpdateCmd = &cobra.Command{
 			!cmd.Flags().Changed("status") {
 			f.PrintError("At least one flag (--first-name, --last-name, --email, --phone, or --status) must be provided")
 			return fmt.Errorf("no update flags provided")
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if cmd.Flags().Changed("first-name") {
+			details["FirstName"] = candidateFirstNameFlag
+		}
+		if cmd.Flags().Changed("last-name") {
+			details["LastName"] = candidateLastNameFlag
+		}
+		if cmd.Flags().Changed("email") {
+			details["Email"] = candidateEmailFlag
+		}
+		if cmd.Flags().Changed("phone") {
+			details["Phone"] = candidatePhoneFlag
+		}
+		if cmd.Flags().Changed("status") {
+			details["Status"] = candidateStatusFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Candidate",
+			Description: "Update candidate",
+			Details:     details,
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

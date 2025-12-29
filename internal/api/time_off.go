@@ -9,15 +9,15 @@ import (
 
 // TimeOffRequest represents a time off request
 type TimeOffRequest struct {
-	ID          string  `json:"id"`
-	Status      string  `json:"status"`
-	Type        string  `json:"type"`
-	StartDate   string  `json:"start_date"`
-	EndDate     string  `json:"end_date"`
-	Days        float64 `json:"days"`
-	Reason      string  `json:"reason"`
-	WorkerName  string  `json:"worker_name"`
-	PolicyName  string  `json:"policy_name"`
+	ID         string  `json:"id"`
+	Status     string  `json:"status"`
+	Type       string  `json:"type"`
+	StartDate  string  `json:"start_date"`
+	EndDate    string  `json:"end_date"`
+	Days       float64 `json:"days"`
+	Reason     string  `json:"reason"`
+	WorkerName string  `json:"worker_name"`
+	PolicyName string  `json:"policy_name"`
 }
 
 // TimeOffListParams are params for listing time off

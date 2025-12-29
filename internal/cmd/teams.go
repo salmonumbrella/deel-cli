@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/salmonumbrella/deel-cli/internal/api"
 )
 
 var teamsCmd = &cobra.Command{
@@ -15,6 +17,7 @@ var teamsCmd = &cobra.Command{
 var (
 	teamsLimitFlag  int
 	teamsCursorFlag string
+	teamsAllFlag    bool
 )
 
 var teamsListCmd = &cobra.Command{
@@ -28,23 +31,47 @@ var teamsListCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListTeams(cmd.Context(), teamsLimitFlag, teamsCursorFlag)
-		if err != nil {
-			f.PrintError("Failed to list teams: %v", err)
-			return err
+		cursor := teamsCursorFlag
+		var allTeams []api.Team
+		var next string
+
+		for {
+			resp, err := client.ListTeams(cmd.Context(), teamsLimitFlag, cursor)
+			if err != nil {
+				f.PrintError("Failed to list teams: %v", err)
+				return err
+			}
+			allTeams = append(allTeams, resp.Data...)
+			next = resp.Page.Next
+			if !teamsAllFlag || next == "" {
+				if !teamsAllFlag {
+					allTeams = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.TeamsListResponse{
+			Data: allTeams,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allTeams) == 0 {
 				f.PrintText("No teams found.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "MANAGER", "MEMBERS")
-			for _, t := range resp.Data {
+			for _, t := range allTeams {
 				table.AddRow(t.ID, t.Name, t.ManagerName, fmt.Sprintf("%d", t.MemberCount))
 			}
 			table.Render()
-		}, resp)
+			if !teamsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -81,6 +108,7 @@ var teamsGetCmd = &cobra.Command{
 func init() {
 	teamsListCmd.Flags().IntVar(&teamsLimitFlag, "limit", 50, "Maximum results")
 	teamsListCmd.Flags().StringVar(&teamsCursorFlag, "cursor", "", "Pagination cursor")
+	teamsListCmd.Flags().BoolVar(&teamsAllFlag, "all", false, "Fetch all pages")
 
 	teamsCmd.AddCommand(teamsListCmd)
 	teamsCmd.AddCommand(teamsGetCmd)

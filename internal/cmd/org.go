@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var orgCmd = &cobra.Command{
@@ -19,6 +20,17 @@ var orgGetCmd = &cobra.Command{
 	Short: "Get organization details",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "Group",
+			Description: "Delete group",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -46,6 +58,17 @@ var orgStructuresCmd = &cobra.Command{
 	Short: "View organization structure",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CLONE",
+			Resource:    "Group",
+			Description: "Clone group",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -192,6 +215,18 @@ var groupsCreateCmd = &cobra.Command{
 			return fmt.Errorf("--name flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Group",
+			Description: "Create group",
+			Details: map[string]string{
+				"Name":        groupNameFlag,
+				"Description": groupDescriptionFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -230,6 +265,25 @@ var groupsUpdateCmd = &cobra.Command{
 		if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("description") {
 			f.PrintError("At least one flag (--name or --description) must be provided")
 			return fmt.Errorf("no update flags provided")
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if cmd.Flags().Changed("name") {
+			details["Name"] = groupNameFlag
+		}
+		if cmd.Flags().Changed("description") {
+			details["Description"] = groupDescriptionFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "Group",
+			Description: "Update group",
+			Details:     details,
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -383,6 +437,20 @@ var legalEntitiesCreateCmd = &cobra.Command{
 			return fmt.Errorf("--type flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "LegalEntity",
+			Description: "Create legal entity",
+			Details: map[string]string{
+				"Name":      entityNameFlag,
+				"Country":   entityCountryFlag,
+				"Type":      entityTypeFlag,
+				"RegNumber": entityRegistrationNumberFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -425,6 +493,28 @@ var legalEntitiesUpdateCmd = &cobra.Command{
 		if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("type") && !cmd.Flags().Changed("reg-number") {
 			f.PrintError("At least one flag (--name, --type, or --reg-number) must be provided")
 			return fmt.Errorf("no update flags provided")
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if cmd.Flags().Changed("name") {
+			details["Name"] = entityNameFlag
+		}
+		if cmd.Flags().Changed("type") {
+			details["Type"] = entityTypeFlag
+		}
+		if cmd.Flags().Changed("reg-number") {
+			details["RegNumber"] = entityRegistrationNumberFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "LegalEntity",
+			Description: "Update legal entity",
+			Details:     details,
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -470,6 +560,17 @@ var legalEntitiesDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "LegalEntity",
+			Description: "Delete legal entity",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)

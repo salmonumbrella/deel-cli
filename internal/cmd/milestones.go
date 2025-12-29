@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var milestonesCmd = &cobra.Command{
@@ -80,6 +81,21 @@ var milestonesCreateCmd = &cobra.Command{
 			return nil
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Milestone",
+			Description: "Create milestone",
+			Details: map[string]string{
+				"ContractID":  milestonesContractIDFlag,
+				"Title":       milestonesTitleFlag,
+				"Description": milestonesDescriptionFlag,
+				"Amount":      fmt.Sprintf("%.2f", milestonesAmountFlag),
+				"DueDate":     milestonesDueDateFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -112,6 +128,17 @@ var milestonesDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "Milestone",
+			Description: "Delete milestone",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
 
 		if !milestonesForceFlag {
 			f.PrintText(fmt.Sprintf("Are you sure you want to delete milestone %s?", args[0]))

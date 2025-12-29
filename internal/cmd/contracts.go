@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var contractsCmd = &cobra.Command{
@@ -19,6 +20,7 @@ var (
 	contractsCursorFlag string
 	contractsStatusFlag string
 	contractsTypeFlag   string
+	contractsAllFlag    bool
 
 	// Create command flags
 	contractTitleFlag        string
@@ -44,34 +46,69 @@ var contractsListCmd = &cobra.Command{
 	Short: "List all contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "INVITE",
+			Resource:    "Contract",
+			Description: "Send invitation to worker",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		resp, err := client.ListContracts(cmd.Context(), api.ContractsListParams{
-			Limit:  contractsLimitFlag,
-			Cursor: contractsCursorFlag,
-			Status: contractsStatusFlag,
-			Type:   contractsTypeFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list contracts: %v", err)
-			return err
+		cursor := contractsCursorFlag
+		var allContracts []api.Contract
+		var next string
+
+		for {
+			resp, err := client.ListContracts(cmd.Context(), api.ContractsListParams{
+				Limit:  contractsLimitFlag,
+				Cursor: cursor,
+				Status: contractsStatusFlag,
+				Type:   contractsTypeFlag,
+			})
+			if err != nil {
+				f.PrintError("Failed to list contracts: %v", err)
+				return err
+			}
+			allContracts = append(allContracts, resp.Data...)
+			next = resp.Page.Next
+			if !contractsAllFlag || next == "" {
+				if !contractsAllFlag {
+					allContracts = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ContractsListResponse{
+			Data: allContracts,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allContracts) == 0 {
 				f.PrintText("No contracts found.")
 				return
 			}
 			table := f.NewTable("ID", "TITLE", "WORKER", "TYPE", "STATUS")
-			for _, c := range resp.Data {
+			for _, c := range allContracts {
 				table.AddRow(c.ID, c.Title, c.WorkerName, c.Type, c.Status)
 			}
 			table.Render()
-		}, resp)
+			if !contractsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -179,11 +216,6 @@ var contractsCreateCmd = &cobra.Command{
 	Short: "Create a new contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
 
 		// Validate required fields
 		if contractTitleFlag == "" {
@@ -221,6 +253,31 @@ var contractsCreateCmd = &cobra.Command{
 			PaymentCycle: contractPaymentCycleFlag,
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Contract",
+			Description: "Create contract",
+			Details: map[string]string{
+				"Title":       contractTitleFlag,
+				"Type":        contractTypeFlag,
+				"WorkerEmail": contractWorkerEmailFlag,
+				"Currency":    contractCurrencyFlag,
+				"Rate":        fmt.Sprintf("%.2f", contractRateFlag),
+				"Country":     contractCountryFlag,
+				"JobTitle":    contractJobTitleFlag,
+				"StartDate":   contractStartDateFlag,
+				"EndDate":     contractEndDateFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
 		contract, err := client.CreateContract(cmd.Context(), params)
 		if err != nil {
 			f.PrintError("Failed to create contract: %v", err)
@@ -243,6 +300,17 @@ var contractsSignCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "SIGN",
+			Resource:    "Contract",
+			Description: "Sign contract",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -268,11 +336,6 @@ var contractsTerminateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
 
 		if terminateReasonFlag == "" {
 			f.PrintError("--reason is required")
@@ -285,6 +348,26 @@ var contractsTerminateCmd = &cobra.Command{
 			Reason:        terminateReasonFlag,
 			EffectiveDate: terminateDateFlag,
 			Notes:         terminateNotesFlag,
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "TERMINATE",
+			Resource:    "Contract",
+			Description: "Terminate contract",
+			Details: map[string]string{
+				"ID":            args[0],
+				"Reason":        terminateReasonFlag,
+				"EffectiveDate": terminateDateFlag,
+				"Notes":         terminateNotesFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
 		}
 
 		err = client.TerminateContract(cmd.Context(), args[0], params)
@@ -443,6 +526,7 @@ func init() {
 	contractsListCmd.Flags().StringVar(&contractsCursorFlag, "cursor", "", "Pagination cursor")
 	contractsListCmd.Flags().StringVar(&contractsStatusFlag, "status", "", "Filter by status")
 	contractsListCmd.Flags().StringVar(&contractsTypeFlag, "type", "", "Filter by type")
+	contractsListCmd.Flags().BoolVar(&contractsAllFlag, "all", false, "Fetch all pages")
 
 	// Create command flags
 	contractsCreateCmd.Flags().StringVar(&contractTitleFlag, "title", "", "Contract title (required)")

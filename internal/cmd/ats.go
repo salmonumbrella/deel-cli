@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var atsCmd = &cobra.Command{
@@ -15,9 +16,10 @@ var atsCmd = &cobra.Command{
 }
 
 var (
-	atsStatusFlag      string
-	atsLimitFlag       int
-	atsCursorFlag      string
+	atsStatusFlag       string
+	atsLimitFlag        int
+	atsCursorFlag       string
+	atsAllFlag          bool
 	atsDepartmentIDFlag string
 	atsLocationIDFlag   string
 	atsJobIDFlag        string
@@ -44,28 +46,52 @@ var atsOffersCmd = &cobra.Command{
 			return err
 		}
 
-		offers, err := client.ListATSOffers(cmd.Context(), api.ATSOffersListParams{
-			Status: atsStatusFlag,
-			Limit:  atsLimitFlag,
-			Cursor: atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list offers: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allOffers []api.ATSOffer
+		var next string
+
+		for {
+			resp, err := client.ListATSOffers(cmd.Context(), api.ATSOffersListParams{
+				Status: atsStatusFlag,
+				Limit:  atsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list offers: %v", err)
+				return err
+			}
+			allOffers = append(allOffers, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allOffers = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSOffersListResponse{
+			Data: allOffers,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(offers) == 0 {
+			if len(allOffers) == 0 {
 				f.PrintText("No offers found.")
 				return
 			}
 			table := f.NewTable("ID", "CANDIDATE", "POSITION", "SALARY", "STATUS")
-			for _, o := range offers {
+			for _, o := range allOffers {
 				salary := fmt.Sprintf("%.2f %s", o.Salary, o.Currency)
 				table.AddRow(o.ID, o.Candidate, o.Position, salary, o.Status)
 			}
 			table.Render()
-		}, offers)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -86,29 +112,53 @@ var atsJobsListCmd = &cobra.Command{
 			return err
 		}
 
-		jobs, err := client.ListATSJobs(cmd.Context(), api.ATSJobsListParams{
-			Status:       atsStatusFlag,
-			DepartmentID: atsDepartmentIDFlag,
-			LocationID:   atsLocationIDFlag,
-			Limit:        atsLimitFlag,
-			Cursor:       atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list jobs: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allJobs []api.ATSJob
+		var next string
+
+		for {
+			resp, err := client.ListATSJobs(cmd.Context(), api.ATSJobsListParams{
+				Status:       atsStatusFlag,
+				DepartmentID: atsDepartmentIDFlag,
+				LocationID:   atsLocationIDFlag,
+				Limit:        atsLimitFlag,
+				Cursor:       cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list jobs: %v", err)
+				return err
+			}
+			allJobs = append(allJobs, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allJobs = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSJobsListResponse{
+			Data: allJobs,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(jobs) == 0 {
+			if len(allJobs) == 0 {
 				f.PrintText("No jobs found.")
 				return
 			}
 			table := f.NewTable("ID", "TITLE", "DEPARTMENT", "LOCATION", "TYPE", "STATUS")
-			for _, j := range jobs {
+			for _, j := range allJobs {
 				table.AddRow(j.ID, j.Title, j.Department, j.Location, j.EmploymentType, j.Status)
 			}
 			table.Render()
-		}, jobs)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -134,6 +184,21 @@ var atsJobsCreateCmd = &cobra.Command{
 		if atsJobEmploymentTypeFlag == "" {
 			f.PrintError("--employment-type flag is required")
 			return fmt.Errorf("--employment-type flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "ATSJob",
+			Description: "Create ATS job",
+			Details: map[string]string{
+				"Title":          atsJobTitleFlag,
+				"DepartmentID":   atsJobDepartmentIDFlag,
+				"LocationID":     atsJobLocationIDFlag,
+				"EmploymentType": atsJobEmploymentTypeFlag,
+				"Description":    atsJobDescriptionFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -183,28 +248,52 @@ var atsPostingsListCmd = &cobra.Command{
 			return err
 		}
 
-		postings, err := client.ListATSJobPostings(cmd.Context(), api.ATSJobPostingsListParams{
-			Status: atsStatusFlag,
-			JobID:  atsJobIDFlag,
-			Limit:  atsLimitFlag,
-			Cursor: atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list job postings: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allPostings []api.ATSJobPosting
+		var next string
+
+		for {
+			resp, err := client.ListATSJobPostings(cmd.Context(), api.ATSJobPostingsListParams{
+				Status: atsStatusFlag,
+				JobID:  atsJobIDFlag,
+				Limit:  atsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list job postings: %v", err)
+				return err
+			}
+			allPostings = append(allPostings, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allPostings = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSJobPostingsListResponse{
+			Data: allPostings,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(postings) == 0 {
+			if len(allPostings) == 0 {
 				f.PrintText("No job postings found.")
 				return
 			}
 			table := f.NewTable("ID", "TITLE", "DEPARTMENT", "LOCATION", "STATUS", "POSTED AT")
-			for _, p := range postings {
+			for _, p := range allPostings {
 				table.AddRow(p.ID, p.Title, p.Department, p.Location, p.Status, p.PostedAt)
 			}
 			table.Render()
-		}, postings)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -264,30 +353,54 @@ var atsApplicationsListCmd = &cobra.Command{
 			return err
 		}
 
-		apps, err := client.ListATSApplications(cmd.Context(), api.ATSApplicationsListParams{
-			Status:      atsStatusFlag,
-			JobID:       atsJobIDFlag,
-			CandidateID: atsCandidateIDFlag,
-			Stage:       atsStageFlag,
-			Limit:       atsLimitFlag,
-			Cursor:      atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list applications: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allApps []api.ATSApplication
+		var next string
+
+		for {
+			resp, err := client.ListATSApplications(cmd.Context(), api.ATSApplicationsListParams{
+				Status:      atsStatusFlag,
+				JobID:       atsJobIDFlag,
+				CandidateID: atsCandidateIDFlag,
+				Stage:       atsStageFlag,
+				Limit:       atsLimitFlag,
+				Cursor:      cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list applications: %v", err)
+				return err
+			}
+			allApps = append(allApps, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allApps = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSApplicationsListResponse{
+			Data: allApps,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(apps) == 0 {
+			if len(allApps) == 0 {
 				f.PrintText("No applications found.")
 				return
 			}
 			table := f.NewTable("ID", "CANDIDATE", "JOB", "STATUS", "STAGE", "APPLIED AT")
-			for _, a := range apps {
+			for _, a := range allApps {
 				table.AddRow(a.ID, a.CandidateName, a.JobTitle, a.Status, a.Stage, a.AppliedAt)
 			}
 			table.Render()
-		}, apps)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -308,28 +421,52 @@ var atsCandidatesListCmd = &cobra.Command{
 			return err
 		}
 
-		candidates, err := client.ListATSCandidates(cmd.Context(), api.ATSCandidatesListParams{
-			Search: atsSearchFlag,
-			Limit:  atsLimitFlag,
-			Cursor: atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list candidates: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allCandidates []api.ATSCandidate
+		var next string
+
+		for {
+			resp, err := client.ListATSCandidates(cmd.Context(), api.ATSCandidatesListParams{
+				Search: atsSearchFlag,
+				Limit:  atsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list candidates: %v", err)
+				return err
+			}
+			allCandidates = append(allCandidates, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allCandidates = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSCandidatesListResponse{
+			Data: allCandidates,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(candidates) == 0 {
+			if len(allCandidates) == 0 {
 				f.PrintText("No candidates found.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "EMAIL", "PHONE", "LOCATION")
-			for _, c := range candidates {
+			for _, c := range allCandidates {
 				name := fmt.Sprintf("%s %s", c.FirstName, c.LastName)
 				table.AddRow(c.ID, name, c.Email, c.Phone, c.Location)
 			}
 			table.Render()
-		}, candidates)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -350,26 +487,50 @@ var atsDepartmentsListCmd = &cobra.Command{
 			return err
 		}
 
-		departments, err := client.ListATSDepartments(cmd.Context(), api.ATSDepartmentsListParams{
-			Limit:  atsLimitFlag,
-			Cursor: atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list departments: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allDepartments []api.ATSDepartment
+		var next string
+
+		for {
+			resp, err := client.ListATSDepartments(cmd.Context(), api.ATSDepartmentsListParams{
+				Limit:  atsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list departments: %v", err)
+				return err
+			}
+			allDepartments = append(allDepartments, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allDepartments = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSDepartmentsListResponse{
+			Data: allDepartments,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(departments) == 0 {
+			if len(allDepartments) == 0 {
 				f.PrintText("No departments found.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "PARENT ID", "CREATED AT")
-			for _, d := range departments {
+			for _, d := range allDepartments {
 				table.AddRow(d.ID, d.Name, d.ParentID, d.CreatedAt)
 			}
 			table.Render()
-		}, departments)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -395,23 +556,43 @@ var atsLocationsListCmd = &cobra.Command{
 			remotePtr = &atsRemoteFlag
 		}
 
-		locations, err := client.ListATSLocations(cmd.Context(), api.ATSLocationsListParams{
-			Remote: remotePtr,
-			Limit:  atsLimitFlag,
-			Cursor: atsCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list locations: %v", err)
-			return err
+		cursor := atsCursorFlag
+		var allLocations []api.ATSLocation
+		var next string
+
+		for {
+			resp, err := client.ListATSLocations(cmd.Context(), api.ATSLocationsListParams{
+				Remote: remotePtr,
+				Limit:  atsLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list locations: %v", err)
+				return err
+			}
+			allLocations = append(allLocations, resp.Data...)
+			next = resp.Page.Next
+			if !atsAllFlag || next == "" {
+				if !atsAllFlag {
+					allLocations = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.ATSLocationsListResponse{
+			Data: allLocations,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(locations) == 0 {
+			if len(allLocations) == 0 {
 				f.PrintText("No locations found.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "CITY", "COUNTRY", "REMOTE")
-			for _, l := range locations {
+			for _, l := range allLocations {
 				remote := "No"
 				if l.Remote {
 					remote = "Yes"
@@ -419,7 +600,11 @@ var atsLocationsListCmd = &cobra.Command{
 				table.AddRow(l.ID, l.Name, l.City, l.Country, remote)
 			}
 			table.Render()
-		}, locations)
+			if !atsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -469,6 +654,7 @@ func init() {
 	atsOffersCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
 	atsOffersCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsOffersCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsOffersCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Jobs list command flags
 	atsJobsListCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
@@ -476,6 +662,7 @@ func init() {
 	atsJobsListCmd.Flags().StringVar(&atsLocationIDFlag, "location-id", "", "Filter by location ID")
 	atsJobsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsJobsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsJobsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Jobs create command flags
 	atsJobsCreateCmd.Flags().StringVar(&atsJobTitleFlag, "title", "", "Job title (required)")
@@ -489,6 +676,7 @@ func init() {
 	atsPostingsListCmd.Flags().StringVar(&atsJobIDFlag, "job-id", "", "Filter by job ID")
 	atsPostingsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsPostingsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsPostingsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Applications list command flags
 	atsApplicationsListCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
@@ -497,20 +685,24 @@ func init() {
 	atsApplicationsListCmd.Flags().StringVar(&atsStageFlag, "stage", "", "Filter by stage")
 	atsApplicationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsApplicationsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsApplicationsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Candidates list command flags
 	atsCandidatesListCmd.Flags().StringVar(&atsSearchFlag, "search", "", "Search candidates by name or email")
 	atsCandidatesListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsCandidatesListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsCandidatesListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Departments list command flags
 	atsDepartmentsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsDepartmentsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsDepartmentsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Locations list command flags
 	atsLocationsListCmd.Flags().BoolVar(&atsRemoteFlag, "remote", false, "Filter by remote locations")
 	atsLocationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
 	atsLocationsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
+	atsLocationsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Add subcommands
 	atsJobsCmd.AddCommand(atsJobsListCmd)

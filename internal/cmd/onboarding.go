@@ -18,6 +18,7 @@ var (
 	onboardingStatusFlag string
 	onboardingLimitFlag  int
 	onboardingCursorFlag string
+	onboardingAllFlag    bool
 )
 
 var onboardingListCmd = &cobra.Command{
@@ -31,27 +32,51 @@ var onboardingListCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListOnboardingEmployees(cmd.Context(), api.OnboardingListParams{
-			Status: onboardingStatusFlag,
-			Limit:  onboardingLimitFlag,
-			Cursor: onboardingCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list onboarding: %v", err)
-			return err
+		cursor := onboardingCursorFlag
+		var allEmployees []api.OnboardingEmployee
+		var next string
+
+		for {
+			resp, err := client.ListOnboardingEmployees(cmd.Context(), api.OnboardingListParams{
+				Status: onboardingStatusFlag,
+				Limit:  onboardingLimitFlag,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list onboarding: %v", err)
+				return err
+			}
+			allEmployees = append(allEmployees, resp.Data...)
+			next = resp.Page.Next
+			if !onboardingAllFlag || next == "" {
+				if !onboardingAllFlag {
+					allEmployees = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.OnboardingListResponse{
+			Data: allEmployees,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allEmployees) == 0 {
 				f.PrintText("No employees in onboarding.")
 				return
 			}
 			table := f.NewTable("ID", "NAME", "COUNTRY", "STATUS", "STAGE", "PROGRESS")
-			for _, e := range resp.Data {
+			for _, e := range allEmployees {
 				table.AddRow(e.ID, e.Name, e.Country, e.Status, e.Stage, fmt.Sprintf("%d%%", e.Progress))
 			}
 			table.Render()
-		}, resp)
+			if !onboardingAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -90,6 +115,7 @@ func init() {
 	onboardingListCmd.Flags().StringVar(&onboardingStatusFlag, "status", "", "Filter by status")
 	onboardingListCmd.Flags().IntVar(&onboardingLimitFlag, "limit", 50, "Maximum results")
 	onboardingListCmd.Flags().StringVar(&onboardingCursorFlag, "cursor", "", "Pagination cursor")
+	onboardingListCmd.Flags().BoolVar(&onboardingAllFlag, "all", false, "Fetch all pages")
 
 	onboardingCmd.AddCommand(onboardingListCmd)
 	onboardingCmd.AddCommand(onboardingGetCmd)

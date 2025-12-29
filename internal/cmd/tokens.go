@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var tokensCmd = &cobra.Command{
@@ -29,6 +30,19 @@ var tokensCreateCmd = &cobra.Command{
 		if tokensWorkerFlag == "" {
 			f.PrintError("--worker is required")
 			return fmt.Errorf("missing required flag")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "WorkerToken",
+			Description: "Create worker access token",
+			Details: map[string]string{
+				"WorkerID": tokensWorkerFlag,
+				"Scope":    tokensScopeFlag,
+				"TTL":      fmt.Sprintf("%d", tokensTTLFlag),
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

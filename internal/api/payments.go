@@ -195,12 +195,12 @@ func (c *Client) ListDetailedPaymentReceipts(ctx context.Context, params Detaile
 
 // DetailedPaymentsReport represents a detailed payments report
 type DetailedPaymentsReport struct {
-	ReportID    string `json:"report_id"`
-	GeneratedAt string `json:"generated_at"`
-	StartDate   string `json:"start_date"`
-	EndDate     string `json:"end_date"`
+	ReportID    string  `json:"report_id"`
+	GeneratedAt string  `json:"generated_at"`
+	StartDate   string  `json:"start_date"`
+	EndDate     string  `json:"end_date"`
 	TotalAmount float64 `json:"total_amount"`
-	Currency    string `json:"currency"`
+	Currency    string  `json:"currency"`
 	Payments    []struct {
 		PaymentID   string  `json:"payment_id"`
 		ContractID  string  `json:"contract_id"`

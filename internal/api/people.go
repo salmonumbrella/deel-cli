@@ -9,16 +9,16 @@ import (
 
 // Person represents a Deel person/worker
 type Person struct {
-	ID           string `json:"id"`
+	ID            string `json:"id"`
 	HRISProfileID string `json:"hris_profile_id"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Email        string `json:"email"`
-	JobTitle     string `json:"job_title"`
-	Department   string `json:"department"`
-	Status       string `json:"status"`
-	StartDate    string `json:"start_date"`
-	Country      string `json:"country"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Email         string `json:"email"`
+	JobTitle      string `json:"job_title"`
+	Department    string `json:"department"`
+	Status        string `json:"status"`
+	StartDate     string `json:"start_date"`
+	Country       string `json:"country"`
 }
 
 // PeopleListResponse is the response from list people

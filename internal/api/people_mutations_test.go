@@ -57,12 +57,12 @@ func TestUpdatePersonalInfo(t *testing.T) {
 		assert.Equal(t, "US", body["nationality"])
 	}, 200, map[string]any{
 		"data": map[string]any{
-			"id":           "p-123",
-			"first_name":   "Jane",
-			"last_name":    "Smith",
+			"id":            "p-123",
+			"first_name":    "Jane",
+			"last_name":     "Smith",
 			"date_of_birth": "1990-05-15",
-			"phone":        "+1234567890",
-			"nationality":  "US",
+			"phone":         "+1234567890",
+			"nationality":   "US",
 		},
 	})
 	defer server.Close()

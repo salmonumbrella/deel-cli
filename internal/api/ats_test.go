@@ -37,10 +37,10 @@ func TestListATSJobs(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "job1", result[0].ID)
-	assert.Equal(t, "Software Engineer", result[0].Title)
-	assert.Equal(t, "Engineering", result[0].Department)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "job1", result.Data[0].ID)
+	assert.Equal(t, "Software Engineer", result.Data[0].Title)
+	assert.Equal(t, "Engineering", result.Data[0].Department)
 }
 
 func TestCreateATSJob(t *testing.T) {
@@ -104,10 +104,10 @@ func TestListATSJobPostings(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "posting1", result[0].ID)
-	assert.Equal(t, "Senior Developer", result[0].Title)
-	assert.Equal(t, "published", result[0].Status)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "posting1", result.Data[0].ID)
+	assert.Equal(t, "Senior Developer", result.Data[0].Title)
+	assert.Equal(t, "published", result.Data[0].Status)
 }
 
 func TestGetATSJobPosting(t *testing.T) {
@@ -169,10 +169,10 @@ func TestListATSApplications(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "app1", result[0].ID)
-	assert.Equal(t, "John Doe", result[0].CandidateName)
-	assert.Equal(t, "phone-screen", result[0].Stage)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "app1", result.Data[0].ID)
+	assert.Equal(t, "John Doe", result.Data[0].CandidateName)
+	assert.Equal(t, "phone-screen", result.Data[0].Stage)
 }
 
 func TestListATSCandidates(t *testing.T) {
@@ -204,11 +204,11 @@ func TestListATSCandidates(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "cand1", result[0].ID)
-	assert.Equal(t, "Jane", result[0].FirstName)
-	assert.Equal(t, "Smith", result[0].LastName)
-	assert.Equal(t, "jane.smith@example.com", result[0].Email)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "cand1", result.Data[0].ID)
+	assert.Equal(t, "Jane", result.Data[0].FirstName)
+	assert.Equal(t, "Smith", result.Data[0].LastName)
+	assert.Equal(t, "jane.smith@example.com", result.Data[0].Email)
 }
 
 func TestListATSDepartments(t *testing.T) {
@@ -238,11 +238,11 @@ func TestListATSDepartments(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 2)
-	assert.Equal(t, "dept1", result[0].ID)
-	assert.Equal(t, "Engineering", result[0].Name)
-	assert.Equal(t, "dept2", result[1].ID)
-	assert.Equal(t, "dept1", result[1].ParentID)
+	assert.Len(t, result.Data, 2)
+	assert.Equal(t, "dept1", result.Data[0].ID)
+	assert.Equal(t, "Engineering", result.Data[0].Name)
+	assert.Equal(t, "dept2", result.Data[1].ID)
+	assert.Equal(t, "dept1", result.Data[1].ParentID)
 }
 
 func TestListATSLocations(t *testing.T) {
@@ -271,9 +271,9 @@ func TestListATSLocations(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Len(t, result, 1)
-		assert.Equal(t, "loc2", result[0].ID)
-		assert.True(t, result[0].Remote)
+		assert.Len(t, result.Data, 1)
+		assert.Equal(t, "loc2", result.Data[0].ID)
+		assert.True(t, result.Data[0].Remote)
 	})
 
 	t.Run("filter remote=false", func(t *testing.T) {
@@ -301,9 +301,9 @@ func TestListATSLocations(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Len(t, result, 1)
-		assert.Equal(t, "loc1", result[0].ID)
-		assert.False(t, result[0].Remote)
+		assert.Len(t, result.Data, 1)
+		assert.Equal(t, "loc1", result.Data[0].ID)
+		assert.False(t, result.Data[0].Remote)
 	})
 
 	t.Run("no filter - all locations", func(t *testing.T) {
@@ -339,11 +339,11 @@ func TestListATSLocations(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Len(t, result, 2)
-		assert.Equal(t, "loc1", result[0].ID)
-		assert.False(t, result[0].Remote)
-		assert.Equal(t, "loc2", result[1].ID)
-		assert.True(t, result[1].Remote)
+		assert.Len(t, result.Data, 2)
+		assert.Equal(t, "loc1", result.Data[0].ID)
+		assert.False(t, result.Data[0].Remote)
+		assert.Equal(t, "loc2", result.Data[1].ID)
+		assert.True(t, result.Data[1].Remote)
 	})
 }
 
@@ -403,9 +403,9 @@ func TestListATSOffers(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "offer1", result[0].ID)
-	assert.Equal(t, "Alice Johnson", result[0].Candidate)
-	assert.Equal(t, "pending", result[0].Status)
-	assert.Equal(t, 150000.00, result[0].Salary)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "offer1", result.Data[0].ID)
+	assert.Equal(t, "Alice Johnson", result.Data[0].Candidate)
+	assert.Equal(t, "pending", result.Data[0].Status)
+	assert.Equal(t, 150000.00, result.Data[0].Salary)
 }

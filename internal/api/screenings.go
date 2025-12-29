@@ -102,19 +102,19 @@ func (c *Client) GetAMLData(ctx context.Context) (*AMLData, error) {
 
 // SubmitExternalKYCParams are params for submitting external KYC verification
 type SubmitExternalKYCParams struct {
-	WorkerID      string `json:"worker_id"`
-	Provider      string `json:"provider"`
-	VerifiedAt    string `json:"verified_at"`
-	DocumentType  string `json:"document_type"`
-	DocumentID    string `json:"document_id,omitempty"`
+	WorkerID       string `json:"worker_id"`
+	Provider       string `json:"provider"`
+	VerifiedAt     string `json:"verified_at"`
+	DocumentType   string `json:"document_type"`
+	DocumentID     string `json:"document_id,omitempty"`
 	ExpirationDate string `json:"expiration_date,omitempty"`
 }
 
 // ExternalKYCSubmission represents the response from submitting external KYC
 type ExternalKYCSubmission struct {
-	ID         string `json:"id"`
-	WorkerID   string `json:"worker_id"`
-	Status     string `json:"status"`
+	ID          string `json:"id"`
+	WorkerID    string `json:"worker_id"`
+	Status      string `json:"status"`
 	SubmittedAt string `json:"submitted_at"`
 }
 
@@ -136,20 +136,20 @@ func (c *Client) SubmitExternalKYC(ctx context.Context, params SubmitExternalKYC
 
 // CreateManualVerificationParams are params for creating a manual verification
 type CreateManualVerificationParams struct {
-	WorkerID     string `json:"worker_id"`
-	VerifiedBy   string `json:"verified_by"`
-	Notes        string `json:"notes,omitempty"`
+	WorkerID     string   `json:"worker_id"`
+	VerifiedBy   string   `json:"verified_by"`
+	Notes        string   `json:"notes,omitempty"`
 	DocumentURLs []string `json:"document_urls,omitempty"`
 }
 
 // ManualVerification represents a manual verification record
 type ManualVerification struct {
-	ID         string   `json:"id"`
-	WorkerID   string   `json:"worker_id"`
-	VerifiedBy string   `json:"verified_by"`
-	Status     string   `json:"status"`
-	Notes      string   `json:"notes,omitempty"`
-	CreatedAt  string   `json:"created_at"`
+	ID           string   `json:"id"`
+	WorkerID     string   `json:"worker_id"`
+	VerifiedBy   string   `json:"verified_by"`
+	Status       string   `json:"status"`
+	Notes        string   `json:"notes,omitempty"`
+	CreatedAt    string   `json:"created_at"`
 	DocumentURLs []string `json:"document_urls,omitempty"`
 }
 

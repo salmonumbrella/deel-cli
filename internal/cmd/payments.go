@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var paymentsCmd = &cobra.Command{
@@ -24,6 +25,7 @@ var (
 	offCycleStatusFlag   string
 	offCycleLimitFlag    int
 	offCycleCursorFlag   string
+	offCycleAllFlag      bool
 )
 
 var offCycleListCmd = &cobra.Command{
@@ -37,29 +39,53 @@ var offCycleListCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListOffCyclePayments(cmd.Context(), api.OffCyclePaymentsListParams{
-			ContractID: offCycleContractFlag,
-			Status:     offCycleStatusFlag,
-			Limit:      offCycleLimitFlag,
-			Cursor:     offCycleCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list payments: %v", err)
-			return err
+		cursor := offCycleCursorFlag
+		var allPayments []api.OffCyclePayment
+		var next string
+
+		for {
+			resp, err := client.ListOffCyclePayments(cmd.Context(), api.OffCyclePaymentsListParams{
+				ContractID: offCycleContractFlag,
+				Status:     offCycleStatusFlag,
+				Limit:      offCycleLimitFlag,
+				Cursor:     cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list payments: %v", err)
+				return err
+			}
+			allPayments = append(allPayments, resp.Data...)
+			next = resp.Page.Next
+			if !offCycleAllFlag || next == "" {
+				if !offCycleAllFlag {
+					allPayments = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.OffCyclePaymentsListResponse{
+			Data: allPayments,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allPayments) == 0 {
 				f.PrintText("No off-cycle payments found.")
 				return
 			}
 			table := f.NewTable("ID", "WORKER", "TYPE", "AMOUNT", "STATUS", "DATE")
-			for _, p := range resp.Data {
+			for _, p := range allPayments {
 				amount := fmt.Sprintf("%.2f %s", p.Amount, p.Currency)
 				table.AddRow(p.ID, p.WorkerName, p.Type, amount, p.Status, p.PaymentDate)
 			}
 			table.Render()
-		}, resp)
+			if !offCycleAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -83,6 +109,21 @@ var offCycleCreateCmd = &cobra.Command{
 			offCycleCreateDateFlag == "" {
 			f.PrintError("Required: --contract, --amount, --currency, --type, --date")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "OffCyclePayment",
+			Description: "Create off-cycle payment",
+			Details: map[string]string{
+				"ContractID":  offCycleCreateContractFlag,
+				"Amount":      fmt.Sprintf("%.2f %s", offCycleCreateAmountFlag, offCycleCreateCurrencyFlag),
+				"Type":        offCycleCreateTypeFlag,
+				"PaymentDate": offCycleCreateDateFlag,
+				"Description": offCycleCreateDescriptionFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -149,10 +190,11 @@ var breakdownCmd = &cobra.Command{
 }
 
 var (
-	receiptsLimitFlag     int
-	receiptsCursorFlag    string
-	receiptsContractFlag  string
-	receiptsPaymentFlag   string
+	receiptsLimitFlag    int
+	receiptsCursorFlag   string
+	receiptsContractFlag string
+	receiptsPaymentFlag  string
+	receiptsAllFlag      bool
 )
 
 var receiptsCmd = &cobra.Command{
@@ -166,29 +208,53 @@ var receiptsCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListDetailedPaymentReceipts(cmd.Context(), api.DetailedPaymentReceiptsListParams{
-			Limit:      receiptsLimitFlag,
-			Cursor:     receiptsCursorFlag,
-			ContractID: receiptsContractFlag,
-			PaymentID:  receiptsPaymentFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list payment receipts: %v", err)
-			return err
+		cursor := receiptsCursorFlag
+		var allReceipts []api.DetailedPaymentReceipt
+		var next string
+
+		for {
+			resp, err := client.ListDetailedPaymentReceipts(cmd.Context(), api.DetailedPaymentReceiptsListParams{
+				Limit:      receiptsLimitFlag,
+				Cursor:     cursor,
+				ContractID: receiptsContractFlag,
+				PaymentID:  receiptsPaymentFlag,
+			})
+			if err != nil {
+				f.PrintError("Failed to list payment receipts: %v", err)
+				return err
+			}
+			allReceipts = append(allReceipts, resp.Data...)
+			next = resp.Page.Next
+			if !receiptsAllFlag || next == "" {
+				if !receiptsAllFlag {
+					allReceipts = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.DetailedPaymentReceiptsListResponse{
+			Data: allReceipts,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allReceipts) == 0 {
 				f.PrintText("No payment receipts found.")
 				return
 			}
 			table := f.NewTable("ID", "PAYMENT ID", "WORKER", "AMOUNT", "ISSUE DATE")
-			for _, r := range resp.Data {
+			for _, r := range allReceipts {
 				amount := fmt.Sprintf("%.2f %s", r.Amount, r.Currency)
 				table.AddRow(r.ID, r.PaymentID, r.WorkerName, amount, r.IssueDate)
 			}
 			table.Render()
-		}, resp)
+			if !receiptsAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -197,6 +263,7 @@ func init() {
 	offCycleListCmd.Flags().StringVar(&offCycleStatusFlag, "status", "", "Filter by status")
 	offCycleListCmd.Flags().IntVar(&offCycleLimitFlag, "limit", 50, "Maximum results")
 	offCycleListCmd.Flags().StringVar(&offCycleCursorFlag, "cursor", "", "Pagination cursor")
+	offCycleListCmd.Flags().BoolVar(&offCycleAllFlag, "all", false, "Fetch all pages")
 
 	offCycleCreateCmd.Flags().StringVar(&offCycleCreateContractFlag, "contract", "", "Contract ID (required)")
 	offCycleCreateCmd.Flags().Float64Var(&offCycleCreateAmountFlag, "amount", 0, "Payment amount (required)")
@@ -209,6 +276,7 @@ func init() {
 	receiptsCmd.Flags().StringVar(&receiptsCursorFlag, "cursor", "", "Pagination cursor")
 	receiptsCmd.Flags().StringVar(&receiptsContractFlag, "contract", "", "Filter by contract ID")
 	receiptsCmd.Flags().StringVar(&receiptsPaymentFlag, "payment", "", "Filter by payment ID")
+	receiptsCmd.Flags().BoolVar(&receiptsAllFlag, "all", false, "Fetch all pages")
 
 	offCycleCmd.AddCommand(offCycleListCmd)
 	offCycleCmd.AddCommand(offCycleCreateCmd)

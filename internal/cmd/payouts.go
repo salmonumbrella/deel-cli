@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var payoutsCmd = &cobra.Command{
@@ -29,6 +30,18 @@ var withdrawCmd = &cobra.Command{
 		if withdrawAmountFlag == 0 || withdrawCurrencyFlag == "" {
 			f.PrintError("Required: --amount and --currency")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "WITHDRAW",
+			Resource:    "Payout",
+			Description: "Withdraw funds",
+			Details: map[string]string{
+				"Amount":      fmt.Sprintf("%.2f %s", withdrawAmountFlag, withdrawCurrencyFlag),
+				"Description": withdrawDescriptionFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -107,6 +120,29 @@ var autoWithdrawalSetCmd = &cobra.Command{
 			!cmd.Flags().Changed("currency") && !cmd.Flags().Changed("schedule") {
 			f.PrintError("At least one flag (--enabled, --threshold, --currency, or --schedule) must be provided")
 			return fmt.Errorf("no update flags provided")
+		}
+
+		details := map[string]string{}
+		if cmd.Flags().Changed("enabled") {
+			details["Enabled"] = fmt.Sprintf("%t", autoWithdrawalSetEnabledFlag)
+		}
+		if cmd.Flags().Changed("threshold") {
+			details["Threshold"] = fmt.Sprintf("%.2f", autoWithdrawalSetThresholdFlag)
+		}
+		if cmd.Flags().Changed("currency") {
+			details["Currency"] = autoWithdrawalSetCurrencyFlag
+		}
+		if cmd.Flags().Changed("schedule") {
+			details["Schedule"] = autoWithdrawalSetScheduleFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "AutoWithdrawal",
+			Description: "Update auto-withdrawal settings",
+			Details:     details,
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

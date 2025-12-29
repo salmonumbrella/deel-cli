@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var gpCmd = &cobra.Command{
@@ -73,6 +74,23 @@ var gpCreateCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Invalid --salary value: %v", err)
 			return fmt.Errorf("invalid --salary value: %w", err)
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "GPContract",
+			Description: "Create GP contract",
+			Details: map[string]string{
+				"WorkerEmail":  gpCreateWorkerEmailFlag,
+				"WorkerName":   gpCreateWorkerNameFlag,
+				"Country":      gpCreateCountryFlag,
+				"StartDate":    gpCreateStartDateFlag,
+				"JobTitle":     gpCreateJobTitleFlag,
+				"Salary":       fmt.Sprintf("%.2f %s", salary, gpCreateCurrencyFlag),
+				"PayFrequency": gpCreatePayFrequencyFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -212,6 +230,21 @@ var gpBankAccountsAddCmd = &cobra.Command{
 			return fmt.Errorf("--currency flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "GPBankAccount",
+			Description: "Add GP bank account",
+			Details: map[string]string{
+				"WorkerID":      gpBankAccountAddWorkerIDFlag,
+				"AccountHolder": gpBankAccountAddAccountHolderFlag,
+				"BankName":      gpBankAccountAddBankNameFlag,
+				"AccountNumber": gpBankAccountAddAccountNumberFlag,
+				"Currency":      gpBankAccountAddCurrencyFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -338,6 +371,19 @@ var gpTerminateCmd = &cobra.Command{
 			return fmt.Errorf("--effective-date flag is required")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "TERMINATE",
+			Resource:    "GPWorker",
+			Description: "Request GP termination",
+			Details: map[string]string{
+				"WorkerID":      gpTerminateWorkerIDFlag,
+				"Reason":        gpTerminateReasonFlag,
+				"EffectiveDate": gpTerminateEffectiveDateFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -406,6 +452,21 @@ var gpShiftsCreateCmd = &cobra.Command{
 		if gpShiftsCreateEndTimeFlag == "" {
 			f.PrintError("--end-time flag is required")
 			return fmt.Errorf("--end-time flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "GPShift",
+			Description: "Create GP shift",
+			Details: map[string]string{
+				"WorkerID":     gpShiftsCreateWorkerIDFlag,
+				"Date":         gpShiftsCreateDateFlag,
+				"StartTime":    gpShiftsCreateStartTimeFlag,
+				"EndTime":      gpShiftsCreateEndTimeFlag,
+				"BreakMinutes": fmt.Sprintf("%d", gpShiftsCreateBreakMinutesFlag),
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -527,6 +588,20 @@ var gpRatesCreateCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Invalid --rate value: %v", err)
 			return fmt.Errorf("invalid --rate value: %w", err)
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "GPShiftRate",
+			Description: "Create GP shift rate",
+			Details: map[string]string{
+				"Name":     gpRatesCreateNameFlag,
+				"Rate":     fmt.Sprintf("%.2f %s", rate, gpRatesCreateCurrencyFlag),
+				"Type":     gpRatesCreateTypeFlag,
+				"Currency": gpRatesCreateCurrencyFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()

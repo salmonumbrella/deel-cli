@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var timesheetsCmd = &cobra.Command{
@@ -19,6 +20,9 @@ var timesheetsCmd = &cobra.Command{
 var (
 	timesheetsListContractIDFlag string
 	timesheetsListStatusFlag     string
+	timesheetsListLimitFlag      int
+	timesheetsListCursorFlag     string
+	timesheetsListAllFlag        bool
 )
 
 var timesheetsListCmd = &cobra.Command{
@@ -32,29 +36,56 @@ var timesheetsListCmd = &cobra.Command{
 			return err
 		}
 
-		params := api.TimesheetsListParams{
-			ContractID: timesheetsListContractIDFlag,
-			Status:     timesheetsListStatusFlag,
+		cursor := timesheetsListCursorFlag
+		var allTimesheets []api.Timesheet
+		var next string
+
+		for {
+			params := api.TimesheetsListParams{
+				ContractID: timesheetsListContractIDFlag,
+				Status:     timesheetsListStatusFlag,
+				Limit:      timesheetsListLimitFlag,
+				Cursor:     cursor,
+			}
+
+			resp, err := client.ListTimesheets(cmd.Context(), params)
+			if err != nil {
+				f.PrintError("Failed to list timesheets: %v", err)
+				return err
+			}
+
+			allTimesheets = append(allTimesheets, resp.Data...)
+			next = resp.Page.Next
+			if !timesheetsListAllFlag || next == "" {
+				if !timesheetsListAllFlag {
+					allTimesheets = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
-		timesheets, err := client.ListTimesheets(cmd.Context(), params)
-		if err != nil {
-			f.PrintError("Failed to list timesheets: %v", err)
-			return err
+		response := api.TimesheetsListResponse{
+			Data: allTimesheets,
 		}
+		response.Page.Next = ""
 
 		return f.Output(func() {
-			if len(timesheets) == 0 {
+			if len(allTimesheets) == 0 {
 				f.PrintText("No timesheets found.")
 				return
 			}
 			table := f.NewTable("ID", "CONTRACT ID", "STATUS", "PERIOD", "TOTAL HOURS", "CREATED")
-			for _, ts := range timesheets {
+			for _, ts := range allTimesheets {
 				period := fmt.Sprintf("%s to %s", ts.PeriodStart, ts.PeriodEnd)
 				table.AddRow(ts.ID, ts.ContractID, ts.Status, period, fmt.Sprintf("%.2f", ts.TotalHours), ts.CreatedAt)
 			}
 			table.Render()
-		}, timesheets)
+			if !timesheetsListAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -124,6 +155,20 @@ var timesheetsCreateEntryCmd = &cobra.Command{
 			return fmt.Errorf("--hours flag is required and must be greater than 0")
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "TimesheetEntry",
+			Description: "Create timesheet entry",
+			Details: map[string]string{
+				"TimesheetID": createEntryTimesheetIDFlag,
+				"Date":        createEntryDateFlag,
+				"Hours":       fmt.Sprintf("%.2f", createEntryHoursFlag),
+				"Description": createEntryDescriptionFlag,
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -156,6 +201,121 @@ var timesheetsCreateEntryCmd = &cobra.Command{
 	},
 }
 
+// Flags for update-entry command
+var (
+	updateEntryHoursFlag       float64
+	updateEntryDescriptionFlag string
+)
+
+var timesheetsUpdateEntryCmd = &cobra.Command{
+	Use:   "update-entry <entry-id>",
+	Short: "Update a timesheet entry",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		hoursSet := cmd.Flags().Changed("hours")
+		if !hoursSet && updateEntryDescriptionFlag == "" {
+			f.PrintError("At least one of --hours or --description is required")
+			return nil
+		}
+		if hoursSet && updateEntryHoursFlag <= 0 {
+			f.PrintError("--hours must be greater than 0")
+			return nil
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if hoursSet {
+			details["Hours"] = fmt.Sprintf("%.2f", updateEntryHoursFlag)
+		}
+		if updateEntryDescriptionFlag != "" {
+			details["Description"] = updateEntryDescriptionFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "TimesheetEntry",
+			Description: "Update timesheet entry",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		params := api.UpdateTimesheetEntryParams{
+			Hours:       updateEntryHoursFlag,
+			Description: updateEntryDescriptionFlag,
+		}
+
+		entry, err := client.UpdateTimesheetEntry(cmd.Context(), args[0], params)
+		if err != nil {
+			f.PrintError("Failed to update timesheet entry: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Timesheet entry updated successfully")
+			f.PrintText("ID:          " + entry.ID)
+			f.PrintText("Timesheet:   " + entry.TimesheetID)
+			f.PrintText("Date:        " + entry.Date)
+			f.PrintText(fmt.Sprintf("Hours:       %.2f", entry.Hours))
+			if entry.Description != "" {
+				f.PrintText("Description: " + entry.Description)
+			}
+		}, entry)
+	},
+}
+
+// Flags for delete-entry command
+var timesheetsDeleteEntryForceFlag bool
+
+var timesheetsDeleteEntryCmd = &cobra.Command{
+	Use:   "delete-entry <entry-id>",
+	Short: "Delete a timesheet entry",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "TimesheetEntry",
+			Description: "Delete timesheet entry",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
+		if !timesheetsDeleteEntryForceFlag {
+			f.PrintText(fmt.Sprintf("Are you sure you want to delete timesheet entry %s?", args[0]))
+			f.PrintText("Use --force to confirm.")
+			return nil
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		if err := client.DeleteTimesheetEntry(cmd.Context(), args[0]); err != nil {
+			f.PrintError("Failed to delete timesheet entry: %v", err)
+			return err
+		}
+
+		f.PrintSuccess("Timesheet entry deleted successfully.")
+		return nil
+	},
+}
+
 // Flags for review command
 var reviewCommentFlag string
 
@@ -180,6 +340,19 @@ var timesheetsReviewCmd = &cobra.Command{
 		default:
 			f.PrintError("Invalid action %q. Must be 'approve' or 'reject'", action)
 			return fmt.Errorf("invalid action %q", action)
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "REVIEW",
+			Resource:    "Timesheet",
+			Description: "Review timesheet",
+			Details: map[string]string{
+				"ID":      timesheetID,
+				"Status":  status,
+				"Comment": reviewCommentFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -288,6 +461,19 @@ var presetsCreateCmd = &cobra.Command{
 			return fmt.Errorf("invalid --hours-per-week value: %w", err)
 		}
 
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "HourlyPreset",
+			Description: "Create hourly preset",
+			Details: map[string]string{
+				"Name":         presetsCreateNameFlag,
+				"HoursPerDay":  fmt.Sprintf("%.2f", hoursPerDay),
+				"HoursPerWeek": fmt.Sprintf("%.2f", hoursPerWeek),
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -317,12 +503,145 @@ var presetsCreateCmd = &cobra.Command{
 	},
 }
 
+// Flags for presets update command
+var (
+	presetsUpdateNameFlag         string
+	presetsUpdateDescriptionFlag  string
+	presetsUpdateHoursPerDayFlag  string
+	presetsUpdateHoursPerWeekFlag string
+	presetsUpdateRateFlag         string
+	presetsUpdateCurrencyFlag     string
+)
+
+var presetsUpdateCmd = &cobra.Command{
+	Use:   "update <preset-id>",
+	Short: "Update hourly preset",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		var hoursPerDay float64
+		var hoursPerWeek float64
+		var rate float64
+
+		if presetsUpdateHoursPerDayFlag != "" {
+			parsed, err := strconv.ParseFloat(presetsUpdateHoursPerDayFlag, 64)
+			if err != nil {
+				f.PrintError("Invalid --hours-per-day value: %v", err)
+				return fmt.Errorf("invalid --hours-per-day value: %w", err)
+			}
+			hoursPerDay = parsed
+		}
+		if presetsUpdateHoursPerWeekFlag != "" {
+			parsed, err := strconv.ParseFloat(presetsUpdateHoursPerWeekFlag, 64)
+			if err != nil {
+				f.PrintError("Invalid --hours-per-week value: %v", err)
+				return fmt.Errorf("invalid --hours-per-week value: %w", err)
+			}
+			hoursPerWeek = parsed
+		}
+		if presetsUpdateRateFlag != "" {
+			parsed, err := strconv.ParseFloat(presetsUpdateRateFlag, 64)
+			if err != nil {
+				f.PrintError("Invalid --rate value: %v", err)
+				return fmt.Errorf("invalid --rate value: %w", err)
+			}
+			rate = parsed
+		}
+
+		if presetsUpdateNameFlag == "" &&
+			presetsUpdateDescriptionFlag == "" &&
+			presetsUpdateHoursPerDayFlag == "" &&
+			presetsUpdateHoursPerWeekFlag == "" &&
+			presetsUpdateRateFlag == "" &&
+			presetsUpdateCurrencyFlag == "" {
+			f.PrintError("At least one update field is required")
+			return nil
+		}
+
+		details := map[string]string{
+			"ID": args[0],
+		}
+		if presetsUpdateNameFlag != "" {
+			details["Name"] = presetsUpdateNameFlag
+		}
+		if presetsUpdateDescriptionFlag != "" {
+			details["Description"] = presetsUpdateDescriptionFlag
+		}
+		if presetsUpdateHoursPerDayFlag != "" {
+			details["HoursPerDay"] = presetsUpdateHoursPerDayFlag
+		}
+		if presetsUpdateHoursPerWeekFlag != "" {
+			details["HoursPerWeek"] = presetsUpdateHoursPerWeekFlag
+		}
+		if presetsUpdateRateFlag != "" {
+			details["Rate"] = presetsUpdateRateFlag
+		}
+		if presetsUpdateCurrencyFlag != "" {
+			details["Currency"] = presetsUpdateCurrencyFlag
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "HourlyPreset",
+			Description: "Update hourly preset",
+			Details:     details,
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		params := api.UpdateHourlyPresetParams{
+			Name:         presetsUpdateNameFlag,
+			Description:  presetsUpdateDescriptionFlag,
+			HoursPerDay:  hoursPerDay,
+			HoursPerWeek: hoursPerWeek,
+			Rate:         rate,
+			Currency:     presetsUpdateCurrencyFlag,
+		}
+
+		preset, err := client.UpdateHourlyPreset(cmd.Context(), args[0], params)
+		if err != nil {
+			f.PrintError("Failed to update hourly preset: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Hourly preset updated successfully")
+			f.PrintText("ID:            " + preset.ID)
+			f.PrintText("Name:          " + preset.Name)
+			f.PrintText(fmt.Sprintf("Hours per day: %.2f", preset.HoursPerDay))
+			f.PrintText(fmt.Sprintf("Hours per week: %.2f", preset.HoursPerWeek))
+			if preset.Currency != "" {
+				f.PrintText(fmt.Sprintf("Rate:          %.2f %s", preset.Rate, preset.Currency))
+			}
+		}, preset)
+	},
+}
+
 var presetsDeleteCmd = &cobra.Command{
 	Use:   "delete <preset-id>",
 	Short: "Delete hourly preset",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DELETE",
+			Resource:    "HourlyPreset",
+			Description: "Delete hourly preset",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -345,12 +664,22 @@ func init() {
 	// List command flags
 	timesheetsListCmd.Flags().StringVar(&timesheetsListContractIDFlag, "contract-id", "", "Filter by contract ID")
 	timesheetsListCmd.Flags().StringVar(&timesheetsListStatusFlag, "status", "", "Filter by status (e.g., pending, approved, rejected)")
+	timesheetsListCmd.Flags().IntVar(&timesheetsListLimitFlag, "limit", 50, "Maximum results")
+	timesheetsListCmd.Flags().StringVar(&timesheetsListCursorFlag, "cursor", "", "Pagination cursor")
+	timesheetsListCmd.Flags().BoolVar(&timesheetsListAllFlag, "all", false, "Fetch all pages")
 
 	// Create entry command flags
 	timesheetsCreateEntryCmd.Flags().StringVar(&createEntryTimesheetIDFlag, "timesheet-id", "", "Timesheet ID (required)")
 	timesheetsCreateEntryCmd.Flags().StringVar(&createEntryDateFlag, "date", "", "Date for the entry (YYYY-MM-DD format, required)")
 	timesheetsCreateEntryCmd.Flags().Float64Var(&createEntryHoursFlag, "hours", 0, "Hours worked (required)")
 	timesheetsCreateEntryCmd.Flags().StringVar(&createEntryDescriptionFlag, "description", "", "Description of work (optional)")
+
+	// Update entry command flags
+	timesheetsUpdateEntryCmd.Flags().Float64Var(&updateEntryHoursFlag, "hours", 0, "Hours worked")
+	timesheetsUpdateEntryCmd.Flags().StringVar(&updateEntryDescriptionFlag, "description", "", "Description of work")
+
+	// Delete entry command flags
+	timesheetsDeleteEntryCmd.Flags().BoolVar(&timesheetsDeleteEntryForceFlag, "force", false, "Confirm deletion")
 
 	// Review command flags
 	timesheetsReviewCmd.Flags().StringVar(&reviewCommentFlag, "comment", "", "Comment for the review (optional)")
@@ -360,15 +689,26 @@ func init() {
 	presetsCreateCmd.Flags().StringVar(&presetsCreateHoursPerDayFlag, "hours-per-day", "", "Hours per day (required)")
 	presetsCreateCmd.Flags().StringVar(&presetsCreateHoursPerWeekFlag, "hours-per-week", "", "Hours per week (required)")
 
+	// Presets update command flags
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateNameFlag, "name", "", "Preset name")
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateDescriptionFlag, "description", "", "Preset description")
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateHoursPerDayFlag, "hours-per-day", "", "Hours per day")
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateHoursPerWeekFlag, "hours-per-week", "", "Hours per week")
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateRateFlag, "rate", "", "Rate")
+	presetsUpdateCmd.Flags().StringVar(&presetsUpdateCurrencyFlag, "currency", "", "Currency code")
+
 	// Add subcommands to presets
 	presetsCmd.AddCommand(presetsListCmd)
 	presetsCmd.AddCommand(presetsCreateCmd)
+	presetsCmd.AddCommand(presetsUpdateCmd)
 	presetsCmd.AddCommand(presetsDeleteCmd)
 
 	// Add subcommands to timesheets
 	timesheetsCmd.AddCommand(timesheetsListCmd)
 	timesheetsCmd.AddCommand(timesheetsGetCmd)
 	timesheetsCmd.AddCommand(timesheetsCreateEntryCmd)
+	timesheetsCmd.AddCommand(timesheetsUpdateEntryCmd)
+	timesheetsCmd.AddCommand(timesheetsDeleteEntryCmd)
 	timesheetsCmd.AddCommand(timesheetsReviewCmd)
 	timesheetsCmd.AddCommand(presetsCmd)
 }

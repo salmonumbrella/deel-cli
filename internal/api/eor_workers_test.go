@@ -183,12 +183,12 @@ func TestGetEORWorkerTaxDocuments(t *testing.T) {
 				"created_at":   "2024-01-31T10:00:00Z",
 			},
 			{
-				"id":           "tax-doc-2",
-				"name":         "1099 Form 2023",
-				"type":         "1099",
-				"year":         2023,
-				"status":       "processing",
-				"created_at":   "2024-01-31T10:00:00Z",
+				"id":         "tax-doc-2",
+				"name":       "1099 Form 2023",
+				"type":       "1099",
+				"year":       2023,
+				"status":     "processing",
+				"created_at": "2024-01-31T10:00:00Z",
 			},
 		},
 	}

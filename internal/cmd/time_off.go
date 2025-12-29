@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 var timeOffCmd = &cobra.Command{
@@ -20,6 +21,7 @@ var (
 	timeOffStatusFlag  []string
 	timeOffLimitFlag   int
 	timeOffCursorFlag  string
+	timeOffAllFlag     bool
 )
 
 var timeOffListCmd = &cobra.Command{
@@ -33,29 +35,53 @@ var timeOffListCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := client.ListTimeOffRequests(cmd.Context(), api.TimeOffListParams{
-			HRISProfileID: timeOffProfileFlag,
-			Status:        timeOffStatusFlag,
-			Limit:         timeOffLimitFlag,
-			Cursor:        timeOffCursorFlag,
-		})
-		if err != nil {
-			f.PrintError("Failed to list time off: %v", err)
-			return err
+		cursor := timeOffCursorFlag
+		var allRequests []api.TimeOffRequest
+		var next string
+
+		for {
+			resp, err := client.ListTimeOffRequests(cmd.Context(), api.TimeOffListParams{
+				HRISProfileID: timeOffProfileFlag,
+				Status:        timeOffStatusFlag,
+				Limit:         timeOffLimitFlag,
+				Cursor:        cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list time off: %v", err)
+				return err
+			}
+			allRequests = append(allRequests, resp.Data...)
+			next = resp.Page.Next
+			if !timeOffAllFlag || next == "" {
+				if !timeOffAllFlag {
+					allRequests = resp.Data
+				}
+				break
+			}
+			cursor = next
 		}
 
+		response := api.TimeOffListResponse{
+			Data: allRequests,
+		}
+		response.Page.Next = ""
+
 		return f.Output(func() {
-			if len(resp.Data) == 0 {
+			if len(allRequests) == 0 {
 				f.PrintText("No time off requests found.")
 				return
 			}
 			table := f.NewTable("ID", "WORKER", "TYPE", "DATES", "DAYS", "STATUS")
-			for _, t := range resp.Data {
+			for _, t := range allRequests {
 				dates := t.StartDate + " - " + t.EndDate
 				table.AddRow(t.ID, t.WorkerName, t.Type, dates, fmt.Sprintf("%.1f", t.Days), t.Status)
 			}
 			table.Render()
-		}, resp)
+			if !timeOffAllFlag && next != "" {
+				f.PrintText("")
+				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
+			}
+		}, response)
 	},
 }
 
@@ -91,11 +117,11 @@ var timeOffPoliciesCmd = &cobra.Command{
 }
 
 var (
-	timeOffCreateProfileFlag  string
-	timeOffCreatePolicyFlag   string
-	timeOffCreateStartFlag    string
-	timeOffCreateEndFlag      string
-	timeOffCreateReasonFlag   string
+	timeOffCreateProfileFlag string
+	timeOffCreatePolicyFlag  string
+	timeOffCreateStartFlag   string
+	timeOffCreateEndFlag     string
+	timeOffCreateReasonFlag  string
 )
 
 var timeOffCreateCmd = &cobra.Command{
@@ -108,6 +134,21 @@ var timeOffCreateCmd = &cobra.Command{
 			timeOffCreateStartFlag == "" || timeOffCreateEndFlag == "" {
 			f.PrintError("Required: --profile, --policy, --start, --end")
 			return fmt.Errorf("missing required flags")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "TimeOffRequest",
+			Description: "Create time off request",
+			Details: map[string]string{
+				"ProfileID": timeOffCreateProfileFlag,
+				"PolicyID":  timeOffCreatePolicyFlag,
+				"StartDate": timeOffCreateStartFlag,
+				"EndDate":   timeOffCreateEndFlag,
+				"Reason":    timeOffCreateReasonFlag,
+			},
+		}); ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -139,6 +180,18 @@ var timeOffCancelCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CANCEL",
+			Resource:    "TimeOffRequest",
+			Description: "Cancel time off request",
+			Details: map[string]string{
+				"ID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -165,16 +218,29 @@ var timeOffApproveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
 
 		params := api.ApproveRejectParams{
 			RequestID: args[0],
 			Action:    "approve",
 			Comment:   timeOffApproveCommentFlag,
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "APPROVE",
+			Resource:    "TimeOffRequest",
+			Description: "Approve time off request",
+			Details: map[string]string{
+				"ID":      args[0],
+				"Comment": timeOffApproveCommentFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
 		}
 
 		approval, err := client.ApproveRejectTimeOff(cmd.Context(), params)
@@ -210,16 +276,28 @@ var timeOffRejectCmd = &cobra.Command{
 			return fmt.Errorf("--comment flag is required")
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
 		params := api.ApproveRejectParams{
 			RequestID: args[0],
 			Action:    "reject",
 			Comment:   timeOffRejectCommentFlag,
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "REJECT",
+			Resource:    "TimeOffRequest",
+			Description: "Reject time off request",
+			Details: map[string]string{
+				"ID":      args[0],
+				"Comment": timeOffRejectCommentFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
 		}
 
 		approval, err := client.ApproveRejectTimeOff(cmd.Context(), params)
@@ -397,6 +475,7 @@ func init() {
 	timeOffListCmd.Flags().StringSliceVar(&timeOffStatusFlag, "status", nil, "Filter by status")
 	timeOffListCmd.Flags().IntVar(&timeOffLimitFlag, "limit", 50, "Maximum results")
 	timeOffListCmd.Flags().StringVar(&timeOffCursorFlag, "cursor", "", "Pagination cursor")
+	timeOffListCmd.Flags().BoolVar(&timeOffAllFlag, "all", false, "Fetch all pages")
 
 	timeOffCreateCmd.Flags().StringVar(&timeOffCreateProfileFlag, "profile", "", "HRIS profile ID (required)")
 	timeOffCreateCmd.Flags().StringVar(&timeOffCreatePolicyFlag, "policy", "", "Policy ID (required)")

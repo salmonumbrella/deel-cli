@@ -15,10 +15,10 @@ var reportsCmd = &cobra.Command{
 }
 
 var (
-	paymentsReportStartDateFlag  string
-	paymentsReportEndDateFlag    string
-	paymentsReportContractFlag   string
-	paymentsReportStatusFlag     string
+	paymentsReportStartDateFlag string
+	paymentsReportEndDateFlag   string
+	paymentsReportContractFlag  string
+	paymentsReportStatusFlag    string
 )
 
 var paymentsReportCmd = &cobra.Command{

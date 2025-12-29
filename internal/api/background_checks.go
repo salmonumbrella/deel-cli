@@ -8,14 +8,14 @@ import (
 
 // BackgroundCheckOption represents a background check option
 type BackgroundCheckOption struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Provider    string  `json:"provider"`
-	Country     string  `json:"country"`
-	Type        string  `json:"type"`
-	Cost        float64 `json:"cost"`
-	Currency    string  `json:"currency"`
-	Duration    string  `json:"estimated_duration"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Provider string  `json:"provider"`
+	Country  string  `json:"country"`
+	Type     string  `json:"type"`
+	Cost     float64 `json:"cost"`
+	Currency string  `json:"currency"`
+	Duration string  `json:"estimated_duration"`
 }
 
 // ListBackgroundCheckOptions returns available check options

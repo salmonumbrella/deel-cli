@@ -28,10 +28,10 @@ func TestListTimesheets(t *testing.T) {
 	result, err := client.ListTimesheets(context.Background(), TimesheetsListParams{})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "ts1", result[0].ID)
-	assert.Equal(t, "c1", result[0].ContractID)
-	assert.Equal(t, 160.0, result[0].TotalHours)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "ts1", result.Data[0].ID)
+	assert.Equal(t, "c1", result.Data[0].ContractID)
+	assert.Equal(t, 160.0, result.Data[0].TotalHours)
 }
 
 func TestListTimesheets_WithQueryParams(t *testing.T) {
@@ -65,9 +65,9 @@ func TestListTimesheets_WithQueryParams(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "ts1", result[0].ID)
-	assert.Equal(t, "approved", result[0].Status)
+	assert.Len(t, result.Data, 1)
+	assert.Equal(t, "ts1", result.Data[0].ID)
+	assert.Equal(t, "approved", result.Data[0].Status)
 }
 
 func TestListTimesheets_Error(t *testing.T) {
