@@ -73,18 +73,3 @@ release:
   draft: false
   prerelease: auto
 
-brews:
-  - name: deel-cli
-    skip_upload: true
-    repository:
-      owner: salmonumbrella
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Formula
-    homepage: "https://github.com/salmonumbrella/deel-cli"
-    description: "CLI for Deel API"
-    license: "MIT"
-    install: |
-      bin.install "deel"
-    test: |
-      system "#{bin}/deel", "--help"
