@@ -602,6 +602,15 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Validate account name format
+	if err := ValidateAccountName(req.Name); err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
 	if err := s.store.Delete(req.Name); err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"success": false,
