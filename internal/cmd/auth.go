@@ -65,7 +65,7 @@ var authAddCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		accountName := strings.TrimSpace(args[0])
+		accountName := strings.ToLower(strings.TrimSpace(args[0]))
 
 		if err := auth.ValidateAccountName(accountName); err != nil {
 			f.PrintError("Invalid account name: %v", err)
@@ -178,7 +178,7 @@ var authRemoveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		accountName := strings.TrimSpace(args[0])
+		accountName := strings.ToLower(strings.TrimSpace(args[0]))
 
 		if err := auth.ValidateAccountName(accountName); err != nil {
 			f.PrintError("Invalid account name: %v", err)

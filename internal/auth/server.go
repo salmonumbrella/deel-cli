@@ -363,7 +363,7 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Normalize inputs
-	req.AccountName = strings.TrimSpace(req.AccountName)
+	req.AccountName = strings.ToLower(strings.TrimSpace(req.AccountName))
 	req.Token = sanitizeToken(req.Token)
 
 	// Validate input format
@@ -438,7 +438,7 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Normalize inputs
-	req.AccountName = strings.TrimSpace(req.AccountName)
+	req.AccountName = strings.ToLower(strings.TrimSpace(req.AccountName))
 	req.Token = sanitizeToken(req.Token)
 
 	// Validate input format
@@ -619,7 +619,7 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 	}
 
 	// Normalize input
-	req.Name = strings.TrimSpace(req.Name)
+	req.Name = strings.ToLower(strings.TrimSpace(req.Name))
 
 	// Validate account name format
 	if err := ValidateAccountName(req.Name); err != nil {
