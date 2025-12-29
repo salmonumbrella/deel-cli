@@ -1284,7 +1284,9 @@ var setupTemplate = `<!DOCTYPE html>
         }
 
         async function removeAccount(name) {
-            if (!confirm('Remove account "' + name + '" from Deel CLI?')) return;
+            // Escape for display in confirm dialog (defense in depth)
+            const safeName = name.replace(/[<>&"']/g, c => ` + "`" + `&#${c.charCodeAt(0)};` + "`" + `);
+            if (!confirm('Remove account "' + safeName + '" from Deel CLI?')) return;
             try {
                 const response = await fetch('/remove-account', {
                     method: 'POST',
