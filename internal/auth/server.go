@@ -602,6 +602,9 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Normalize input
+	req.Name = strings.TrimSpace(req.Name)
+
 	// Validate account name format
 	if err := ValidateAccountName(req.Name); err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{

@@ -112,7 +112,8 @@ var authAddCmd = &cobra.Command{
 		// Validate token against API before saving
 		f.PrintText("Validating token with Deel API...")
 		client := api.NewClient(token)
-		if _, err := client.Get(cmd.Context(), "/rest/v2/profiles/me"); err != nil {
+		// Use /rest/v2/contracts with limit=1 as a lightweight validation endpoint
+		if _, err := client.Get(cmd.Context(), "/rest/v2/contracts?limit=1"); err != nil {
 			f.PrintError("Token validation failed: %v", err)
 			return fmt.Errorf("invalid token: failed to authenticate with Deel API")
 		}
@@ -179,6 +180,11 @@ var authRemoveCmd = &cobra.Command{
 		f := getFormatter()
 		accountName := args[0]
 
+		if err := auth.ValidateAccountName(accountName); err != nil {
+			f.PrintError("Invalid account name: %v", err)
+			return err
+		}
+
 		store, err := secrets.OpenDefault()
 		if err != nil {
 			f.PrintError("Failed to open credential store: %v", err)
@@ -210,7 +216,8 @@ var authTestCmd = &cobra.Command{
 
 		f.PrintText("Testing connection...")
 
-		_, err = client.Get(cmd.Context(), "/rest/v2/profiles/me")
+		// Use /rest/v2/contracts with limit=1 as a lightweight validation endpoint
+		_, err = client.Get(cmd.Context(), "/rest/v2/contracts?limit=1")
 		if err != nil {
 			f.PrintError("Connection failed: %v", err)
 			return err
