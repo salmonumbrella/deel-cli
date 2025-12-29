@@ -699,9 +699,6 @@ var setupTemplate = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deel CLI Setup</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -719,7 +716,7 @@ var setupTemplate = `<!DOCTYPE html>
         }
 
         body {
-            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #C4B5FD 0%, #A78BFA 50%, #8B5CF6 100%);
             min-height: 100vh;
             display: flex;
@@ -1416,9 +1413,6 @@ var successTemplate = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deel CLI - Success</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1432,7 +1426,7 @@ var successTemplate = `<!DOCTYPE html>
         }
 
         body {
-            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(145deg, #1c4396 0%, #2c71f0 50%, #4a90f7 100%);
             min-height: 100vh;
             display: flex;
@@ -1564,7 +1558,7 @@ var successTemplate = `<!DOCTYPE html>
         .terminal-title {
             flex: 1;
             text-align: center;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
             font-size: 11px;
             color: #64748b;
             letter-spacing: 0.02em;
@@ -1572,7 +1566,7 @@ var successTemplate = `<!DOCTYPE html>
 
         .terminal-body {
             padding: 16px 18px;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
             font-size: 13px;
             line-height: 1.7;
             text-align: left;
@@ -1684,7 +1678,7 @@ var successTemplate = `<!DOCTYPE html>
             border: 1px solid var(--deel-light-gray);
             padding: 8px 12px;
             border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
             font-size: 11px;
             color: var(--deel-black);
             box-shadow: 0 1px 2px rgba(0,0,0,0.04);
@@ -1710,7 +1704,7 @@ var successTemplate = `<!DOCTYPE html>
             background: rgba(44, 113, 240, 0.12);
             padding: 2px 6px;
             border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
             font-size: 10px;
             font-weight: 500;
         }
