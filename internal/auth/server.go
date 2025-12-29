@@ -615,9 +615,10 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := s.store.Delete(req.Name); err != nil {
+		slog.Error("Failed to remove account from secure storage", "account", req.Name, "error", err)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to remove account: %v", err),
+			"error":   "Failed to remove account from secure storage",
 		})
 		return
 	}
