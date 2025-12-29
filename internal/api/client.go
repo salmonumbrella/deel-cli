@@ -34,15 +34,16 @@ const (
 
 // Client is the Deel API client
 type Client struct {
-	httpClient *http.Client
-	token      string
-	baseURL    string
-	debug      bool
+	httpClient     *http.Client
+	token          string
+	baseURL        string
+	debug          bool
+	idempotencyKey string
 
 	// Circuit breaker state
-	mu              sync.Mutex
+	mu               sync.Mutex
 	consecutiveFails int
-	circuitOpenedAt time.Time
+	circuitOpenedAt  time.Time
 }
 
 // NewClient creates a new Deel API client
@@ -65,6 +66,11 @@ func NewClient(token string) *Client {
 // SetDebug enables or disables debug logging
 func (c *Client) SetDebug(debug bool) {
 	c.debug = debug
+}
+
+// SetIdempotencyKey sets the idempotency key used for write requests.
+func (c *Client) SetIdempotencyKey(key string) {
+	c.idempotencyKey = key
 }
 
 // Get performs a GET request
@@ -199,6 +205,9 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body any) (*
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if c.idempotencyKey != "" && method != http.MethodGet {
+		req.Header.Set("Idempotency-Key", c.idempotencyKey)
+	}
 
 	if c.debug {
 		slog.Info("api request", "method", method, "url", url)

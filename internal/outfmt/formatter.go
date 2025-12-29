@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/muesli/termenv"
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 	"github.com/salmonumbrella/deel-cli/internal/filter"
 )
 
@@ -27,6 +28,7 @@ type Formatter struct {
 	format    Format
 	colorMode string
 	profile   termenv.Profile
+	query     string
 }
 
 // New creates a new Formatter
@@ -39,6 +41,11 @@ func New(out, errOut io.Writer, format Format, colorMode string) *Formatter {
 	}
 	f.profile = f.detectColorProfile()
 	return f
+}
+
+// SetQuery sets an optional JQ-style query for JSON output.
+func (f *Formatter) SetQuery(query string) {
+	f.query = strings.TrimSpace(query)
 }
 
 func (f *Formatter) detectColorProfile() termenv.Profile {
@@ -98,6 +105,17 @@ func (f *Formatter) PrintWarning(format string, args ...any) {
 		msg = termenv.String(msg).Foreground(f.profile.Color("3")).String()
 	}
 	fmt.Fprintln(f.errOut, msg)
+}
+
+// PrintDryRun outputs a dry-run preview in the configured format.
+func (f *Formatter) PrintDryRun(preview *dryrun.Preview) error {
+	if f.IsJSON() {
+		return f.PrintJSON(map[string]any{
+			"dry_run": true,
+			"preview": preview,
+		})
+	}
+	return preview.Write(f.out)
 }
 
 // Table represents a text table for output
@@ -179,6 +197,13 @@ func padRight(s string, width int) string {
 // Output writes data in the configured format
 func (f *Formatter) Output(textFn func(), jsonData any) error {
 	if f.IsJSON() {
+		if f.query != "" {
+			result, err := filter.Apply(jsonData, f.query)
+			if err != nil {
+				return err
+			}
+			return f.PrintJSON(result)
+		}
 		return f.PrintJSON(jsonData)
 	}
 	textFn()
@@ -189,6 +214,9 @@ func (f *Formatter) Output(textFn func(), jsonData any) error {
 func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData any) error {
 	if f.IsJSON() {
 		query := GetQuery(ctx)
+		if query == "" {
+			query = f.query
+		}
 		if query != "" {
 			result, err := filter.Apply(jsonData, query)
 			if err != nil {

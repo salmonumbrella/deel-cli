@@ -18,4 +18,7 @@ const (
 
 	// EnvColor is the environment variable for color mode
 	EnvColor = "DEEL_COLOR"
+
+	// EnvIdempotencyKey is the environment variable for idempotency key header
+	EnvIdempotencyKey = "DEEL_IDEMPOTENCY_KEY"
 )

@@ -23,12 +23,13 @@ var (
 
 // Global flags
 var (
-	accountFlag string
-	outputFlag  string
-	colorFlag   string
-	debugFlag   bool
-	queryFlag   string
-	dryRunFlag  bool
+	accountFlag        string
+	outputFlag         string
+	colorFlag          string
+	debugFlag          bool
+	queryFlag          string
+	dryRunFlag         bool
+	idempotencyKeyFlag string
 )
 
 // rootCmd is the base command
@@ -85,6 +86,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug output")
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")
 	rootCmd.PersistentFlags().BoolVar(&dryRunFlag, "dry-run", false, "Preview changes without executing")
+	rootCmd.PersistentFlags().StringVar(&idempotencyKeyFlag, "idempotency-key", "", "Idempotency key for write requests")
 
 	// Add subcommands
 	rootCmd.AddCommand(authCmd)
@@ -143,7 +145,9 @@ func getFormatter() *outfmt.Formatter {
 		colorMode = envColor
 	}
 
-	return outfmt.New(os.Stdout, os.Stderr, format, colorMode)
+	f := outfmt.New(os.Stdout, os.Stderr, format, colorMode)
+	f.SetQuery(queryFlag)
+	return f
 }
 
 // getClient creates an API client using the configured credentials
@@ -152,6 +156,11 @@ func getClient() (*api.Client, error) {
 	if token := os.Getenv(config.EnvToken); token != "" {
 		client := api.NewClient(token)
 		client.SetDebug(debugFlag)
+		if idempotencyKeyFlag != "" {
+			client.SetIdempotencyKey(idempotencyKeyFlag)
+		} else if envKey := os.Getenv(config.EnvIdempotencyKey); envKey != "" {
+			client.SetIdempotencyKey(envKey)
+		}
 		return client, nil
 	}
 
@@ -177,6 +186,11 @@ func getClient() (*api.Client, error) {
 
 	client := api.NewClient(creds.Token)
 	client.SetDebug(debugFlag)
+	if idempotencyKeyFlag != "" {
+		client.SetIdempotencyKey(idempotencyKeyFlag)
+	} else if envKey := os.Getenv(config.EnvIdempotencyKey); envKey != "" {
+		client.SetIdempotencyKey(envKey)
+	}
 	return client, nil
 }
 
