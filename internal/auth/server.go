@@ -287,6 +287,7 @@ func (s *SetupServer) handleSetup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Referrer-Policy", "no-referrer")
 
 	if err := tmpl.Execute(w, data); err != nil {
 		slog.Error("setup template execution failed", "error", err)
@@ -518,6 +519,7 @@ func (s *SetupServer) handleSuccess(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Referrer-Policy", "no-referrer")
 
 	if err := tmpl.Execute(w, data); err != nil {
 		slog.Error("success template execution failed", "error", err)
