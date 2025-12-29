@@ -1224,7 +1224,7 @@ var setupTemplate = `<!DOCTYPE html>
 
                 accountsList.innerHTML = accounts.map(acc => {
                     const safeName = escapeHtml(acc.name);
-                    const initial = safeName.charAt(0).toUpperCase();
+                    const initial = escapeHtml(acc.name.charAt(0).toUpperCase());
                     const date = new Date(acc.createdAt);
                     const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
                     return '<div class="account-card" data-name="' + safeName + '">' +
@@ -1233,7 +1233,7 @@ var setupTemplate = `<!DOCTYPE html>
                         '<div class="account-name">' + safeName + '</div>' +
                         '<div class="account-date">Added ' + dateStr + '</div>' +
                         '</div>' +
-                        '<button class="remove-btn" onclick="removeAccount(\'' + safeName + '\')" title="Remove account">' +
+                        '<button class="remove-btn" onclick="removeAccount(' + JSON.stringify(acc.name) + ')" title="Remove account">' +
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
                         '</button>' +
                         '</div>';
