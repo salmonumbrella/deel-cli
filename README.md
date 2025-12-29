@@ -106,6 +106,7 @@ deel people list
 - `DEEL_ACCOUNT` - Default account name to use
 - `DEEL_OUTPUT` - Output format: `text` (default) or `json`
 - `DEEL_COLOR` - Color mode: `auto` (default), `always`, or `never`
+- `DEEL_IDEMPOTENCY_KEY` - Idempotency key for write requests
 - `NO_COLOR` - Set to any value to disable colors (standard convention)
 
 ## Security
@@ -132,17 +133,28 @@ deel auth test [--account <name>]    # Test credentials
 ### People
 
 ```bash
-deel people list [--limit <n>] [--cursor <token>]    # List all people
+deel people list [--limit <n>] [--cursor <token>] [--all]    # List all people
 deel people get <hris-profile-id>                    # Get person details
 deel people search --email <email>                   # Find person by email
+deel people create --email <email> --first-name <name> --last-name <name> --type <type> --country <cc>
+deel people update <id> [--first-name <name>] [--last-name <name>] [--phone <phone>] [--nationality <cc>]
+deel people working-location <id> --country <cc> [--state <state>] [--city <city>] [--address <addr>]
 deel people custom-fields list                       # List custom fields
 deel people custom-fields get <field-id>             # Get custom field details
+deel people adjustments list [--contract-id <id>] [--category-id <id>]
+deel people adjustments get <id>
+deel people adjustments create --contract-id <id> --category-id <id> --amount <n> --currency <cc> --description <text> --date <yyyy-mm-dd>
+deel people adjustments update <id> [--amount <n>] [--description <text>] [--date <yyyy-mm-dd>]
+deel people adjustments delete <id>
+deel people adjustments categories
+deel people managers list | create
+deel people relations list <profile-id> | create | delete
 ```
 
 ### Contracts
 
 ```bash
-deel contracts list [--limit <n>]            # List all contracts
+deel contracts list [--limit <n>] [--cursor <token>] [--all]  # List all contracts
 deel contracts get <contract-id>             # Get contract details
 deel contracts amendments <contract-id>      # List contract amendments
 deel contracts payment-dates <contract-id>   # Get payment schedule
@@ -151,11 +163,15 @@ deel contracts payment-dates <contract-id>   # Get payment schedule
 ### Time Off
 
 ```bash
-deel time-off list [--contract-id <id>] [--status <status>]    # List requests
-deel time-off policies [--contract-id <id>]                    # List policies
-deel time-off create --contract-id <id> --type <type> \
-    --start-date <date> --end-date <date> [--reason <text>]    # Create request
-deel time-off cancel <request-id> [--reason <text>]            # Cancel request
+deel time-off list [--profile <id>] [--status <status>] [--limit <n>] [--cursor <token>] [--all]
+deel time-off policies                                         # List policies
+deel time-off create --profile <id> --policy <id> --start <date> --end <date> [--reason <text>]
+deel time-off cancel <request-id>
+deel time-off approve <request-id> [--comment <text>]
+deel time-off reject <request-id> --comment <text>
+deel time-off validate --profile-id <id> --type <type> --start-date <date> --end-date <date>
+deel time-off entitlements <profile-id>
+deel time-off schedule <profile-id>
 ```
 
 Aliases: `timeoff`, `pto`
@@ -172,19 +188,23 @@ deel payroll receipts [--year <yyyy>] [--month <mm>]                           #
 ### Invoices
 
 ```bash
-deel invoices list [--limit <n>]                           # List invoices
-deel invoices get <invoice-id>                             # Get invoice details
-deel invoices adjustments list <contract-id>               # List adjustments
-deel invoices adjustments create <contract-id> \
-    --amount <n> --reason <text> [--type <type>]           # Create adjustment
+deel invoices list [--limit <n>] [--cursor <token>] [--all]
+deel invoices get <invoice-id>
+deel invoices pdf <invoice-id> [--output <path>|-]
+deel invoices adjustments <invoice-id>                     # List adjustments
+deel invoices adjustments create <invoice-id> \
+    --type <type> --amount <n> [--description <text>]
+deel invoices deel-invoices [--limit <n>] [--cursor <token>] [--all]
 ```
 
 ### Payments
 
 ```bash
-deel payments off-cycle list                               # List off-cycle payments
+deel payments off-cycle list [--limit <n>] [--cursor <token>] [--all]
 deel payments off-cycle create --contract-id <id> \
-    --amount <n> --reason <text>                           # Create off-cycle payment
+    --amount <n> --currency <cc> --type <type> --date <yyyy-mm-dd> [--description <text>]
+deel payments breakdown <payment-id>
+deel payments receipts [--limit <n>] [--cursor <token>] [--all]
 ```
 
 ### Benefits
@@ -278,7 +298,19 @@ Alias: `calculator`
 ### Tokens
 
 ```bash
-deel tokens create --contract-id <id> [--expires-in <duration>]    # Create worker token
+deel tokens create --worker <id> [--scope <scope>] [--ttl <seconds>]    # Create worker token
+```
+
+### Webhooks
+
+```bash
+deel webhooks list
+deel webhooks get <webhook-id>
+deel webhooks create --url <url> --events <event> [--events <event>]
+deel webhooks update <webhook-id> [--url <url>] [--events <event>]
+deel webhooks enable <webhook-id>
+deel webhooks disable <webhook-id>
+deel webhooks verify --secret <secret> --signature <sig> --payload-file <file>
 ```
 
 ## Output Formats
@@ -365,6 +397,9 @@ deel people list
 Filter JSON output with JQ expressions:
 
 ```bash
+# Filter in-cli with --query
+deel contracts list --output json --query '.data[] | select(.status == "active")'
+
 # Get only active contracts
 deel contracts list --output json | jq '.data[] | select(.status == "active")'
 
@@ -380,6 +415,9 @@ All commands support these flags:
 - `--output <format>` - Output format: `text` or `json` (default: text)
 - `--color <mode>` - Color mode: `auto`, `always`, or `never` (default: auto)
 - `--debug` - Enable debug output (shows API requests/responses)
+- `--query <jq>` - Filter JSON output using a JQ expression
+- `--dry-run` - Preview changes without executing write requests
+- `--idempotency-key <key>` - Idempotency key for write requests
 - `--help` - Show help for any command
 - `--version` - Show version information
 
