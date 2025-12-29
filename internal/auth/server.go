@@ -344,6 +344,9 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body size to prevent memory exhaustion
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req struct {
 		AccountName string `json:"account_name"`
 		Token       string `json:"token"`
@@ -415,6 +418,9 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Limit request body size to prevent memory exhaustion
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
 	var req struct {
 		AccountName string `json:"account_name"`
@@ -591,6 +597,9 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 		})
 		return
 	}
+
+	// Limit request body size to prevent memory exhaustion
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
 	var req struct {
 		Name string `json:"name"`
