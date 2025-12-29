@@ -138,8 +138,8 @@ func ValidateToken(token string) error {
 	if len(token) == 0 {
 		return fmt.Errorf("token cannot be empty")
 	}
-	if len(token) > 4096 {
-		return fmt.Errorf("token too long (max 4096 characters)")
+	if len(token) > 1024 {
+		return fmt.Errorf("token too long (max 1024 characters)")
 	}
 	return nil
 }
