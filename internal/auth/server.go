@@ -142,6 +142,19 @@ func ValidateToken(token string) error {
 	return nil
 }
 
+// sanitizeToken cleans a token by trimming whitespace and removing control characters
+func sanitizeToken(token string) string {
+	token = strings.TrimSpace(token)
+	// Remove any invisible characters that might have been pasted
+	token = strings.Map(func(r rune) rune {
+		if r < 32 || r == 127 {
+			return -1 // Remove control characters
+		}
+		return r
+	}, token)
+	return token
+}
+
 // SetupResult contains the result of a browser-based setup
 type SetupResult struct {
 	AccountName string
@@ -343,16 +356,9 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Normalize inputs - strip all whitespace and control characters
+	// Normalize inputs
 	req.AccountName = strings.TrimSpace(req.AccountName)
-	req.Token = strings.TrimSpace(req.Token)
-	// Remove any invisible characters that might have been pasted
-	req.Token = strings.Map(func(r rune) rune {
-		if r < 32 || r == 127 {
-			return -1 // Remove control characters
-		}
-		return r
-	}, req.Token)
+	req.Token = sanitizeToken(req.Token)
 
 	// Validate input format
 	if err := ValidateAccountName(req.AccountName); err != nil {
@@ -422,16 +428,9 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Normalize inputs - strip all whitespace and control characters
+	// Normalize inputs
 	req.AccountName = strings.TrimSpace(req.AccountName)
-	req.Token = strings.TrimSpace(req.Token)
-	// Remove any invisible characters that might have been pasted
-	req.Token = strings.Map(func(r rune) rune {
-		if r < 32 || r == 127 {
-			return -1 // Remove control characters
-		}
-		return r
-	}, req.Token)
+	req.Token = sanitizeToken(req.Token)
 
 	// Validate input format
 	if err := ValidateAccountName(req.AccountName); err != nil {
