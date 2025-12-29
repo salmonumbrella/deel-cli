@@ -24,6 +24,8 @@ import (
 
 var validAccountName = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+const maxRequestBodySize = 1 << 20 // 1MB
+
 // clientLimit tracks attempts for a specific client
 type clientLimit struct {
 	count   int
@@ -345,7 +347,7 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit request body size to prevent memory exhaustion
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 
 	var req struct {
 		AccountName string `json:"account_name"`
@@ -420,7 +422,7 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit request body size to prevent memory exhaustion
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 
 	var req struct {
 		AccountName string `json:"account_name"`
@@ -535,6 +537,9 @@ func (s *SetupServer) handleComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body size to prevent memory exhaustion
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	s.shutdownOnce.Do(func() {
 		s.pendingMu.Lock()
 		if s.pendingResult != nil {
@@ -599,7 +604,7 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 	}
 
 	// Limit request body size to prevent memory exhaustion
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 
 	var req struct {
 		Name string `json:"name"`
