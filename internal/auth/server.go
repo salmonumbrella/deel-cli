@@ -24,7 +24,14 @@ import (
 
 var validAccountName = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
-const maxRequestBodySize = 1 << 20 // 1MB
+const (
+	maxRequestBodySize = 1 << 20 // 1MB
+
+	// Rate limiter configuration
+	rateLimitMaxAttempts = 10               // max attempts per window
+	rateLimitWindow      = 15 * time.Minute // time window for rate limiting
+	rateLimitCleanup     = 5 * time.Minute  // cleanup interval for expired entries
+)
 
 // clientLimit tracks attempts for a specific client
 type clientLimit struct {
@@ -186,8 +193,8 @@ func NewSetupServer(store secrets.Store) (*SetupServer, error) {
 	}
 
 	stopCleanup := make(chan struct{})
-	limiter := newRateLimiter(10, 15*time.Minute)
-	limiter.startCleanup(5*time.Minute, stopCleanup)
+	limiter := newRateLimiter(rateLimitMaxAttempts, rateLimitWindow)
+	limiter.startCleanup(rateLimitCleanup, stopCleanup)
 
 	return &SetupServer{
 		result:      make(chan SetupResult, 1),
