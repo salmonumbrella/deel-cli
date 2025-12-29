@@ -40,4 +40,6 @@ Thumbs.db
 # Build artifacts
 /deel
 build/
-docs/plans/
+
+# Documentation (local plans, notes)
+docs/
