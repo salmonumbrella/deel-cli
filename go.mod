@@ -1,6 +1,6 @@
 module github.com/salmonumbrella/deel-cli
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/99designs/keyring v1.2.2
