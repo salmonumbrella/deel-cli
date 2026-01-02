@@ -52,3 +52,36 @@ func (e *MockAPIError) Error() string {
 func (e *MockAPIError) APIStatusCode() int {
 	return e.StatusCode
 }
+
+func TestSuggestionsFor(t *testing.T) {
+	tests := []struct {
+		category  Category
+		operation string
+		minCount  int
+	}{
+		{CategoryAuth, "listing people", 2},
+		{CategoryForbidden, "getting contract", 2},
+		{CategoryNotFound, "getting contract abc123", 1},
+		{CategoryNotFound, "listing people", 1},
+		{CategoryRateLimit, "any operation", 2},
+		{CategoryServer, "any operation", 2},
+		{CategoryNetwork, "any operation", 2},
+		{CategoryConfig, "any operation", 2},
+	}
+
+	for _, tt := range tests {
+		suggestions := SuggestionsFor(tt.category, tt.operation)
+		assert.GreaterOrEqual(t, len(suggestions), tt.minCount,
+			"category %v, operation %q", tt.category, tt.operation)
+	}
+}
+
+func TestSuggestionsForNotFound_ContextAware(t *testing.T) {
+	// Getting a specific resource should suggest checking the ID
+	getSuggestions := SuggestionsFor(CategoryNotFound, "getting contract abc123")
+	assert.Contains(t, getSuggestions[0], "ID")
+
+	// Listing should suggest endpoint availability
+	listSuggestions := SuggestionsFor(CategoryNotFound, "listing people")
+	assert.Contains(t, listSuggestions[0], "available")
+}
