@@ -37,9 +37,12 @@ var (
 	contractPaymentCycleFlag string
 
 	// Terminate command flags
-	terminateReasonFlag string
-	terminateDateFlag   string
-	terminateNotesFlag  string
+	terminateReasonFlag    string
+	terminateDateFlag      string
+	terminateNotesFlag     string
+	terminateImmediateFlag bool
+	terminateTypeFlag      string
+	terminateRehireFlag    string
 )
 
 var contractsListCmd = &cobra.Command{
@@ -50,8 +53,7 @@ var contractsListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		cursor := contractsCursorFlag
@@ -66,8 +68,7 @@ var contractsListCmd = &cobra.Command{
 				Type:   contractsTypeFlag,
 			})
 			if err != nil {
-				f.PrintError("Failed to list contracts: %v", err)
-				return err
+				return HandleError(f, err, "listing contracts")
 			}
 			allContracts = append(allContracts, resp.Data...)
 			next = resp.Page.Next
@@ -111,14 +112,12 @@ var contractsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		contract, err := client.GetContract(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get contract: %v", err)
-			return err
+			return HandleError(f, err, "getting contract")
 		}
 
 		return f.Output(func() {
@@ -146,14 +145,12 @@ var contractsAmendmentsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		amendments, err := client.ListContractAmendments(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to list amendments: %v", err)
-			return err
+			return HandleError(f, err, "listing contract amendments")
 		}
 
 		return f.Output(func() {
@@ -178,14 +175,12 @@ var contractsPaymentDatesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		dates, err := client.GetContractPaymentDates(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get payment dates: %v", err)
-			return err
+			return HandleError(f, err, "getting payment dates")
 		}
 
 		return f.Output(func() {
@@ -265,14 +260,12 @@ var contractsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		contract, err := client.CreateContract(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create contract: %v", err)
-			return err
+			return HandleError(f, err, "creating contract")
 		}
 
 		f.PrintSuccess("Contract created successfully")
@@ -304,14 +297,12 @@ var contractsSignCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		contract, err := client.SignContract(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to sign contract: %v", err)
-			return err
+			return HandleError(f, err, "signing contract")
 		}
 
 		f.PrintSuccess("Contract signed successfully")
@@ -337,15 +328,13 @@ var contractsTerminateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		// Look up reason ID from name
 		reasons, err := client.ListTerminationReasons(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list termination reasons: %v", err)
-			return err
+			return HandleError(f, err, "listing termination reasons")
 		}
 
 		var reasonID string
@@ -366,8 +355,12 @@ var contractsTerminateCmd = &cobra.Command{
 		}
 
 		params := api.TerminateContractParams{
-			ReasonID:       reasonID,
-			CompletionDate: terminateDateFlag,
+			TerminationReasonID:          reasonID,
+			TerminationReasonDescription: terminateNotesFlag,
+			CompletionDate:               terminateDateFlag,
+			TerminateNow:                 terminateImmediateFlag,
+			TerminationType:              terminateTypeFlag,
+			EligibleForRehire:            terminateRehireFlag,
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -386,8 +379,7 @@ var contractsTerminateCmd = &cobra.Command{
 
 		err = client.TerminateContract(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to terminate contract: %v", err)
-			return err
+			return HandleError(f, err, "terminating contract")
 		}
 
 		f.PrintSuccess("Contract termination initiated successfully")
@@ -407,14 +399,12 @@ var contractsTerminationReasonsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		reasons, err := client.ListTerminationReasons(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list termination reasons: %v", err)
-			return err
+			return HandleError(f, err, "listing termination reasons")
 		}
 
 		return f.Output(func() {
@@ -440,14 +430,12 @@ var contractsPDFCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		url, err := client.GetContractPDF(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get PDF URL: %v", err)
-			return err
+			return HandleError(f, err, "getting contract PDF")
 		}
 
 		return f.Output(func() {
@@ -465,14 +453,12 @@ var contractsInviteCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.InviteWorker(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to send invitation: %v", err)
-			return err
+			return HandleError(f, err, "sending invitation")
 		}
 
 		f.PrintSuccess("Invitation email sent successfully")
@@ -489,14 +475,12 @@ var contractsInviteLinkCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		url, err := client.GetInviteLink(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get invite link: %v", err)
-			return err
+			return HandleError(f, err, "getting invite link")
 		}
 
 		return f.Output(func() {
@@ -513,14 +497,12 @@ var contractsTemplatesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		templates, err := client.ListContractTemplates(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list templates: %v", err)
-			return err
+			return HandleError(f, err, "listing contract templates")
 		}
 
 		return f.Output(func() {
@@ -560,8 +542,11 @@ func init() {
 
 	// Terminate command flags
 	contractsTerminateCmd.Flags().StringVar(&terminateReasonFlag, "reason", "", "Termination reason (required)")
-	contractsTerminateCmd.Flags().StringVar(&terminateDateFlag, "date", "", "Effective termination date (YYYY-MM-DD)")
-	contractsTerminateCmd.Flags().StringVar(&terminateNotesFlag, "notes", "", "Additional notes")
+	contractsTerminateCmd.Flags().StringVar(&terminateDateFlag, "date", "", "Completion date for scheduled termination (YYYY-MM-DD)")
+	contractsTerminateCmd.Flags().StringVar(&terminateNotesFlag, "notes", "", "Additional notes/description for the termination")
+	contractsTerminateCmd.Flags().BoolVar(&terminateImmediateFlag, "immediate", false, "Terminate immediately (overrides --date)")
+	contractsTerminateCmd.Flags().StringVar(&terminateTypeFlag, "type", "TERMINATION", "Termination type: RESIGNATION, TERMINATION, or END_OF_CONTRACT")
+	contractsTerminateCmd.Flags().StringVar(&terminateRehireFlag, "rehire", "", "Eligible for rehire: YES, NO, or DONT_KNOW")
 
 	// Add all commands
 	contractsCmd.AddCommand(contractsListCmd)
