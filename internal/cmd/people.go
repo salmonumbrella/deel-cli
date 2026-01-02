@@ -54,8 +54,7 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing people")
 		}
 
 		cursor := peopleCursorFlag
@@ -67,8 +66,7 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list people: %v", err)
-				return err
+				return HandleError(f, err, "listing people")
 			}
 			allPeople = append(allPeople, resp.Data...)
 			pageTotal = resp.Page.Total
@@ -119,14 +117,12 @@ var peopleGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting person")
 		}
 
 		person, err := client.GetPerson(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get person: %v", err)
-			return err
+			return HandleError(f, err, "getting person")
 		}
 
 		return f.Output(func() {
@@ -163,16 +159,14 @@ Examples:
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "searching people")
 		}
 
 		// Email search - use API directly
 		if peopleEmailFlag != "" {
 			person, err := client.SearchPeopleByEmail(cmd.Context(), peopleEmailFlag)
 			if err != nil {
-				f.PrintError("Failed to search: %v", err)
-				return err
+				return HandleError(f, err, "searching people")
 			}
 
 			return f.Output(func() {
@@ -193,8 +187,7 @@ Examples:
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list people: %v", err)
-				return err
+				return HandleError(f, err, "searching people")
 			}
 
 			for _, p := range resp.Data {
