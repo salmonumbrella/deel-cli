@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,11 +14,28 @@ import (
 var peopleCmd = &cobra.Command{
 	Use:   "people",
 	Short: "Manage people and workers",
-	Long:  "List, search, and view details of people in your Deel organization.",
+	Long: `List, search, and view details of people in your Deel organization.
+
+FINDING SOMEONE:
+  By name:   deel people search --name "Catherine Song"
+  By email:  deel people search --email catherine@example.com
+  List all:  deel people list --all
+
+COMMON WORKFLOWS:
+  Find person → get their contracts:
+    1. deel people search --name "Song"     # Get their HRIS profile ID
+    2. deel people get <profile-id>         # View full details
+    3. deel contracts list | grep Song      # Find their contracts
+
+  Find person → cancel contract:
+    1. deel people search --name "Song"     # Get profile ID
+    2. deel contracts list                  # Find contract ID by name
+    3. deel contracts cancel <contract-id>  # Cancel the contract`,
 }
 
 var (
 	peopleEmailFlag string
+	peopleNameFlag  string
 )
 
 var (
@@ -29,6 +47,9 @@ var (
 var peopleListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all people",
+	Long: `List all people in your organization.
+
+Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 		client, err := getClient()
@@ -112,7 +133,7 @@ var peopleGetCmd = &cobra.Command{
 			f.PrintText("Name:       " + person.FirstName + " " + person.LastName)
 			f.PrintText("Email:      " + person.Email)
 			f.PrintText("Job Title:  " + person.JobTitle)
-			f.PrintText("Department: " + person.Department)
+			f.PrintText("Department: " + person.Department())
 			f.PrintText("Status:     " + person.Status)
 			f.PrintText("Country:    " + person.Country)
 			f.PrintText("Start Date: " + person.StartDate)
@@ -123,12 +144,21 @@ var peopleGetCmd = &cobra.Command{
 var peopleSearchCmd = &cobra.Command{
 	Use:   "search",
 	Short: "Search for a person",
+	Long: `Search for a person by email or name.
+
+Use --email for exact email lookup (faster, uses API).
+Use --name for name search (searches first/last name, case-insensitive).
+
+Examples:
+  deel people search --email catherine@example.com
+  deel people search --name "Catherine Song"
+  deel people search --name song`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
-		if peopleEmailFlag == "" {
-			f.PrintError("--email is required")
-			return fmt.Errorf("--email flag is required")
+		if peopleEmailFlag == "" && peopleNameFlag == "" {
+			f.PrintError("--email or --name is required")
+			return fmt.Errorf("--email or --name flag is required")
 		}
 
 		client, err := getClient()
@@ -137,17 +167,68 @@ var peopleSearchCmd = &cobra.Command{
 			return err
 		}
 
-		person, err := client.SearchPeopleByEmail(cmd.Context(), peopleEmailFlag)
-		if err != nil {
-			f.PrintError("Failed to search: %v", err)
-			return err
+		// Email search - use API directly
+		if peopleEmailFlag != "" {
+			person, err := client.SearchPeopleByEmail(cmd.Context(), peopleEmailFlag)
+			if err != nil {
+				f.PrintError("Failed to search: %v", err)
+				return err
+			}
+
+			return f.Output(func() {
+				f.PrintText("Found: " + person.FirstName + " " + person.LastName)
+				f.PrintText("ID:    " + person.HRISProfileID)
+				f.PrintText("Email: " + person.Email)
+			}, person)
+		}
+
+		// Name search - fetch all people and filter client-side
+		searchName := strings.ToLower(peopleNameFlag)
+		var matches []api.Person
+		cursor := ""
+
+		for {
+			resp, err := client.ListPeople(cmd.Context(), api.PeopleListParams{
+				Limit:  100,
+				Cursor: cursor,
+			})
+			if err != nil {
+				f.PrintError("Failed to list people: %v", err)
+				return err
+			}
+
+			for _, p := range resp.Data {
+				fullName := strings.ToLower(p.FirstName + " " + p.LastName)
+				firstName := strings.ToLower(p.FirstName)
+				lastName := strings.ToLower(p.LastName)
+
+				if strings.Contains(fullName, searchName) ||
+					strings.Contains(firstName, searchName) ||
+					strings.Contains(lastName, searchName) {
+					matches = append(matches, p)
+				}
+			}
+
+			if resp.Page.Next == "" {
+				break
+			}
+			cursor = resp.Page.Next
+		}
+
+		if len(matches) == 0 {
+			f.PrintText("No people found matching: " + peopleNameFlag)
+			return nil
 		}
 
 		return f.Output(func() {
-			f.PrintText("Found: " + person.FirstName + " " + person.LastName)
-			f.PrintText("ID:    " + person.HRISProfileID)
-			f.PrintText("Email: " + person.Email)
-		}, person)
+			f.PrintText(fmt.Sprintf("Found %d match(es) for \"%s\":\n", len(matches), peopleNameFlag))
+			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
+			for _, p := range matches {
+				name := p.FirstName + " " + p.LastName
+				table.AddRow(p.HRISProfileID, name, p.Email, p.JobTitle, p.Status)
+			}
+			table.Render()
+		}, matches)
 	},
 }
 
@@ -1107,7 +1188,8 @@ func init() {
 	peopleListCmd.Flags().StringVar(&peopleCursorFlag, "cursor", "", "Pagination cursor")
 	peopleListCmd.Flags().BoolVar(&peopleAllFlag, "all", false, "Fetch all pages")
 
-	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for")
+	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for (exact match)")
+	peopleSearchCmd.Flags().StringVar(&peopleNameFlag, "name", "", "Name to search for (partial match, case-insensitive)")
 
 	// People create command flags
 	peopleCreateCmd.Flags().StringVar(&peopleCreateEmailFlag, "email", "", "Email (required)")

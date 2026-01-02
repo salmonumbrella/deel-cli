@@ -7,18 +7,42 @@ import (
 	"net/url"
 )
 
+// Department can be a string or an object from the API
+type Department struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Person represents a Deel person/worker
 type Person struct {
-	ID            string `json:"id"`
-	HRISProfileID string `json:"hris_profile_id"`
-	FirstName     string `json:"first_name"`
-	LastName      string `json:"last_name"`
-	Email         string `json:"email"`
-	JobTitle      string `json:"job_title"`
-	Department    string `json:"department"`
-	Status        string `json:"status"`
-	StartDate     string `json:"start_date"`
-	Country       string `json:"country"`
+	ID            string      `json:"id"`
+	HRISProfileID string      `json:"hris_profile_id"`
+	FirstName     string      `json:"first_name"`
+	LastName      string      `json:"last_name"`
+	Email         string      `json:"email"`
+	JobTitle      string      `json:"job_title"`
+	DepartmentRaw any         `json:"department"` // API returns string or object
+	Status        string      `json:"status"`
+	StartDate     string      `json:"start_date"`
+	Country       string      `json:"country"`
+}
+
+// Department returns the department name, handling both string and object formats
+func (p *Person) Department() string {
+	if p.DepartmentRaw == nil {
+		return ""
+	}
+	// Handle string case
+	if s, ok := p.DepartmentRaw.(string); ok {
+		return s
+	}
+	// Handle object case
+	if m, ok := p.DepartmentRaw.(map[string]any); ok {
+		if name, ok := m["name"].(string); ok {
+			return name
+		}
+	}
+	return ""
 }
 
 // PeopleListResponse is the response from list people
