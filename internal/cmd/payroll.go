@@ -42,6 +42,9 @@ var payrollPayslipsCmd = &cobra.Command{
 				f.PrintError("Failed to get payslips: %v", err)
 				return err
 			}
+			if len(payslips) == 0 {
+				f.PrintWarning("Hint: No GP payslips found. If this is an EOR employee, try without --gp flag.")
+			}
 			return f.Output(func() {
 				if len(payslips) == 0 {
 					f.PrintText("No payslips found.")
@@ -60,6 +63,9 @@ var payrollPayslipsCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to get payslips: %v", err)
 			return err
+		}
+		if len(payslips) == 0 {
+			f.PrintWarning("Hint: No EOR payslips found. If this is a Global Payroll employee, try with --gp flag.")
 		}
 		return f.Output(func() {
 			if len(payslips) == 0 {

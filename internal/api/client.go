@@ -253,18 +253,45 @@ func (c *Client) parseRetryAfter(resp *http.Response) time.Duration {
 }
 
 func (c *Client) parseError(statusCode int, body []byte) error {
-	var apiErr struct {
+	// Try simple error format first: {"error": "..."} or {"message": "..."}
+	var simpleErr struct {
 		Error   string `json:"error"`
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(body, &apiErr); err == nil {
-		if apiErr.Error != "" {
-			return &APIError{StatusCode: statusCode, Message: apiErr.Error}
+	if err := json.Unmarshal(body, &simpleErr); err == nil {
+		if simpleErr.Error != "" {
+			return &APIError{StatusCode: statusCode, Message: simpleErr.Error}
 		}
-		if apiErr.Message != "" {
-			return &APIError{StatusCode: statusCode, Message: apiErr.Message}
+		if simpleErr.Message != "" {
+			return &APIError{StatusCode: statusCode, Message: simpleErr.Message}
 		}
 	}
+
+	// Try nested Deel error format: {"errors": {"errors": [{"message": "..."}]}}
+	var nestedErr struct {
+		Errors struct {
+			Errors []struct {
+				Key     string `json:"key"`
+				Message string `json:"message"`
+			} `json:"errors"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &nestedErr); err == nil && len(nestedErr.Errors.Errors) > 0 {
+		// Collect all error messages
+		var messages []string
+		for _, e := range nestedErr.Errors.Errors {
+			if e.Message != "" {
+				messages = append(messages, e.Message)
+			}
+		}
+		if len(messages) == 1 {
+			return &APIError{StatusCode: statusCode, Message: messages[0]}
+		}
+		if len(messages) > 1 {
+			return &APIError{StatusCode: statusCode, Message: fmt.Sprintf("%d errors: %v", len(messages), messages)}
+		}
+	}
+
 	return &APIError{StatusCode: statusCode, Message: string(body)}
 }
 
