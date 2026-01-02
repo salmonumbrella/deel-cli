@@ -228,10 +228,48 @@ var authTestCmd = &cobra.Command{
 	},
 }
 
+var authManageCmd = &cobra.Command{
+	Use:   "manage",
+	Short: "Manage accounts in browser",
+	Long:  "Opens a browser window to view, add, and remove Deel accounts.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		store, err := secrets.OpenDefault()
+		if err != nil {
+			f.PrintError("Failed to open credential store: %v", err)
+			return err
+		}
+
+		server, err := auth.NewSetupServerWithMode(store, auth.ModeManage)
+		if err != nil {
+			f.PrintError("Failed to start server: %v", err)
+			return err
+		}
+
+		f.PrintText("Opening account manager in browser...")
+		f.PrintText("If the browser doesn't open, navigate to the URL shown.")
+		f.PrintText("")
+
+		_, err = server.Start(cmd.Context())
+		if err != nil {
+			// Context cancelled is normal when user closes browser
+			if err.Error() == "setup cancelled" || err.Error() == "context canceled" {
+				return nil
+			}
+			f.PrintError("Error: %v", err)
+			return err
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	authCmd.AddCommand(authLoginCmd)
 	authCmd.AddCommand(authAddCmd)
 	authCmd.AddCommand(authListCmd)
 	authCmd.AddCommand(authRemoveCmd)
 	authCmd.AddCommand(authTestCmd)
+	authCmd.AddCommand(authManageCmd)
 }

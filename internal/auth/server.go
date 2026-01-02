@@ -171,6 +171,16 @@ type SetupResult struct {
 	Error       error
 }
 
+// ServerMode defines the mode of operation for the setup server
+type ServerMode int
+
+const (
+	// ModeSetup is the default mode for adding new accounts
+	ModeSetup ServerMode = iota
+	// ModeManage is for managing existing accounts (no auto-add form)
+	ModeManage
+)
+
 // SetupServer handles the browser-based authentication flow
 type SetupServer struct {
 	result        chan SetupResult
@@ -182,10 +192,16 @@ type SetupServer struct {
 	csrfToken     string
 	store         secrets.Store
 	limiter       *rateLimiter
+	mode          ServerMode
 }
 
 // NewSetupServer creates a new setup server
 func NewSetupServer(store secrets.Store) (*SetupServer, error) {
+	return NewSetupServerWithMode(store, ModeSetup)
+}
+
+// NewSetupServerWithMode creates a new setup server with the specified mode
+func NewSetupServerWithMode(store secrets.Store, mode ServerMode) (*SetupServer, error) {
 	// Generate CSRF token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
@@ -203,6 +219,7 @@ func NewSetupServer(store secrets.Store) (*SetupServer, error) {
 		csrfToken:   hex.EncodeToString(tokenBytes),
 		store:       store,
 		limiter:     limiter,
+		mode:        mode,
 	}, nil
 }
 
@@ -223,6 +240,7 @@ func (s *SetupServer) Start(ctx context.Context) (*SetupResult, error) {
 	// Create HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleSetup)
+	mux.HandleFunc("/manage", s.handleManage)
 	mux.HandleFunc("/validate", s.handleValidate)
 	mux.HandleFunc("/submit", s.handleSubmit)
 	mux.HandleFunc("/success", s.handleSuccess)
@@ -244,10 +262,14 @@ func (s *SetupServer) Start(ctx context.Context) (*SetupResult, error) {
 		}
 	}()
 
-	// Open browser
+	// Open browser - use /manage path for manage mode
+	browserURL := baseURL
+	if s.mode == ModeManage {
+		browserURL = baseURL + "/manage"
+	}
 	go func() {
-		if err := openBrowser(baseURL); err != nil {
-			slog.Info("failed to open browser, user can navigate manually", "url", baseURL)
+		if err := openBrowser(browserURL); err != nil {
+			slog.Info("failed to open browser, user can navigate manually", "url", browserURL)
 		}
 	}()
 
@@ -655,6 +677,30 @@ func (s *SetupServer) handleRemoveAccount(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,
 	})
+}
+
+// handleManage serves the account management page
+func (s *SetupServer) handleManage(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.New("manage").Parse(manageTemplate)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]string{
+		"CSRFToken": s.csrfToken,
+	}
+
+	// Set security headers
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+
+	if err := tmpl.Execute(w, data); err != nil {
+		slog.Error("manage template execution failed", "error", err)
+	}
 }
 
 // writeJSON writes a JSON response
@@ -1807,6 +1853,724 @@ var successTemplate = `<!DOCTYPE html>
             method: 'POST',
             headers: { 'X-CSRF-Token': '{{.CSRFToken}}' }
         });
+    </script>
+</body>
+</html>`
+
+var manageTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deel CLI - Manage Accounts</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --deel-black: #1B1B1B;
+            --deel-purple: #B794F6;
+            --deel-purple-light: #D4B9FC;
+            --deel-purple-dark: #9F7AEA;
+            --deel-blue: #0EA5E9;
+            --deel-gray: #6B7280;
+            --deel-light-gray: #E5E7EB;
+            --deel-white: #FFFFFF;
+            --deel-success: #22C55E;
+            --deel-error: #EF4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #C4B5FD 0%, #A78BFA 50%, #8B5CF6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 150%;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.6) 0%, rgba(139, 92, 246, 0.4) 100%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 50%;
+            height: 80%;
+            background: linear-gradient(45deg, rgba(196, 181, 253, 0.5) 0%, rgba(167, 139, 250, 0.3) 100%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .hidden { display: none !important; }
+
+        .container {
+            background: var(--deel-white);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            padding: 48px 40px 40px;
+            max-width: 420px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .logo svg {
+            height: 100px;
+            width: auto;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--deel-gray);
+            font-size: 15px;
+            margin-bottom: 28px;
+        }
+
+        /* Accounts section */
+        .accounts-section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--deel-gray);
+        }
+
+        .account-count {
+            font-size: 11px;
+            color: var(--deel-gray);
+            background: #F3F4F6;
+            padding: 3px 10px;
+            border-radius: 999px;
+        }
+
+        .accounts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .account-card {
+            background: #F9FAFB;
+            border: 1px solid var(--deel-light-gray);
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .account-card:hover {
+            border-color: #D1D5DB;
+            background: #F3F4F6;
+        }
+
+        .account-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #1c4396, #2c71f0);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .account-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--deel-black);
+        }
+
+        .account-date {
+            font-size: 11px;
+            color: var(--deel-gray);
+        }
+
+        .remove-btn {
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--deel-gray);
+            transition: all 0.2s ease;
+            opacity: 0;
+            flex-shrink: 0;
+        }
+
+        .account-card:hover .remove-btn {
+            opacity: 1;
+        }
+
+        .remove-btn:hover {
+            background: #FEF2F2;
+            color: var(--deel-error);
+        }
+
+        .remove-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .add-account-btn {
+            width: 100%;
+            background: transparent;
+            border: 1px dashed #D1D5DB;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--deel-gray);
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .add-account-btn:hover {
+            border-color: var(--deel-black);
+            color: var(--deel-black);
+            background: #F9FAFB;
+        }
+
+        .add-account-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 24px 16px;
+            background: #F9FAFB;
+            border: 1px solid var(--deel-light-gray);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--deel-black);
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            color: var(--deel-gray);
+        }
+
+        /* Setup card */
+        .setup-card {
+            background: #F9FAFB;
+            border: 1px solid var(--deel-light-gray);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .setup-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--deel-light-gray);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+        }
+
+        .setup-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            width: 24px;
+            height: 24px;
+            background: #F3F4F6;
+            border: none;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--deel-gray);
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--deel-light-gray);
+            color: var(--deel-black);
+        }
+
+        .close-btn svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .setup-body {
+            padding: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--deel-light-gray);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--deel-black);
+            background: var(--deel-white);
+            transition: all 0.2s ease;
+        }
+
+        input::placeholder {
+            color: #9CA3AF;
+        }
+
+        input:hover {
+            border-color: #D1D5DB;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--deel-black);
+        }
+
+        input.error {
+            border-color: var(--deel-error);
+        }
+
+        .hint {
+            font-size: 11px;
+            color: var(--deel-gray);
+            margin-top: 6px;
+        }
+
+        .hint a {
+            color: var(--deel-blue);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .hint a:hover {
+            text-decoration: underline;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        button.btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--deel-black);
+            color: var(--deel-white);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #333;
+        }
+
+        .btn-primary:disabled {
+            background: #D1D5DB;
+            color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--deel-white);
+            color: var(--deel-black);
+            border: 1.5px solid var(--deel-black);
+        }
+
+        .btn-secondary:hover {
+            background: var(--deel-black);
+            color: var(--deel-white);
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .status.error {
+            background: #FEF2F2;
+            color: var(--deel-error);
+            display: block;
+        }
+
+        .status.success {
+            background: #F0FDF4;
+            color: var(--deel-success);
+            display: block;
+        }
+
+        .status.loading {
+            background: #F0F9FF;
+            color: var(--deel-blue);
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--deel-light-gray);
+        }
+
+        .footer a {
+            color: var(--deel-gray);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--deel-black);
+        }
+
+        .footer svg {
+            opacity: 0.6;
+        }
+
+        .footer a:hover svg {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 560 400" xmlns="http://www.w3.org/2000/svg">
+                <g transform="matrix(5.25771 0 0 5.25771 100 136.799)">
+                    <g fill="#1c4396" fill-rule="nonzero">
+                        <path d="m56.133 23.533c-.101 0-.182-.081-.182-.182v-21.941c0-.086.06-.16.145-.178l3.832-.792c.113-.024.219.063.219.178v22.733c0 .101-.082.182-.182.182z"/>
+                        <path d="m7.999 23.997c-1.53 0-2.896-.371-4.098-1.114s-2.153-1.76-2.852-3.049c-.699-1.29-1.049-2.754-1.049-4.393s.35-3.093 1.049-4.36c.699-1.29 1.65-2.295 2.852-3.016 1.202-.743 2.568-1.115 4.098-1.115 1.224 0 2.295.229 3.213.688.737.369 1.362.858 1.873 1.466.116.137.356.059.356-.12v-7.968c0-.086.061-.161.145-.178l3.832-.793c.113-.023.219.063.219.179v23.198c0 .1-.081.182-.182.182h-3.405c-.087 0-.162-.062-.179-.147l-.349-1.772c-.031-.156-.235-.202-.337-.08-.489.587-1.103 1.111-1.842 1.573-.852.546-1.967.819-3.344.819zm.885-3.671c1.355 0 2.459-.448 3.311-1.345.875-.917 1.312-2.087 1.312-3.507 0-1.421-.437-2.579-1.312-3.475-.852-.918-1.956-1.377-3.311-1.377-1.333 0-2.437.448-3.311 1.344s-1.311 2.054-1.311 3.475c0 1.42.437 2.59 1.311 3.508.874.917 1.978 1.377 3.311 1.377z"/>
+                        <path d="m27.869 24c-1.639 0-3.092-.35-4.36-1.049-1.267-.7-2.262-1.683-2.983-2.951-.721-1.267-1.082-2.732-1.082-4.393 0-1.682.35-3.18 1.049-4.491.721-1.311 1.705-2.328 2.951-3.049 1.267-.743 2.753-1.114 4.458-1.114 1.596 0 3.005.349 4.229 1.049 1.224.699 2.175 1.661 2.852 2.885.7 1.202 1.049 2.546 1.049 4.032 0 .24-.011.492-.032.754 0 .21-.007.427-.022.651-.005.095-.085.169-.18.169h-11.995c-.106 0-.19.089-.179.194.117 1.175.549 2.105 1.295 2.789.809.721 1.781 1.082 2.918 1.082.852 0 1.562-.186 2.131-.558.556-.37.976-.838 1.26-1.403.032-.063.096-.105.167-.105h3.901c.122 0 .21.118.171.233-.312.937-.801 1.799-1.467 2.587-.7.83-1.574 1.486-2.623 1.967-1.027.48-2.196.721-3.508.721zm.033-13.638c-1.027 0-1.934.295-2.721.885-.738.534-1.226 1.336-1.464 2.408-.025.112.061.215.175.215h7.685c.105 0 .189-.089.178-.193-.099-.981-.487-1.769-1.165-2.364-.721-.634-1.617-.951-2.688-.951z"/>
+                        <path d="m46.124 24c-1.639 0-3.093-.35-4.36-1.049-1.268-.7-2.262-1.683-2.983-2.951-.722-1.267-1.082-2.732-1.082-4.393 0-1.682.349-3.18 1.049-4.491.721-1.311 1.705-2.328 2.95-3.049 1.268-.743 2.754-1.114 4.459-1.114 1.595 0 3.005.349 4.229 1.049 1.224.699 2.174 1.661 2.852 2.885.699 1.202 1.049 2.546 1.049 4.032 0 .24-.011.492-.033.754 0 .21-.007.427-.021.651-.006.095-.085.169-.18.169h-11.996c-.105 0-.189.089-.178.194.117 1.175.548 2.105 1.294 2.789.809.721 1.782 1.082 2.918 1.082.853 0 1.563-.186 2.131-.558.556-.37.976-.838 1.261-1.403.032-.063.096-.105.167-.105h3.901c.122 0 .209.118.171.233-.312.937-.801 1.799-1.468 2.587-.699.83-1.573 1.486-2.622 1.967-1.027.48-2.197.721-3.508.721zm.033-13.638c-1.027 0-1.934.295-2.721.885-.739.534-1.227 1.336-1.465 2.408-.024.112.062.215.176.215h7.685c.105 0 .188-.089.178-.193-.099-.981-.488-1.769-1.165-2.364-.721-.634-1.617-.951-2.688-.951z"/>
+                    </g>
+                    <circle cx="65.646" cy="20.713" fill="#2c71f0" r="2.825"/>
+                </g>
+            </svg>
+        </div>
+        <p class="subtitle">Manage your accounts</p>
+
+        <input type="hidden" id="csrfToken" value="{{.CSRFToken}}">
+
+        <!-- Accounts Section -->
+        <div id="accountsSection" class="accounts-section hidden">
+            <div class="section-header">
+                <span class="section-title">Connected Accounts</span>
+                <span id="accountCount" class="account-count">0 accounts</span>
+            </div>
+            <div id="accountsList" class="accounts-list"></div>
+            <button id="addAccountBtn" class="add-account-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Account
+            </button>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <h3>No accounts connected</h3>
+            <p>Add your first Deel account to get started</p>
+        </div>
+
+        <!-- Setup Card -->
+        <div id="setupCard" class="setup-card">
+            <div class="setup-header">
+                <h2>Add Deel Account</h2>
+                <button id="closeSetupBtn" class="close-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="setup-body">
+                <form id="setupForm">
+                    <div class="form-group">
+                        <input type="text" id="accountName" placeholder="Account name (e.g., production)" required>
+                        <p class="hint">Local label only - pick any name to identify this account</p>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="token" placeholder="Deel API Token" required>
+                        <p class="hint">Create a token in the <a href="https://app.deel.com/developer-center" target="_blank">Deel Developer Center</a></p>
+                    </div>
+                    <div id="status" class="status"></div>
+                    <div class="buttons">
+                        <button type="button" class="btn btn-secondary" id="testBtn">Test</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">Save Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/salmonumbrella/deel-cli" target="_blank">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                View on GitHub
+            </a>
+        </div>
+    </div>
+    <script>
+        const csrfToken = document.getElementById('csrfToken').value;
+        const accountsSection = document.getElementById('accountsSection');
+        const accountsList = document.getElementById('accountsList');
+        const accountCount = document.getElementById('accountCount');
+        const emptyState = document.getElementById('emptyState');
+        const setupCard = document.getElementById('setupCard');
+        const addAccountBtn = document.getElementById('addAccountBtn');
+        const closeSetupBtn = document.getElementById('closeSetupBtn');
+        const form = document.getElementById('setupForm');
+        const accountNameInput = document.getElementById('accountName');
+        const tokenInput = document.getElementById('token');
+        const testBtn = document.getElementById('testBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusEl = document.getElementById('status');
+
+        let accounts = [];
+
+        // Escape HTML special characters to prevent XSS
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Load accounts on page load
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/accounts');
+                const data = await response.json();
+                accounts = data.accounts || [];
+                renderAccounts();
+            } catch (err) {
+                accounts = [];
+                renderAccounts();
+            }
+        }
+
+        function renderAccounts() {
+            accountCount.textContent = accounts.length + ' account' + (accounts.length !== 1 ? 's' : '');
+
+            if (accounts.length === 0) {
+                accountsSection.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                setupCard.classList.remove('hidden');
+                closeSetupBtn.classList.add('hidden');
+            } else {
+                accountsSection.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                setupCard.classList.add('hidden');
+                closeSetupBtn.classList.remove('hidden');
+
+                accountsList.innerHTML = accounts.map(acc => {
+                    const safeName = escapeHtml(acc.name);
+                    const initial = escapeHtml(acc.name.charAt(0).toUpperCase());
+                    const date = new Date(acc.createdAt);
+                    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    return '<div class="account-card" data-name="' + safeName + '">' +
+                        '<div class="account-avatar">' + initial + '</div>' +
+                        '<div class="account-info">' +
+                        '<div class="account-name">' + safeName + '</div>' +
+                        '<div class="account-date">Added ' + dateStr + '</div>' +
+                        '</div>' +
+                        '<button class="remove-btn" onclick="removeAccount(' + JSON.stringify(acc.name) + ')" title="Remove account">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                        '</button>' +
+                        '</div>';
+                }).join('');
+            }
+        }
+
+        async function removeAccount(name) {
+            // Escape for display in confirm dialog (defense in depth)
+            const safeName = name.replace(/[<>&"']/g, c => ` + "`" + `&#${c.charCodeAt(0)};` + "`" + `);
+            if (!confirm('Remove account "' + safeName + '" from Deel CLI?')) return;
+            try {
+                const response = await fetch('/remove-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    body: JSON.stringify({ name })
+                });
+                const data = await response.json();
+                if (data.success) await loadAccounts();
+            } catch (err) {
+                console.error('Failed to remove account:', err);
+            }
+        }
+
+        // Show/hide setup form
+        addAccountBtn.addEventListener('click', () => {
+            setupCard.classList.remove('hidden');
+            accountNameInput.focus();
+        });
+
+        closeSetupBtn.addEventListener('click', () => {
+            if (accounts.length > 0) {
+                setupCard.classList.add('hidden');
+                form.reset();
+                hideStatus();
+            }
+        });
+
+        // Clear error state on input
+        [accountNameInput, tokenInput].forEach(input => {
+            input.addEventListener('input', () => input.classList.remove('error'));
+        });
+
+        function showStatus(type, message) {
+            statusEl.className = 'status ' + type;
+            statusEl.textContent = message;
+        }
+
+        function hideStatus() {
+            statusEl.className = 'status';
+        }
+
+        function validateFields() {
+            let valid = true;
+            if (!accountNameInput.value.trim()) {
+                accountNameInput.classList.add('error');
+                valid = false;
+            }
+            if (!tokenInput.value.trim()) {
+                tokenInput.classList.add('error');
+                valid = false;
+            }
+            return valid;
+        }
+
+        // Test connection
+        testBtn.addEventListener('click', async () => {
+            if (!validateFields()) return;
+
+            showStatus('loading', 'Testing connection...');
+            testBtn.disabled = true;
+
+            try {
+                const resp = await fetch('/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    body: JSON.stringify({ account_name: accountNameInput.value.trim(), token: tokenInput.value.trim() })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showStatus('success', data.message);
+                } else {
+                    showStatus('error', data.error);
+                }
+            } catch (e) {
+                showStatus('error', 'Connection failed: ' + e.message);
+            } finally {
+                testBtn.disabled = false;
+            }
+        });
+
+        // Submit form
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!validateFields()) return;
+
+            saveBtn.disabled = true;
+            showStatus('loading', 'Saving account...');
+
+            try {
+                const resp = await fetch('/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    body: JSON.stringify({ account_name: accountNameInput.value.trim(), token: tokenInput.value.trim() })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    form.reset();
+                    hideStatus();
+                    setupCard.classList.add('hidden');
+                    await loadAccounts();
+                    saveBtn.disabled = false;
+                } else {
+                    showStatus('error', data.error);
+                    saveBtn.disabled = false;
+                }
+            } catch (e) {
+                showStatus('error', 'Save failed: ' + e.message);
+                saveBtn.disabled = false;
+            }
+        });
+
+        // Initialize
+        loadAccounts();
     </script>
 </body>
 </html>`
