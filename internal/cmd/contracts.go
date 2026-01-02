@@ -46,16 +46,6 @@ var contractsListCmd = &cobra.Command{
 	Short: "List all contracts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
-			Operation:   "INVITE",
-			Resource:    "Contract",
-			Description: "Send invitation to worker",
-			Details: map[string]string{
-				"ID": args[0],
-			},
-		}); ok {
-			return err
-		}
 
 		client, err := getClient()
 		if err != nil {
@@ -387,9 +377,8 @@ var contractsTerminateCmd = &cobra.Command{
 }
 
 var contractsTerminationReasonsCmd = &cobra.Command{
-	Use:   "termination-reasons <contract-id>",
+	Use:   "termination-reasons",
 	Short: "List available termination reasons",
-	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 		client, err := getClient()
@@ -398,7 +387,7 @@ var contractsTerminationReasonsCmd = &cobra.Command{
 			return err
 		}
 
-		reasons, err := client.ListTerminationReasons(cmd.Context(), args[0])
+		reasons, err := client.ListTerminationReasons(cmd.Context())
 		if err != nil {
 			f.PrintError("Failed to list termination reasons: %v", err)
 			return err
@@ -407,10 +396,14 @@ var contractsTerminationReasonsCmd = &cobra.Command{
 		return f.Output(func() {
 			f.PrintText("Available termination reasons:")
 			for _, reason := range reasons {
-				f.PrintText("  • " + reason)
+				if reason.Description != "" {
+					f.PrintText("  • " + reason.Name + " - " + reason.Description)
+				} else {
+					f.PrintText("  • " + reason.Name)
+				}
 			}
-			f.PrintText("\nTo terminate this contract:")
-			f.PrintText("  deel contracts terminate " + args[0] + " --reason \"<reason>\"")
+			f.PrintText("\nTo terminate a contract:")
+			f.PrintText("  deel contracts terminate <contract-id> --reason \"<reason-name>\"")
 		}, reasons)
 	},
 }

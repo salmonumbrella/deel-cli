@@ -201,28 +201,29 @@ func (c *Client) TerminateContract(ctx context.Context, contractID string, param
 	return err
 }
 
-// ListTerminationReasons returns available termination reasons
-func (c *Client) ListTerminationReasons(ctx context.Context, contractID string) ([]string, error) {
-	path := fmt.Sprintf("/rest/v2/contracts/%s/terminations/reasons", escapePath(contractID))
+// TerminationReason represents a termination reason from the API
+type TerminationReason struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// ListTerminationReasons returns available termination reasons (global list, not per-contract)
+func (c *Client) ListTerminationReasons(ctx context.Context) ([]TerminationReason, error) {
+	path := "/rest/v2/contracts/termination-reasons"
 	resp, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 
 	var wrapper struct {
-		Data []struct {
-			Value string `json:"value"`
-		} `json:"data"`
+		Data []TerminationReason `json:"data"`
 	}
 	if err := json.Unmarshal(resp, &wrapper); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	reasons := make([]string, len(wrapper.Data))
-	for i, r := range wrapper.Data {
-		reasons[i] = r.Value
-	}
-	return reasons, nil
+	return wrapper.Data, nil
 }
 
 // GetContractPDF returns the download URL for a contract PDF
