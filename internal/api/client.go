@@ -300,3 +300,8 @@ type APIError struct {
 func (e *APIError) Error() string {
 	return fmt.Sprintf("API error %d: %s", e.StatusCode, e.Message)
 }
+
+// APIStatusCode returns the HTTP status code (implements climerrors.StatusCoder)
+func (e *APIError) APIStatusCode() int {
+	return e.StatusCode
+}
