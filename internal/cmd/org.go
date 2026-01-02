@@ -20,17 +20,6 @@ var orgGetCmd = &cobra.Command{
 	Short: "Get organization details",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
-			Operation:   "DELETE",
-			Resource:    "Group",
-			Description: "Delete group",
-			Details: map[string]string{
-				"ID": args[0],
-			},
-		}); ok {
-			return err
-		}
-
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -58,17 +47,6 @@ var orgStructuresCmd = &cobra.Command{
 	Short: "View organization structure",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
-			Operation:   "CLONE",
-			Resource:    "Group",
-			Description: "Clone group",
-			Details: map[string]string{
-				"ID": args[0],
-			},
-		}); ok {
-			return err
-		}
-
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
