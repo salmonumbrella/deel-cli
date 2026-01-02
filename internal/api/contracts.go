@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 )
 
 // Contract represents a Deel contract
@@ -20,6 +21,52 @@ type Contract struct {
 	Currency           string  `json:"currency"`
 	CompensationAmount float64 `json:"compensation_amount"`
 	Country            string  `json:"country"`
+}
+
+// rawContract is used for parsing the nested API response
+type rawContract struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"termination_date"`
+	Worker    struct {
+		FullName string `json:"full_name"`
+		Email    string `json:"email"`
+		Country  string `json:"country"`
+	} `json:"worker"`
+	CompensationDetails struct {
+		CurrencyCode string `json:"currency_code"`
+		Amount       string `json:"amount"`
+	} `json:"compensation_details"`
+}
+
+// UnmarshalJSON implements custom unmarshaling to handle nested API response
+func (c *Contract) UnmarshalJSON(data []byte) error {
+	var raw rawContract
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	c.ID = raw.ID
+	c.Title = raw.Title
+	c.Type = raw.Type
+	c.Status = raw.Status
+	c.StartDate = raw.StartDate
+	c.EndDate = raw.EndDate
+	c.WorkerName = raw.Worker.FullName
+	c.WorkerEmail = raw.Worker.Email
+	c.Country = raw.Worker.Country
+	c.Currency = raw.CompensationDetails.CurrencyCode
+
+	if raw.CompensationDetails.Amount != "" {
+		if amount, err := strconv.ParseFloat(raw.CompensationDetails.Amount, 64); err == nil {
+			c.CompensationAmount = amount
+		}
+	}
+
+	return nil
 }
 
 // ContractsListResponse is the response from list contracts

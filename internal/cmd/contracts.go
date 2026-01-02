@@ -545,7 +545,7 @@ func init() {
 	contractsTerminateCmd.Flags().StringVar(&terminateDateFlag, "date", "", "Completion date for scheduled termination (YYYY-MM-DD)")
 	contractsTerminateCmd.Flags().StringVar(&terminateNotesFlag, "notes", "", "Additional notes/description for the termination")
 	contractsTerminateCmd.Flags().BoolVar(&terminateImmediateFlag, "immediate", false, "Terminate immediately (overrides --date)")
-	contractsTerminateCmd.Flags().StringVar(&terminateTypeFlag, "type", "TERMINATION", "Termination type: RESIGNATION, TERMINATION, or END_OF_CONTRACT")
+	contractsTerminateCmd.Flags().StringVar(&terminateTypeFlag, "type", "TERMINATION", "Termination type: RESIGNATION or TERMINATION")
 	contractsTerminateCmd.Flags().StringVar(&terminateRehireFlag, "rehire", "", "Eligible for rehire: YES, NO, or DONT_KNOW")
 
 	// Add all commands

@@ -174,6 +174,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 		}
 
 		if resp.StatusCode >= 400 {
+			if c.debug {
+				slog.Info("api error response", "status", resp.StatusCode, "body", string(respBody))
+			}
 			return nil, c.parseError(resp.StatusCode, respBody)
 		}
 
@@ -211,6 +214,10 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body any) (*
 
 	if c.debug {
 		slog.Info("api request", "method", method, "url", url)
+		if body != nil {
+			bodyBytes, _ := json.Marshal(body)
+			slog.Info("request body", "body", string(bodyBytes))
+		}
 	}
 
 	return c.httpClient.Do(req)
