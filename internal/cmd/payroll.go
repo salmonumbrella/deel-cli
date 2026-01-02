@@ -36,33 +36,42 @@ var payrollPayslipsCmd = &cobra.Command{
 			return err
 		}
 
-		var payslips []interface{}
 		if payrollGPFlag {
-			p, err := client.GetGPWorkerPayslips(cmd.Context(), payrollWorkerFlag)
+			payslips, err := client.GetGPWorkerPayslips(cmd.Context(), payrollWorkerFlag)
 			if err != nil {
 				f.PrintError("Failed to get payslips: %v", err)
 				return err
 			}
-			for _, ps := range p {
-				payslips = append(payslips, ps)
-			}
-		} else {
-			p, err := client.GetEORWorkerPayslips(cmd.Context(), payrollWorkerFlag)
-			if err != nil {
-				f.PrintError("Failed to get payslips: %v", err)
-				return err
-			}
-			for _, ps := range p {
-				payslips = append(payslips, ps)
-			}
+			return f.Output(func() {
+				if len(payslips) == 0 {
+					f.PrintText("No payslips found.")
+					return
+				}
+				f.PrintText(fmt.Sprintf("Found %d payslips for worker %s\n", len(payslips), payrollWorkerFlag))
+				table := f.NewTable("ID", "FROM", "TO", "STATUS")
+				for _, ps := range payslips {
+					table.AddRow(ps.ID, ps.From, ps.To, ps.Status)
+				}
+				table.Render()
+			}, payslips)
 		}
 
+		payslips, err := client.GetEORWorkerPayslips(cmd.Context(), payrollWorkerFlag)
+		if err != nil {
+			f.PrintError("Failed to get payslips: %v", err)
+			return err
+		}
 		return f.Output(func() {
 			if len(payslips) == 0 {
 				f.PrintText("No payslips found.")
 				return
 			}
-			f.PrintText(fmt.Sprintf("Found %d payslips for worker %s", len(payslips), payrollWorkerFlag))
+			f.PrintText(fmt.Sprintf("Found %d payslips for worker %s\n", len(payslips), payrollWorkerFlag))
+			table := f.NewTable("ID", "FROM", "TO", "STATUS")
+			for _, ps := range payslips {
+				table.AddRow(ps.ID, ps.From, ps.To, ps.Status)
+			}
+			table.Render()
 		}, payslips)
 	},
 }
@@ -130,6 +139,44 @@ var payrollReceiptsCmd = &cobra.Command{
 	},
 }
 
+var (
+	payrollDownloadWorkerFlag  string
+	payrollDownloadPayslipFlag string
+)
+
+var payrollDownloadCmd = &cobra.Command{
+	Use:   "download-pdf",
+	Short: "Get download URL for a GP payslip PDF",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if payrollDownloadWorkerFlag == "" {
+			f.PrintError("--worker is required")
+			return fmt.Errorf("missing required flag")
+		}
+		if payrollDownloadPayslipFlag == "" {
+			f.PrintError("--payslip is required")
+			return fmt.Errorf("missing required flag")
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		url, err := client.GetGPPayslipDownloadURL(cmd.Context(), payrollDownloadWorkerFlag, payrollDownloadPayslipFlag)
+		if err != nil {
+			f.PrintError("Failed to get download URL: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintText(url)
+		}, map[string]string{"url": url})
+	},
+}
+
 func init() {
 	payrollPayslipsCmd.Flags().StringVar(&payrollWorkerFlag, "worker", "", "Worker ID (required)")
 	payrollPayslipsCmd.Flags().BoolVar(&payrollGPFlag, "gp", false, "Use Global Payroll API")
@@ -138,7 +185,11 @@ func init() {
 
 	payrollReceiptsCmd.Flags().IntVar(&payrollLimitFlag, "limit", 50, "Maximum results")
 
+	payrollDownloadCmd.Flags().StringVar(&payrollDownloadWorkerFlag, "worker", "", "Worker ID (required)")
+	payrollDownloadCmd.Flags().StringVar(&payrollDownloadPayslipFlag, "payslip", "", "Payslip ID (required)")
+
 	payrollCmd.AddCommand(payrollPayslipsCmd)
 	payrollCmd.AddCommand(payrollPaymentsCmd)
 	payrollCmd.AddCommand(payrollReceiptsCmd)
+	payrollCmd.AddCommand(payrollDownloadCmd)
 }

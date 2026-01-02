@@ -71,7 +71,7 @@ var invoicesListCmd = &cobra.Command{
 			}
 			table := f.NewTable("ID", "NUMBER", "WORKER", "AMOUNT", "STATUS", "DUE DATE")
 			for _, inv := range allInvoices {
-				amount := fmt.Sprintf("%.2f %s", inv.Amount, inv.Currency)
+				amount := fmt.Sprintf("%.2f %s", float64(inv.Amount), inv.Currency)
 				table.AddRow(inv.ID, inv.Number, inv.WorkerName, amount, inv.Status, inv.DueDate)
 			}
 			table.Render()
@@ -103,7 +103,7 @@ var invoicesGetCmd = &cobra.Command{
 			f.PrintText("ID:          " + invoice.ID)
 			f.PrintText("Number:      " + invoice.Number)
 			f.PrintText("Status:      " + invoice.Status)
-			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", invoice.Amount, invoice.Currency))
+			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", float64(invoice.Amount), invoice.Currency))
 			f.PrintText("Worker:      " + invoice.WorkerName)
 			f.PrintText("Contract:    " + invoice.ContractID)
 			f.PrintText("Due Date:    " + invoice.DueDate)

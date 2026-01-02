@@ -9,14 +9,10 @@ import (
 
 // Payslip represents a payslip
 type Payslip struct {
-	ID          string  `json:"id"`
-	WorkerID    string  `json:"worker_id"`
-	Period      string  `json:"period"`
-	GrossAmount float64 `json:"gross_amount"`
-	NetAmount   float64 `json:"net_amount"`
-	Currency    string  `json:"currency"`
-	Status      string  `json:"status"`
-	PaidDate    string  `json:"paid_date"`
+	ID     string `json:"id"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Status string `json:"status"`
 }
 
 // GetEORWorkerPayslips returns payslips for an EOR worker
@@ -38,7 +34,7 @@ func (c *Client) GetEORWorkerPayslips(ctx context.Context, workerID string) ([]P
 
 // GetGPWorkerPayslips returns payslips for a Global Payroll worker
 func (c *Client) GetGPWorkerPayslips(ctx context.Context, workerID string) ([]Payslip, error) {
-	path := fmt.Sprintf("/rest/v2/global-payroll/workers/%s/payslips", escapePath(workerID))
+	path := fmt.Sprintf("/rest/v2/gp/workers/%s/payslips", escapePath(workerID))
 	resp, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -51,6 +47,28 @@ func (c *Client) GetGPWorkerPayslips(ctx context.Context, workerID string) ([]Pa
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return wrapper.Data, nil
+}
+
+// PayslipDownload represents a payslip download URL response
+type PayslipDownload struct {
+	URL string `json:"url"`
+}
+
+// GetGPPayslipDownloadURL returns a pre-signed download URL for a GP payslip PDF
+func (c *Client) GetGPPayslipDownloadURL(ctx context.Context, workerID, payslipID string) (string, error) {
+	path := fmt.Sprintf("/rest/v2/gp/workers/%s/payslips/%s/download", escapePath(workerID), escapePath(payslipID))
+	resp, err := c.Get(ctx, path)
+	if err != nil {
+		return "", err
+	}
+
+	var wrapper struct {
+		Data PayslipDownload `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+	return wrapper.Data.URL, nil
 }
 
 // PaymentBreakdown represents a payment breakdown

@@ -11,16 +11,16 @@ import (
 
 // Invoice represents a Deel invoice
 type Invoice struct {
-	ID          string  `json:"id"`
-	Number      string  `json:"number"`
-	Status      string  `json:"status"`
-	Amount      float64 `json:"amount"`
-	Currency    string  `json:"currency"`
-	DueDate     string  `json:"due_date"`
-	PaidDate    string  `json:"paid_date"`
-	ContractID  string  `json:"contract_id"`
-	WorkerName  string  `json:"worker_name"`
-	Description string  `json:"description"`
+	ID          string      `json:"id"`
+	Number      string      `json:"number"`
+	Status      string      `json:"status"`
+	Amount      FlexFloat64 `json:"amount"`
+	Currency    string      `json:"currency"`
+	DueDate     string      `json:"due_date"`
+	PaidDate    string      `json:"paid_date"`
+	ContractID  string      `json:"contract_id"`
+	WorkerName  string      `json:"worker_name"`
+	Description string      `json:"description"`
 }
 
 // InvoicesListResponse is the response from list invoices
