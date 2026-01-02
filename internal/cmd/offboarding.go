@@ -18,14 +18,12 @@ var offboardingGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting offboarding")
 		}
 
 		record, err := client.GetOffboardingTracker(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get offboarding: %v", err)
-			return err
+			return HandleError(f, err, "getting offboarding")
 		}
 
 		return f.Output(func() {
@@ -48,14 +46,12 @@ var terminationsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting termination")
 		}
 
 		termination, err := client.GetTerminationDetails(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get termination: %v", err)
-			return err
+			return HandleError(f, err, "getting termination")
 		}
 
 		return f.Output(func() {

@@ -28,8 +28,7 @@ var onboardingListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing onboarding")
 		}
 
 		cursor := onboardingCursorFlag
@@ -43,8 +42,7 @@ var onboardingListCmd = &cobra.Command{
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list onboarding: %v", err)
-				return err
+				return HandleError(f, err, "listing onboarding")
 			}
 			allEmployees = append(allEmployees, resp.Data...)
 			next = resp.Page.Next
@@ -88,14 +86,12 @@ var onboardingGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting onboarding details")
 		}
 
 		details, err := client.GetOnboardingDetails(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get details: %v", err)
-			return err
+			return HandleError(f, err, "getting onboarding details")
 		}
 
 		return f.Output(func() {

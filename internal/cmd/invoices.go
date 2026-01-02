@@ -31,8 +31,7 @@ var invoicesListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing invoices")
 		}
 
 		cursor := invoicesCursorFlag
@@ -47,8 +46,7 @@ var invoicesListCmd = &cobra.Command{
 				ContractID: invoicesContractFlag,
 			})
 			if err != nil {
-				f.PrintError("Failed to list invoices: %v", err)
-				return err
+				return HandleError(f, err, "listing invoices")
 			}
 			allInvoices = append(allInvoices, resp.Data...)
 			next = resp.Page.Next
@@ -93,14 +91,12 @@ var invoicesGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting invoice")
 		}
 
 		invoice, err := client.GetInvoice(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get invoice: %v", err)
-			return err
+			return HandleError(f, err, "getting invoice")
 		}
 
 		return f.Output(func() {
@@ -134,14 +130,12 @@ var invoicesAdjustmentsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing adjustments")
 		}
 
 		adjustments, err := client.ListInvoiceAdjustments(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to list adjustments: %v", err)
-			return err
+			return HandleError(f, err, "listing adjustments")
 		}
 
 		return f.Output(func() {
@@ -198,8 +192,7 @@ var invoicesAdjustmentsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "creating adjustment")
 		}
 
 		params := api.CreateInvoiceAdjustmentParams{
@@ -210,8 +203,7 @@ var invoicesAdjustmentsCreateCmd = &cobra.Command{
 
 		adjustment, err := client.CreateInvoiceAdjustment(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to create adjustment: %v", err)
-			return err
+			return HandleError(f, err, "creating adjustment")
 		}
 
 		return f.Output(func() {
@@ -234,14 +226,12 @@ var invoicesPDFCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "downloading invoice")
 		}
 
 		pdfBytes, err := client.GetInvoicePDF(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get invoice PDF: %v", err)
-			return err
+			return HandleError(f, err, "downloading invoice")
 		}
 
 		outputPath := invoicesPDFOutputFlag
@@ -251,15 +241,13 @@ var invoicesPDFCmd = &cobra.Command{
 
 		if outputPath == "-" {
 			if _, err := os.Stdout.Write(pdfBytes); err != nil {
-				f.PrintError("Failed to write PDF to stdout: %v", err)
-				return err
+				return HandleError(f, err, "writing PDF to stdout")
 			}
 			return nil
 		}
 
 		if err := os.WriteFile(outputPath, pdfBytes, 0644); err != nil {
-			f.PrintError("Failed to save PDF: %v", err)
-			return err
+			return HandleError(f, err, "saving PDF")
 		}
 
 		f.PrintSuccess("Saved invoice to %s", outputPath)
@@ -282,8 +270,7 @@ var deelInvoicesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing invoices")
 		}
 
 		cursor := deelInvoicesCursorFlag
@@ -297,8 +284,7 @@ var deelInvoicesCmd = &cobra.Command{
 				Status: deelInvoicesStatusFlag,
 			})
 			if err != nil {
-				f.PrintError("Failed to list Deel invoices: %v", err)
-				return err
+				return HandleError(f, err, "listing invoices")
 			}
 			allDeelInvoices = append(allDeelInvoices, resp.Data...)
 			next = resp.Page.Next

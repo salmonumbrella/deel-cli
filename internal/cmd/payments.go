@@ -35,8 +35,7 @@ var offCycleListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing payments")
 		}
 
 		cursor := offCycleCursorFlag
@@ -51,8 +50,7 @@ var offCycleListCmd = &cobra.Command{
 				Cursor:     cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list payments: %v", err)
-				return err
+				return HandleError(f, err, "listing payments")
 			}
 			allPayments = append(allPayments, resp.Data...)
 			next = resp.Page.Next
@@ -128,8 +126,7 @@ var offCycleCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "creating payment")
 		}
 
 		payment, err := client.CreateOffCyclePayment(cmd.Context(), api.CreateOffCyclePaymentParams{
@@ -141,8 +138,7 @@ var offCycleCreateCmd = &cobra.Command{
 			PaymentDate: offCycleCreateDateFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create payment: %v", err)
-			return err
+			return HandleError(f, err, "creating payment")
 		}
 
 		f.PrintSuccess("Created off-cycle payment: %s", payment.ID)
@@ -158,14 +154,12 @@ var breakdownCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "getting payment")
 		}
 
 		breakdown, err := client.GetIndividualPaymentBreakdown(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get payment breakdown: %v", err)
-			return err
+			return HandleError(f, err, "getting payment")
 		}
 
 		return f.Output(func() {
@@ -204,8 +198,7 @@ var receiptsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing payments")
 		}
 
 		cursor := receiptsCursorFlag
@@ -220,8 +213,7 @@ var receiptsCmd = &cobra.Command{
 				PaymentID:  receiptsPaymentFlag,
 			})
 			if err != nil {
-				f.PrintError("Failed to list payment receipts: %v", err)
-				return err
+				return HandleError(f, err, "listing payments")
 			}
 			allReceipts = append(allReceipts, resp.Data...)
 			next = resp.Page.Next
