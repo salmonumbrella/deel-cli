@@ -1,13 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
+	"github.com/salmonumbrella/deel-cli/internal/climerrors"
 	"github.com/salmonumbrella/deel-cli/internal/config"
 	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 	"github.com/salmonumbrella/deel-cli/internal/outfmt"
@@ -148,6 +151,20 @@ func getFormatter() *outfmt.Formatter {
 	f := outfmt.New(os.Stdout, os.Stderr, format, colorMode)
 	f.SetQuery(queryFlag)
 	return f
+}
+
+// HandleError wraps an error with context and prints it using the formatter
+func HandleError(f *outfmt.Formatter, err error, operation string) error {
+	if err == nil {
+		return nil
+	}
+	cliErr := climerrors.Wrap(err, operation)
+
+	var buf bytes.Buffer
+	climerrors.FormatError(&buf, cliErr)
+	f.PrintError("%s", strings.TrimSpace(buf.String()))
+
+	return cliErr
 }
 
 // getClient creates an API client using the configured credentials
