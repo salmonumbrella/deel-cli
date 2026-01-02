@@ -78,3 +78,18 @@ func categoryFromStatus(status int) Category {
 		return CategoryUnknown
 	}
 }
+
+// Wrap creates a CLIError with context and suggestions
+func Wrap(err error, operation string) *CLIError {
+	if err == nil {
+		return nil
+	}
+
+	cat := Categorize(err)
+	return &CLIError{
+		Operation:   operation,
+		Err:         err,
+		Category:    cat,
+		Suggestions: SuggestionsFor(cat, operation),
+	}
+}

@@ -85,3 +85,27 @@ func TestSuggestionsForNotFound_ContextAware(t *testing.T) {
 	listSuggestions := SuggestionsFor(CategoryNotFound, "listing people")
 	assert.Contains(t, listSuggestions[0], "available")
 }
+
+func TestWrap(t *testing.T) {
+	apiErr := &MockAPIError{StatusCode: 404, Message: "not found"}
+
+	wrapped := Wrap(apiErr, "getting contract xyz")
+
+	assert.Equal(t, "getting contract xyz", wrapped.Operation)
+	assert.Equal(t, CategoryNotFound, wrapped.Category)
+	assert.NotEmpty(t, wrapped.Suggestions)
+	assert.Contains(t, wrapped.Error(), "getting contract xyz")
+}
+
+func TestWrap_PreservesOriginalError(t *testing.T) {
+	original := &MockAPIError{StatusCode: 401, Message: "unauthorized"}
+	wrapped := Wrap(original, "listing people")
+
+	// Should be able to unwrap to get original
+	assert.Equal(t, original, wrapped.Unwrap())
+}
+
+func TestWrap_NilError(t *testing.T) {
+	wrapped := Wrap(nil, "any operation")
+	assert.Nil(t, wrapped)
+}
