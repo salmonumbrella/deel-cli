@@ -189,9 +189,8 @@ func (c *Client) SignContract(ctx context.Context, contractID string) (*Contract
 
 // TerminateContractParams are params for terminating a contract
 type TerminateContractParams struct {
-	Reason        string `json:"reason"`
-	EffectiveDate string `json:"effective_date,omitempty"`
-	Notes         string `json:"notes,omitempty"`
+	ReasonID       string `json:"termination_reason_id"`
+	CompletionDate string `json:"completionDate"`
 }
 
 // TerminateContract initiates contract termination

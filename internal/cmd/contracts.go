@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -330,14 +331,43 @@ var contractsTerminateCmd = &cobra.Command{
 		if terminateReasonFlag == "" {
 			f.PrintError("--reason is required")
 			f.PrintText("\nTo see available reasons, run:")
-			f.PrintText("  deel contracts termination-reasons " + args[0])
+			f.PrintText("  deel contracts termination-reasons")
 			return fmt.Errorf("reason is required")
 		}
 
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		// Look up reason ID from name
+		reasons, err := client.ListTerminationReasons(cmd.Context())
+		if err != nil {
+			f.PrintError("Failed to list termination reasons: %v", err)
+			return err
+		}
+
+		var reasonID string
+		reasonLower := strings.ToLower(terminateReasonFlag)
+		for _, r := range reasons {
+			if strings.ToLower(r.Name) == reasonLower || r.ID == terminateReasonFlag {
+				reasonID = r.ID
+				break
+			}
+		}
+		if reasonID == "" {
+			f.PrintError("Unknown termination reason: %s", terminateReasonFlag)
+			f.PrintText("\nAvailable reasons:")
+			for _, r := range reasons {
+				f.PrintText("  • " + r.Name)
+			}
+			return fmt.Errorf("unknown reason")
+		}
+
 		params := api.TerminateContractParams{
-			Reason:        terminateReasonFlag,
-			EffectiveDate: terminateDateFlag,
-			Notes:         terminateNotesFlag,
+			ReasonID:       reasonID,
+			CompletionDate: terminateDateFlag,
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -351,12 +381,6 @@ var contractsTerminateCmd = &cobra.Command{
 				"Notes":         terminateNotesFlag,
 			},
 		}); ok {
-			return err
-		}
-
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
