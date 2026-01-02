@@ -91,9 +91,9 @@ var contractsListCmd = &cobra.Command{
 				f.PrintText("No contracts found.")
 				return
 			}
-			table := f.NewTable("ID", "TITLE", "WORKER", "TYPE", "STATUS")
+			table := f.NewTable("ID", "TITLE", "WORKER", "ENTITY", "TYPE", "STATUS")
 			for _, c := range allContracts {
-				table.AddRow(c.ID, c.Title, c.WorkerName, c.Type, c.Status)
+				table.AddRow(c.ID, c.Title, c.WorkerName, c.Entity, c.Type, c.Status)
 			}
 			table.Render()
 			if !contractsAllFlag && next != "" {
@@ -127,6 +127,7 @@ var contractsGetCmd = &cobra.Command{
 			f.PrintText("Status:       " + contract.Status)
 			f.PrintText("Worker:       " + contract.WorkerName)
 			f.PrintText("Email:        " + contract.WorkerEmail)
+			f.PrintText("Entity:       " + contract.Entity)
 			f.PrintText("Country:      " + contract.Country)
 			f.PrintText(fmt.Sprintf("Compensation: %.2f %s", contract.CompensationAmount, contract.Currency))
 			f.PrintText("Start Date:   " + contract.StartDate)
