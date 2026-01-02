@@ -9,16 +9,19 @@ import (
 )
 
 func TestRequestEORResignation(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/eor/contracts/eor-123/resignation-request", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "Personal reasons", body["reason"])
-		assert.Equal(t, "2024-04-01", body["effective_date"])
+	server := mockServerWithBody(t, "POST", "/rest/v2/eor/eor-123/terminations/", func(t *testing.T, body map[string]any) {
+		// Verify data wrapper
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY", data["reason"])
+		assert.Equal(t, true, data["is_employee_staying_with_deel"])
 	}, 201, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-456",
 			"contract_id":        "eor-123",
 			"type":               "resignation",
 			"status":             "pending",
-			"reason":             "Personal reasons",
+			"reason":             "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY",
 			"effective_date":     "2024-04-01",
 			"last_working_day":   "2024-03-31",
 			"notice_period_days": 30,
@@ -28,9 +31,9 @@ func TestRequestEORResignation(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(server)
-	result, err := client.RequestEORResignation(context.Background(), "eor-123", RequestResignationParams{
-		Reason:        "Personal reasons",
-		EffectiveDate: "2024-04-01",
+	result, err := client.RequestEORResignation(context.Background(), "eor-123", EORResignationParams{
+		Reason:                "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY",
+		IsEmployeeStayingDeel: true,
 	})
 
 	require.NoError(t, err)
@@ -38,20 +41,20 @@ func TestRequestEORResignation(t *testing.T) {
 	assert.Equal(t, "eor-123", result.ContractID)
 	assert.Equal(t, "resignation", result.Type)
 	assert.Equal(t, "pending", result.Status)
-	assert.Equal(t, "Personal reasons", result.Reason)
+	assert.Equal(t, "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY", result.Reason)
 	assert.Equal(t, "2024-04-01", result.EffectiveDate)
 	assert.Equal(t, "2024-03-31", result.LastWorkingDay)
 	assert.Equal(t, 30, result.NoticePeriodDays)
 }
 
 func TestRequestEORResignation_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/resignation-request", 400, map[string]string{"error": "invalid effective date"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 400, map[string]string{"error": "invalid reason"})
 	defer server.Close()
 
 	client := testClient(server)
-	_, err := client.RequestEORResignation(context.Background(), "eor-123", RequestResignationParams{
-		Reason:        "Personal reasons",
-		EffectiveDate: "invalid-date",
+	_, err := client.RequestEORResignation(context.Background(), "eor-123", EORResignationParams{
+		Reason:                "INVALID_REASON",
+		IsEmployeeStayingDeel: false,
 	})
 
 	require.Error(t, err)
@@ -61,13 +64,13 @@ func TestRequestEORResignation_ValidationError(t *testing.T) {
 }
 
 func TestRequestEORResignation_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/invalid/resignation-request", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
-	_, err := client.RequestEORResignation(context.Background(), "invalid", RequestResignationParams{
-		Reason:        "Personal reasons",
-		EffectiveDate: "2024-04-01",
+	_, err := client.RequestEORResignation(context.Background(), "invalid", EORResignationParams{
+		Reason:                "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY",
+		IsEmployeeStayingDeel: false,
 	})
 
 	require.Error(t, err)
@@ -76,33 +79,28 @@ func TestRequestEORResignation_ContractNotFound(t *testing.T) {
 	assert.Equal(t, 404, apiErr.StatusCode)
 }
 
-func TestRequestEORResignation_MissingReason(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/resignation-request", 400, map[string]string{"error": "reason is required"})
-	defer server.Close()
-
-	client := testClient(server)
-	_, err := client.RequestEORResignation(context.Background(), "eor-123", RequestResignationParams{
-		EffectiveDate: "2024-04-01",
-	})
-
-	require.Error(t, err)
-	apiErr, ok := err.(*APIError)
-	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
-}
-
 func TestRequestEORTermination(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/eor/contracts/eor-123/termination-request", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "Performance issues", body["reason"])
-		assert.Equal(t, "2024-04-01", body["effective_date"])
-		assert.Equal(t, true, body["with_cause"])
+	server := mockServerWithBody(t, "POST", "/rest/v2/eor/eor-123/terminations/", func(t *testing.T, body map[string]any) {
+		// Verify data wrapper
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "PERFORMANCE", data["reason"])
+		assert.Equal(t, "Employee has not met performance expectations despite multiple improvement plans.", data["reason_detail"])
+		assert.Equal(t, true, data["is_employee_notified"])
+
+		// Check used_time_off
+		usedTimeOff, ok := data["used_time_off"].(map[string]any)
+		require.True(t, ok, "should have used_time_off")
+		assert.Equal(t, float64(5), usedTimeOff["paid_time_off"])
+		assert.Equal(t, float64(0), usedTimeOff["unpaid_time_off"])
+		assert.Equal(t, float64(2), usedTimeOff["sick_leave"])
 	}, 201, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-789",
 			"contract_id":        "eor-123",
 			"type":               "termination",
 			"status":             "pending",
-			"reason":             "Performance issues",
+			"reason":             "PERFORMANCE",
 			"effective_date":     "2024-04-01",
 			"last_working_day":   "2024-03-31",
 			"notice_period_days": 30,
@@ -112,10 +110,15 @@ func TestRequestEORTermination(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(server)
-	result, err := client.RequestEORTermination(context.Background(), "eor-123", RequestTerminationParams{
-		Reason:        "Performance issues",
-		EffectiveDate: "2024-04-01",
-		WithCause:     true,
+	result, err := client.RequestEORTermination(context.Background(), "eor-123", EORTerminationParams{
+		Reason:             "PERFORMANCE",
+		ReasonDetail:       "Employee has not met performance expectations despite multiple improvement plans.",
+		IsEmployeeNotified: true,
+		UsedTimeOff: EORUsedTimeOff{
+			PaidTimeOff:   5,
+			UnpaidTimeOff: 0,
+			SickLeave:     2,
+		},
 	})
 
 	require.NoError(t, err)
@@ -123,24 +126,25 @@ func TestRequestEORTermination(t *testing.T) {
 	assert.Equal(t, "eor-123", result.ContractID)
 	assert.Equal(t, "termination", result.Type)
 	assert.Equal(t, "pending", result.Status)
-	assert.Equal(t, "Performance issues", result.Reason)
+	assert.Equal(t, "PERFORMANCE", result.Reason)
 	assert.Equal(t, "2024-04-01", result.EffectiveDate)
 	assert.Equal(t, "2024-03-31", result.LastWorkingDay)
 	assert.Equal(t, 30, result.NoticePeriodDays)
 }
 
 func TestRequestEORTermination_WithSeverance(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/eor/contracts/eor-123/termination-request", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "Restructuring", body["reason"])
-		assert.Equal(t, "2024-04-01", body["effective_date"])
-		assert.Equal(t, false, body["with_cause"])
+	server := mockServerWithBody(t, "POST", "/rest/v2/eor/eor-123/terminations/", func(t *testing.T, body map[string]any) {
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "POSITION_ELIMINATION", data["reason"])
+		assert.Equal(t, "WEEKS", data["severance_type"])
 	}, 201, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-890",
 			"contract_id":        "eor-123",
 			"type":               "termination",
 			"status":             "pending",
-			"reason":             "Restructuring",
+			"reason":             "POSITION_ELIMINATION",
 			"effective_date":     "2024-04-01",
 			"last_working_day":   "2024-03-15",
 			"notice_period_days": 15,
@@ -152,29 +156,36 @@ func TestRequestEORTermination_WithSeverance(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(server)
-	result, err := client.RequestEORTermination(context.Background(), "eor-123", RequestTerminationParams{
-		Reason:        "Restructuring",
-		EffectiveDate: "2024-04-01",
-		WithCause:     false,
+	result, err := client.RequestEORTermination(context.Background(), "eor-123", EORTerminationParams{
+		Reason:             "POSITION_ELIMINATION",
+		ReasonDetail:       "The position has been eliminated due to company restructuring and budget reduction initiatives.",
+		IsEmployeeNotified: true,
+		SeveranceType:      "WEEKS",
+		UsedTimeOff: EORUsedTimeOff{
+			PaidTimeOff:   0,
+			UnpaidTimeOff: 0,
+			SickLeave:     0,
+		},
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, "term-890", result.ID)
 	assert.Equal(t, "termination", result.Type)
-	assert.Equal(t, "Restructuring", result.Reason)
+	assert.Equal(t, "POSITION_ELIMINATION", result.Reason)
 	assert.Equal(t, 25000.0, result.SeveranceAmount)
 	assert.Equal(t, "USD", result.Currency)
 }
 
 func TestRequestEORTermination_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/termination-request", 400, map[string]string{"error": "invalid effective date"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 400, map[string]string{"error": "reason_detail must be at least 100 characters"})
 	defer server.Close()
 
 	client := testClient(server)
-	_, err := client.RequestEORTermination(context.Background(), "eor-123", RequestTerminationParams{
-		Reason:        "Restructuring",
-		EffectiveDate: "invalid-date",
-		WithCause:     false,
+	_, err := client.RequestEORTermination(context.Background(), "eor-123", EORTerminationParams{
+		Reason:             "TERMINATION",
+		ReasonDetail:       "Too short",
+		IsEmployeeNotified: false,
+		UsedTimeOff:        EORUsedTimeOff{},
 	})
 
 	require.Error(t, err)
@@ -184,14 +195,15 @@ func TestRequestEORTermination_ValidationError(t *testing.T) {
 }
 
 func TestRequestEORTermination_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/invalid/termination-request", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
-	_, err := client.RequestEORTermination(context.Background(), "invalid", RequestTerminationParams{
-		Reason:        "Restructuring",
-		EffectiveDate: "2024-04-01",
-		WithCause:     false,
+	_, err := client.RequestEORTermination(context.Background(), "invalid", EORTerminationParams{
+		Reason:             "TERMINATION",
+		ReasonDetail:       "This is a detailed reason that meets the minimum character requirement of 100 characters for termination reasons.",
+		IsEmployeeNotified: false,
+		UsedTimeOff:        EORUsedTimeOff{},
 	})
 
 	require.Error(t, err)
@@ -201,14 +213,15 @@ func TestRequestEORTermination_ContractNotFound(t *testing.T) {
 }
 
 func TestRequestEORTermination_Unauthorized(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/termination-request", 403, map[string]string{"error": "insufficient permissions"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 403, map[string]string{"error": "insufficient permissions"})
 	defer server.Close()
 
 	client := testClient(server)
-	_, err := client.RequestEORTermination(context.Background(), "eor-123", RequestTerminationParams{
-		Reason:        "Performance issues",
-		EffectiveDate: "2024-04-01",
-		WithCause:     true,
+	_, err := client.RequestEORTermination(context.Background(), "eor-123", EORTerminationParams{
+		Reason:             "FOR_CAUSE",
+		ReasonDetail:       "This is a detailed reason that meets the minimum character requirement of 100 characters for termination reasons.",
+		IsEmployeeNotified: true,
+		UsedTimeOff:        EORUsedTimeOff{},
 	})
 
 	require.Error(t, err)
@@ -218,13 +231,13 @@ func TestRequestEORTermination_Unauthorized(t *testing.T) {
 }
 
 func TestGetEORTermination(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/termination", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 200, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-456",
 			"contract_id":        "eor-123",
 			"type":               "resignation",
 			"status":             "approved",
-			"reason":             "Personal reasons",
+			"reason":             "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY",
 			"effective_date":     "2024-04-01",
 			"last_working_day":   "2024-03-31",
 			"notice_period_days": 30,
@@ -241,20 +254,20 @@ func TestGetEORTermination(t *testing.T) {
 	assert.Equal(t, "eor-123", result.ContractID)
 	assert.Equal(t, "resignation", result.Type)
 	assert.Equal(t, "approved", result.Status)
-	assert.Equal(t, "Personal reasons", result.Reason)
+	assert.Equal(t, "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY", result.Reason)
 	assert.Equal(t, "2024-04-01", result.EffectiveDate)
 	assert.Equal(t, "2024-03-31", result.LastWorkingDay)
 	assert.Equal(t, 30, result.NoticePeriodDays)
 }
 
 func TestGetEORTermination_WithSeverance(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/termination", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 200, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-890",
 			"contract_id":        "eor-123",
 			"type":               "termination",
 			"status":             "processing",
-			"reason":             "Restructuring",
+			"reason":             "POSITION_ELIMINATION",
 			"effective_date":     "2024-04-01",
 			"last_working_day":   "2024-03-15",
 			"notice_period_days": 15,
@@ -277,7 +290,7 @@ func TestGetEORTermination_WithSeverance(t *testing.T) {
 }
 
 func TestGetEORTermination_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/invalid/termination", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "GET", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -290,7 +303,7 @@ func TestGetEORTermination_NotFound(t *testing.T) {
 }
 
 func TestGetEORTermination_NoTermination(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/termination", 404, map[string]string{"error": "no termination found for this contract"})
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 404, map[string]string{"error": "no termination found for this contract"})
 	defer server.Close()
 
 	client := testClient(server)

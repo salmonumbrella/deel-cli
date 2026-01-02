@@ -412,16 +412,32 @@ var eorAmendCmd = &cobra.Command{
 
 // Flags for terminate command
 var (
-	eorTerminateReasonFlag        string
-	eorTerminateEffectiveDateFlag string
-	eorTerminateWithCauseFlag     bool
+	eorTerminateReasonFlag       string
+	eorTerminateReasonDetailFlag string
+	eorTerminateNotifiedFlag     bool
+	eorTerminateSensitiveFlag    bool
+	eorTerminateSeveranceFlag    string
+	eorTerminatePTOFlag          int
+	eorTerminateUnpaidFlag       int
+	eorTerminateSickFlag         int
 )
 
 var eorTerminateCmd = &cobra.Command{
-	Use:   "terminate <id>",
+	Use:   "terminate <oid>",
 	Short: "Request termination for EOR contract",
-	Long:  "Request termination for an EOR contract. Requires --reason and --effective-date flags. Use --with-cause flag for termination with cause.",
-	Args:  cobra.ExactArgs(1),
+	Long: `Request termination for an EOR contract (employer-initiated).
+
+Requires --reason and --reason-detail flags.
+
+Available reasons:
+  TERMINATION, FOR_CAUSE, PERFORMANCE, PERFORMANCE_ISSUES, ATTENDANCE_ISSUES,
+  MISCONDUCT, FALSIFYING, HARASSMENT, VIOLENCE, STEALING, POSITION_ELIMINATION,
+  FORCE_REDUCTION, REORGANIZATION_DOWNSIZING_BUDGET_OR_REDUCTION_OF_WORKFORCE,
+  ROLE_BECAME_REDUNDANT_OR_ROLE_CHANGED, NON_RENEWAL, PROBATION, and more.
+
+Example:
+  deel eor terminate abc123 --reason TERMINATION --reason-detail "Position eliminated due to restructuring" --notified`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
@@ -429,9 +445,13 @@ var eorTerminateCmd = &cobra.Command{
 			f.PrintError("--reason flag is required")
 			return fmt.Errorf("--reason flag is required")
 		}
-		if eorTerminateEffectiveDateFlag == "" {
-			f.PrintError("--effective-date flag is required")
-			return fmt.Errorf("--effective-date flag is required")
+		if eorTerminateReasonDetailFlag == "" {
+			f.PrintError("--reason-detail flag is required (100-5000 chars)")
+			return fmt.Errorf("--reason-detail flag is required")
+		}
+		if len(eorTerminateReasonDetailFlag) < 100 {
+			f.PrintError("--reason-detail must be at least 100 characters")
+			return fmt.Errorf("--reason-detail must be at least 100 characters")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -439,10 +459,11 @@ var eorTerminateCmd = &cobra.Command{
 			Resource:    "EORContract",
 			Description: "Request EOR termination",
 			Details: map[string]string{
-				"ID":            args[0],
-				"Reason":        eorTerminateReasonFlag,
-				"EffectiveDate": eorTerminateEffectiveDateFlag,
-				"WithCause":     fmt.Sprintf("%t", eorTerminateWithCauseFlag),
+				"OID":              args[0],
+				"Reason":           eorTerminateReasonFlag,
+				"ReasonDetail":     eorTerminateReasonDetailFlag[:min(50, len(eorTerminateReasonDetailFlag))] + "...",
+				"EmployeeNotified": fmt.Sprintf("%t", eorTerminateNotifiedFlag),
+				"Sensitive":        fmt.Sprintf("%t", eorTerminateSensitiveFlag),
 			},
 		}); ok {
 			return err
@@ -454,10 +475,17 @@ var eorTerminateCmd = &cobra.Command{
 			return err
 		}
 
-		params := api.RequestTerminationParams{
-			Reason:        eorTerminateReasonFlag,
-			EffectiveDate: eorTerminateEffectiveDateFlag,
-			WithCause:     eorTerminateWithCauseFlag,
+		params := api.EORTerminationParams{
+			Reason:             eorTerminateReasonFlag,
+			ReasonDetail:       eorTerminateReasonDetailFlag,
+			IsEmployeeNotified: eorTerminateNotifiedFlag,
+			IsSensitive:        eorTerminateSensitiveFlag,
+			SeveranceType:      eorTerminateSeveranceFlag,
+			UsedTimeOff: api.EORUsedTimeOff{
+				PaidTimeOff:   eorTerminatePTOFlag,
+				UnpaidTimeOff: eorTerminateUnpaidFlag,
+				SickLeave:     eorTerminateSickFlag,
+			},
 		}
 
 		termination, err := client.RequestEORTermination(cmd.Context(), args[0], params)
@@ -715,9 +743,14 @@ func init() {
 	eorAmendCmd.Flags().StringVar(&eorAmendScopeFlag, "scope", "", "New scope (optional)")
 
 	// Terminate command flags
-	eorTerminateCmd.Flags().StringVar(&eorTerminateReasonFlag, "reason", "", "Termination reason (required)")
-	eorTerminateCmd.Flags().StringVar(&eorTerminateEffectiveDateFlag, "effective-date", "", "Effective date YYYY-MM-DD (required)")
-	eorTerminateCmd.Flags().BoolVar(&eorTerminateWithCauseFlag, "with-cause", false, "Termination with cause (optional)")
+	eorTerminateCmd.Flags().StringVar(&eorTerminateReasonFlag, "reason", "", "Termination reason enum (required): TERMINATION, FOR_CAUSE, PERFORMANCE, etc.")
+	eorTerminateCmd.Flags().StringVar(&eorTerminateReasonDetailFlag, "reason-detail", "", "Detailed reason description, 100-5000 chars (required)")
+	eorTerminateCmd.Flags().BoolVar(&eorTerminateNotifiedFlag, "notified", false, "Has the employee been notified")
+	eorTerminateCmd.Flags().BoolVar(&eorTerminateSensitiveFlag, "sensitive", false, "Mark as sensitive termination")
+	eorTerminateCmd.Flags().StringVar(&eorTerminateSeveranceFlag, "severance", "", "Severance type: DAYS, WEEKS, MONTHS, or CASH")
+	eorTerminateCmd.Flags().IntVar(&eorTerminatePTOFlag, "pto-days", 0, "Paid time off days used")
+	eorTerminateCmd.Flags().IntVar(&eorTerminateUnpaidFlag, "unpaid-days", 0, "Unpaid time off days used")
+	eorTerminateCmd.Flags().IntVar(&eorTerminateSickFlag, "sick-days", 0, "Sick leave days used")
 
 	// Workers create command flags
 	workersCreateCmd.Flags().StringVar(&workersCreateEmailFlag, "email", "", "Worker email (required)")

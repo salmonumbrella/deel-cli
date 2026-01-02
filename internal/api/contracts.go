@@ -187,16 +187,27 @@ func (c *Client) SignContract(ctx context.Context, contractID string) (*Contract
 	return &wrapper.Data, nil
 }
 
-// TerminateContractParams are params for terminating a contract
+// TerminateContractParams are params for terminating a contractor contract
 type TerminateContractParams struct {
-	ReasonID       string `json:"termination_reason_id"`
-	CompletionDate string `json:"completionDate"`
+	TerminateNow                 bool   `json:"terminate_now,omitempty"`
+	CompletionDate               string `json:"completion_date,omitempty"`                 // Required if terminate_now is false (YYYY-MM-DD)
+	TerminationType              string `json:"termination_type,omitempty"`                // RESIGNATION, TERMINATION, END_OF_CONTRACT
+	TerminationReasonID          string `json:"termination_reason_id,omitempty"`           // UUID from termination reasons endpoint
+	TerminationReasonDescription string `json:"termination_reason_description,omitempty"`  // Free text description
+	EligibleForRehire            string `json:"eligible_for_rehire,omitempty"`             // YES, NO, DONT_KNOW
+	Message                      string `json:"message,omitempty"`                         // Optional message (max 1000 chars)
 }
 
-// TerminateContract initiates contract termination
+// terminateContractRequest wraps params in data object as required by API
+type terminateContractRequest struct {
+	Data TerminateContractParams `json:"data"`
+}
+
+// TerminateContract initiates contract termination for a contractor
 func (c *Client) TerminateContract(ctx context.Context, contractID string, params TerminateContractParams) error {
 	path := fmt.Sprintf("/rest/v2/contracts/%s/terminations", escapePath(contractID))
-	_, err := c.Post(ctx, path, params)
+	req := terminateContractRequest{Data: params}
+	_, err := c.Post(ctx, path, req)
 	return err
 }
 

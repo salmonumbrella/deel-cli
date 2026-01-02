@@ -21,23 +21,44 @@ type EORTermination struct {
 	CreatedAt        string  `json:"created_at"`
 }
 
-// RequestResignationParams are parameters for requesting a resignation
-type RequestResignationParams struct {
-	Reason        string `json:"reason"`
-	EffectiveDate string `json:"effective_date"`
+// EORUsedTimeOff represents time off information for EOR termination
+type EORUsedTimeOff struct {
+	PaidTimeOff   int `json:"paid_time_off"`   // Days of paid time off used
+	UnpaidTimeOff int `json:"unpaid_time_off"` // Days of unpaid time off used
+	SickLeave     int `json:"sick_leave"`      // Days of sick leave used
 }
 
-// RequestTerminationParams are parameters for requesting a termination
-type RequestTerminationParams struct {
-	Reason        string `json:"reason"`
-	EffectiveDate string `json:"effective_date"`
-	WithCause     bool   `json:"with_cause"`
+// EORResignationParams are parameters for requesting an EOR resignation (employee-initiated)
+type EORResignationParams struct {
+	Reason                string `json:"reason"`                   // Enum: EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY, etc.
+	IsEmployeeStayingDeel bool   `json:"is_employee_staying_with_deel"`
 }
 
-// RequestEORResignation creates a resignation request for an EOR contract
-func (c *Client) RequestEORResignation(ctx context.Context, contractID string, params RequestResignationParams) (*EORTermination, error) {
-	path := fmt.Sprintf("/rest/v2/eor/contracts/%s/resignation-request", escapePath(contractID))
-	resp, err := c.Post(ctx, path, params)
+// EORTerminationParams are parameters for requesting an EOR termination (employer-initiated)
+type EORTerminationParams struct {
+	Reason             string         `json:"reason"`               // Enum: TERMINATION, FOR_CAUSE, PERFORMANCE, etc.
+	ReasonDetail       string         `json:"reason_detail"`        // Required, 100-5000 chars
+	IsEmployeeNotified bool           `json:"is_employee_notified"` // Has the employee been notified
+	UsedTimeOff        EORUsedTimeOff `json:"used_time_off"`        // Required time off information
+	IsSensitive        bool           `json:"is_sensitive,omitempty"`
+	SeveranceType      string         `json:"severance_type,omitempty"` // DAYS, WEEKS, MONTHS, CASH
+}
+
+// eorResignationRequest wraps params in data object as required by API
+type eorResignationRequest struct {
+	Data EORResignationParams `json:"data"`
+}
+
+// eorTerminationRequest wraps params in data object as required by API
+type eorTerminationRequest struct {
+	Data EORTerminationParams `json:"data"`
+}
+
+// RequestEORResignation creates a resignation request for an EOR contract (employee-initiated)
+func (c *Client) RequestEORResignation(ctx context.Context, contractOID string, params EORResignationParams) (*EORTermination, error) {
+	path := fmt.Sprintf("/rest/v2/eor/%s/terminations/", escapePath(contractOID))
+	req := eorResignationRequest{Data: params}
+	resp, err := c.Post(ctx, path, req)
 	if err != nil {
 		return nil, err
 	}
@@ -51,10 +72,11 @@ func (c *Client) RequestEORResignation(ctx context.Context, contractID string, p
 	return &wrapper.Data, nil
 }
 
-// RequestEORTermination creates a termination request for an EOR contract
-func (c *Client) RequestEORTermination(ctx context.Context, contractID string, params RequestTerminationParams) (*EORTermination, error) {
-	path := fmt.Sprintf("/rest/v2/eor/contracts/%s/termination-request", escapePath(contractID))
-	resp, err := c.Post(ctx, path, params)
+// RequestEORTermination creates a termination request for an EOR contract (employer-initiated)
+func (c *Client) RequestEORTermination(ctx context.Context, contractOID string, params EORTerminationParams) (*EORTermination, error) {
+	path := fmt.Sprintf("/rest/v2/eor/%s/terminations/", escapePath(contractOID))
+	req := eorTerminationRequest{Data: params}
+	resp, err := c.Post(ctx, path, req)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +91,8 @@ func (c *Client) RequestEORTermination(ctx context.Context, contractID string, p
 }
 
 // GetEORTermination retrieves the termination details for an EOR contract
-func (c *Client) GetEORTermination(ctx context.Context, contractID string) (*EORTermination, error) {
-	path := fmt.Sprintf("/rest/v2/eor/contracts/%s/termination", escapePath(contractID))
+func (c *Client) GetEORTermination(ctx context.Context, contractOID string) (*EORTermination, error) {
+	path := fmt.Sprintf("/rest/v2/eor/%s/terminations/", escapePath(contractOID))
 	resp, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err

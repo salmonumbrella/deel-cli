@@ -92,8 +92,13 @@ func TestSignContract(t *testing.T) {
 }
 
 func TestTerminateContract(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1/terminations", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "project_completed", body["reason"])
+	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1", func(t *testing.T, body map[string]any) {
+		// Verify the data wrapper
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, true, data["terminate_now"])
+		assert.Equal(t, "TERMINATION", data["termination_type"])
+		assert.Equal(t, "reason-123", data["termination_reason_id"])
 	}, 200, map[string]any{
 		"data": map[string]any{
 			"id":     "term-1",
@@ -104,8 +109,9 @@ func TestTerminateContract(t *testing.T) {
 
 	client := testClient(server)
 	err := client.TerminateContract(context.Background(), "c1", TerminateContractParams{
-		Reason:        "project_completed",
-		EffectiveDate: "2025-01-15",
+		TerminateNow:        true,
+		TerminationType:     "TERMINATION",
+		TerminationReasonID: "reason-123",
 	})
 
 	require.NoError(t, err)
