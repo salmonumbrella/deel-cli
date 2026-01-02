@@ -164,7 +164,9 @@ func HandleError(f *outfmt.Formatter, err error, operation string) error {
 	climerrors.FormatError(&buf, cliErr)
 	f.PrintError("%s", strings.TrimSpace(buf.String()))
 
-	return cliErr
+	// Return a simple error with friendly message so cobra doesn't print raw JSON
+	friendlyMsg := climerrors.FriendlyMessage(err)
+	return fmt.Errorf("failed %s: %s", operation, friendlyMsg)
 }
 
 // getClient creates an API client using the configured credentials

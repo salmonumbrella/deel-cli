@@ -7,20 +7,31 @@ import (
 	"net/http"
 )
 
+// Messager interface for errors that have a raw message
+type Messager interface {
+	APIMessage() string
+}
+
 // FriendlyMessage extracts a clean message from any error
 func FriendlyMessage(err error) string {
-	if sc, ok := err.(StatusCoder); ok {
-		msg := err.Error()
+	// Try to get raw message from API error
+	if m, ok := err.(Messager); ok {
+		msg := m.APIMessage()
 		// Try to parse JSON error message
 		if parsed := parseAPIMessage(msg); parsed != "" {
 			return parsed
 		}
-		// If message is empty or just the raw JSON, use status text
-		if msg == "" || (len(msg) > 0 && msg[0] == '{') {
-			return http.StatusText(sc.APIStatusCode())
+		// If message is not JSON, return as-is
+		if msg != "" && msg[0] != '{' {
+			return msg
 		}
-		return msg
 	}
+
+	// Fall back to status text for API errors
+	if sc, ok := err.(StatusCoder); ok {
+		return http.StatusText(sc.APIStatusCode())
+	}
+
 	return err.Error()
 }
 

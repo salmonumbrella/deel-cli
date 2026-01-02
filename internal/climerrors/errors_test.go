@@ -53,6 +53,10 @@ func (e *MockAPIError) APIStatusCode() int {
 	return e.StatusCode
 }
 
+func (e *MockAPIError) APIMessage() string {
+	return e.Message
+}
+
 func TestSuggestionsFor(t *testing.T) {
 	tests := []struct {
 		category  Category

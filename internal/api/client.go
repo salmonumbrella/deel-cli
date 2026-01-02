@@ -305,3 +305,8 @@ func (e *APIError) Error() string {
 func (e *APIError) APIStatusCode() int {
 	return e.StatusCode
 }
+
+// APIMessage returns the raw error message (implements climerrors.Messager)
+func (e *APIError) APIMessage() string {
+	return e.Message
+}
