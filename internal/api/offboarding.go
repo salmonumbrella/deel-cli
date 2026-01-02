@@ -28,20 +28,21 @@ type TerminationDetails struct {
 	FinalPayDate  string `json:"final_pay_date,omitempty"`
 }
 
-// ListOffboarding returns all offboarding records
-func (c *Client) ListOffboarding(ctx context.Context) ([]Offboarding, error) {
-	resp, err := c.Get(ctx, "/rest/v2/offboarding")
+// GetOffboardingTracker returns offboarding tracker details by ID
+func (c *Client) GetOffboardingTracker(ctx context.Context, trackerID string) (*Offboarding, error) {
+	path := fmt.Sprintf("/rest/v2/offboarding/tracker/%s", escapePath(trackerID))
+	resp, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 
 	var wrapper struct {
-		Data []Offboarding `json:"data"`
+		Data Offboarding `json:"data"`
 	}
 	if err := json.Unmarshal(resp, &wrapper); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	return wrapper.Data, nil
+	return &wrapper.Data, nil
 }
 
 // GetTerminationDetails returns termination details by ID

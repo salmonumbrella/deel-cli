@@ -10,9 +10,10 @@ var offboardingCmd = &cobra.Command{
 	Long:  "View offboarding records and termination details.",
 }
 
-var offboardingListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all offboarding records",
+var offboardingGetCmd = &cobra.Command{
+	Use:   "get <tracker-id>",
+	Short: "Get offboarding tracker details",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 		client, err := getClient()
@@ -21,23 +22,21 @@ var offboardingListCmd = &cobra.Command{
 			return err
 		}
 
-		records, err := client.ListOffboarding(cmd.Context())
+		record, err := client.GetOffboardingTracker(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to list offboarding: %v", err)
+			f.PrintError("Failed to get offboarding: %v", err)
 			return err
 		}
 
 		return f.Output(func() {
-			if len(records) == 0 {
-				f.PrintText("No offboarding records found.")
-				return
-			}
-			table := f.NewTable("ID", "WORKER", "TYPE", "STATUS", "EFFECTIVE DATE", "CREATED")
-			for _, r := range records {
-				table.AddRow(r.ID, r.WorkerName, r.Type, r.Status, r.EffectiveDate, r.CreatedAt)
-			}
-			table.Render()
-		}, records)
+			f.PrintText("ID:             " + record.ID)
+			f.PrintText("Contract ID:    " + record.ContractID)
+			f.PrintText("Worker:         " + record.WorkerName)
+			f.PrintText("Type:           " + record.Type)
+			f.PrintText("Status:         " + record.Status)
+			f.PrintText("Effective Date: " + record.EffectiveDate)
+			f.PrintText("Created:        " + record.CreatedAt)
+		}, record)
 	},
 }
 
@@ -75,6 +74,6 @@ var terminationsGetCmd = &cobra.Command{
 
 func init() {
 	// Add subcommands
-	offboardingCmd.AddCommand(offboardingListCmd)
+	offboardingCmd.AddCommand(offboardingGetCmd)
 	offboardingCmd.AddCommand(terminationsGetCmd)
 }

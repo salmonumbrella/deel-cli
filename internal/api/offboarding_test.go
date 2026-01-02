@@ -8,42 +8,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListOffboarding(t *testing.T) {
+func TestGetOffboardingTracker(t *testing.T) {
 	response := map[string]any{
-		"data": []map[string]any{
-			{
-				"id":             "off1",
-				"contract_id":    "ct123",
-				"worker_name":    "John Doe",
-				"status":         "pending",
-				"type":           "voluntary",
-				"effective_date": "2024-12-31",
-				"created_at":     "2024-12-01T10:00:00Z",
-			},
-			{
-				"id":             "off2",
-				"contract_id":    "ct456",
-				"worker_name":    "Jane Smith",
-				"status":         "completed",
-				"type":           "involuntary",
-				"effective_date": "2024-11-30",
-				"created_at":     "2024-11-01T10:00:00Z",
-			},
+		"data": map[string]any{
+			"id":             "off1",
+			"contract_id":    "ct123",
+			"worker_name":    "John Doe",
+			"status":         "pending",
+			"type":           "voluntary",
+			"effective_date": "2024-12-31",
+			"created_at":     "2024-12-01T10:00:00Z",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/offboarding", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/offboarding/tracker/off1", 200, response)
 	defer server.Close()
 
 	client := testClient(server)
-	result, err := client.ListOffboarding(context.Background())
+	result, err := client.GetOffboardingTracker(context.Background(), "off1")
 
 	require.NoError(t, err)
-	assert.Len(t, result, 2)
-	assert.Equal(t, "off1", result[0].ID)
-	assert.Equal(t, "John Doe", result[0].WorkerName)
-	assert.Equal(t, "pending", result[0].Status)
-	assert.Equal(t, "off2", result[1].ID)
-	assert.Equal(t, "completed", result[1].Status)
+	assert.Equal(t, "off1", result.ID)
+	assert.Equal(t, "ct123", result.ContractID)
+	assert.Equal(t, "John Doe", result.WorkerName)
+	assert.Equal(t, "pending", result.Status)
+	assert.Equal(t, "voluntary", result.Type)
 }
 
 func TestGetTerminationDetails(t *testing.T) {

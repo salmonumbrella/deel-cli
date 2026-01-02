@@ -48,7 +48,7 @@ func (c *Client) ListOnboardingEmployees(ctx context.Context, params OnboardingL
 		q.Set("cursor", params.Cursor)
 	}
 
-	path := "/rest/v2/onboarding"
+	path := "/rest/v2/onboarding/tracker"
 	if len(q) > 0 {
 		path += "?" + q.Encode()
 	}
@@ -78,9 +78,9 @@ type OnboardingDetails struct {
 	EstimatedEnd   string   `json:"estimated_end_date"`
 }
 
-// GetOnboardingDetails returns onboarding details for an employee
-func (c *Client) GetOnboardingDetails(ctx context.Context, employeeID string) (*OnboardingDetails, error) {
-	path := fmt.Sprintf("/rest/v2/onboarding/%s", escapePath(employeeID))
+// GetOnboardingDetails returns onboarding details for an employee by HRIS profile ID
+func (c *Client) GetOnboardingDetails(ctx context.Context, hrisProfileID string) (*OnboardingDetails, error) {
+	path := fmt.Sprintf("/rest/v2/onboarding/tracker/hris_profile/%s", escapePath(hrisProfileID))
 	resp, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err
