@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // Currency represents a currency code and details
@@ -49,7 +50,7 @@ func (s *SeniorityLevel) UnmarshalJSON(data []byte) error {
 	case string:
 		s.ID = v
 	case float64:
-		s.ID = fmt.Sprintf("%.0f", v)
+		s.ID = strconv.FormatFloat(v, 'f', 0, 64)
 	case nil:
 		s.ID = ""
 	default:
