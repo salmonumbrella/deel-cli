@@ -126,43 +126,42 @@ func TestGetPersonPersonal_EmptyData(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestGetPersonPersonal_CallsCorrectEndpoint(t *testing.T) {
-	// mockServer validates that the correct method and path are called
-	response := map[string]any{
-		"data": map[string]any{
-			"id":         "personal-123",
-			"worker_id":  12345,
-			"first_name": "John",
-			"last_name":  "Doe",
-			"email":      "john@example.com",
+func TestPeopleEndpoints_CallCorrectPaths(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		call   func(ctx context.Context, client *Client) error
+	}{
+		{
+			name:   "GetPerson calls regular endpoint",
+			method: "GET",
+			path:   "/rest/v2/people/hris-123",
+			call:   func(ctx context.Context, c *Client) error { _, err := c.GetPerson(ctx, "hris-123"); return err },
+		},
+		{
+			name:   "GetPersonPersonal calls personal endpoint",
+			method: "GET",
+			path:   "/rest/v2/people/hris-123/personal",
+			call:   func(ctx context.Context, c *Client) error { _, err := c.GetPersonPersonal(ctx, "hris-123"); return err },
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", http.StatusOK, response)
-	defer server.Close()
 
-	client := testClient(server)
-	_, err := client.GetPersonPersonal(context.Background(), "hris-123")
-	require.NoError(t, err)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response := map[string]any{
+				"data": map[string]any{
+					"hris_profile_id": "hris-123",
+					"first_name":      "John",
+					"last_name":       "Doe",
+				},
+			}
+			server := mockServer(t, tt.method, tt.path, http.StatusOK, response)
+			defer server.Close()
 
-func TestGetPerson_CallsCorrectEndpoint(t *testing.T) {
-	// mockServer validates that the correct method and path are called
-	response := map[string]any{
-		"data": map[string]any{
-			"hris_profile_id": "hris-123",
-			"first_name":      "John",
-			"last_name":       "Doe",
-			"email":           "john@example.com",
-			"job_title":       "Engineer",
-			"status":          "active",
-			"country":         "US",
-			"start_date":      "2024-01-01",
-		},
+			client := testClient(server)
+			err := tt.call(context.Background(), client)
+			require.NoError(t, err)
+		})
 	}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-123", http.StatusOK, response)
-	defer server.Close()
-
-	client := testClient(server)
-	_, err := client.GetPerson(context.Background(), "hris-123")
-	require.NoError(t, err)
 }
