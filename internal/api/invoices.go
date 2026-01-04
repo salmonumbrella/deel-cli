@@ -92,13 +92,13 @@ func (c *Client) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, er
 
 // InvoiceAdjustment represents an invoice adjustment
 type InvoiceAdjustment struct {
-	ID          string  `json:"id"`
-	Type        string  `json:"type"`
-	Amount      float64 `json:"amount"`
-	Currency    string  `json:"currency"`
-	Description string  `json:"description"`
-	Status      string  `json:"status"`
-	CreatedAt   string  `json:"created_at"`
+	ID          string      `json:"id"`
+	Type        string      `json:"type"`
+	Amount      FlexFloat64 `json:"amount"`
+	Currency    string      `json:"currency"`
+	Description string      `json:"description"`
+	Status      string      `json:"status"`
+	CreatedAt   string      `json:"created_at"`
 }
 
 // ListInvoiceAdjustments returns adjustments for an invoice
@@ -118,11 +118,117 @@ func (c *Client) ListInvoiceAdjustments(ctx context.Context, invoiceID string) (
 	return wrapper.Data, nil
 }
 
+// ListAllInvoiceAdjustmentsParams are params for listing all invoice adjustments
+type ListAllInvoiceAdjustmentsParams struct {
+	Types      []string // Filter by types (bonus, expense, deduction, etc.)
+	ContractID string   // Filter by contract
+	Status     string   // Filter by status (pending, approved, declined)
+}
+
+// AllInvoiceAdjustment represents an invoice adjustment from the list-all endpoint
+type AllInvoiceAdjustment struct {
+	ID                    string      `json:"id"`
+	Type                  string      `json:"type"`
+	Amount                FlexFloat64 `json:"amount"`
+	Currency              string      `json:"currency"`
+	Description           string      `json:"description"`
+	Status                string      `json:"status"`
+	DateSubmitted         string      `json:"date_submitted"`
+	ContractID            string      `json:"contract_id"`
+	CreatedAt             string      `json:"created_at"`
+	Title                 string      `json:"title,omitempty"`
+	AdjustmentCategoryID  string      `json:"adjustment_category_id,omitempty"`
+	DateOfAdjustment      string      `json:"date_of_adjustment,omitempty"`
+	File                  *string     `json:"file,omitempty"`
+	ActualStartCycleDate  string      `json:"actual_start_cycle_date,omitempty"`
+	ActualEndCycleDate    string      `json:"actual_end_cycle_date,omitempty"`
+}
+
+// ListAllInvoiceAdjustments returns all invoice adjustments across all invoices
+func (c *Client) ListAllInvoiceAdjustments(ctx context.Context, params ListAllInvoiceAdjustmentsParams) ([]AllInvoiceAdjustment, error) {
+	q := url.Values{}
+	for _, t := range params.Types {
+		q.Add("types[]", t)
+	}
+	if params.ContractID != "" {
+		q.Set("contract_id", params.ContractID)
+	}
+	if params.Status != "" {
+		q.Set("status", params.Status)
+	}
+
+	path := "/rest/v2/invoice-adjustments"
+	if len(q) > 0 {
+		path += "?" + q.Encode()
+	}
+
+	resp, err := c.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data []AllInvoiceAdjustment `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return wrapper.Data, nil
+}
+
 // CreateInvoiceAdjustmentParams are params for creating an adjustment
 type CreateInvoiceAdjustmentParams struct {
 	Type        string  `json:"type"`
 	Amount      float64 `json:"amount"`
 	Description string  `json:"description,omitempty"`
+}
+
+// ReviewInvoiceAdjustmentParams are params for approving/declining an adjustment
+type ReviewInvoiceAdjustmentParams struct {
+	Status string `json:"status"` // "approved" or "declined"
+	Reason string `json:"reason,omitempty"`
+}
+
+// ReviewInvoiceAdjustment approves or declines an invoice adjustment
+func (c *Client) ReviewInvoiceAdjustment(ctx context.Context, adjustmentID string, params ReviewInvoiceAdjustmentParams) error {
+	path := fmt.Sprintf("/rest/v2/invoice-adjustments/%s/reviews", escapePath(adjustmentID))
+
+	body := map[string]any{
+		"data": params,
+	}
+
+	_, err := c.Post(ctx, path, body)
+	return err
+}
+
+// ReviewInvoiceAdjustmentsBatch approves or declines multiple invoice adjustments
+func (c *Client) ReviewInvoiceAdjustmentsBatch(ctx context.Context, ids []string, status string, reason string) error {
+	// Try multiple endpoint formats
+	endpoints := []string{
+		"/rest/v2/invoice-adjustments/many/reviews",
+		"/rest/v2/hourly_reports/review_batch",
+	}
+
+	bodyFormats := []map[string]any{
+		// Format 1: with data wrapper
+		{"data": map[string]any{"ids": ids, "status": status, "reason": reason}},
+		// Format 2: without data wrapper
+		{"ids": ids, "status": status, "reason": reason},
+		// Format 3: with items array
+		{"items": ids, "status": status, "reason": reason},
+	}
+
+	var lastErr error
+	for _, path := range endpoints {
+		for _, body := range bodyFormats {
+			_, err := c.Post(ctx, path, body)
+			if err == nil {
+				return nil
+			}
+			lastErr = err
+		}
+	}
+	return lastErr
 }
 
 // CreateInvoiceAdjustment creates an adjustment on an invoice

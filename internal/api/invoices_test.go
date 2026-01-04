@@ -122,3 +122,148 @@ func TestListDeelInvoices_WithParams(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Data, 1)
 }
+
+func TestListInvoiceAdjustments(t *testing.T) {
+	// Test with amount as string (actual API behavior)
+	response := map[string]any{
+		"data": []map[string]any{
+			{
+				"id":          "adj-1",
+				"type":        "expense",
+				"amount":      "75.50", // API returns string
+				"currency":    "USD",
+				"description": "Office supplies",
+				"status":      "pending",
+				"created_at":  "2025-12-26T10:00:00.000Z",
+			},
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoices/inv123/adjustments", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListInvoiceAdjustments(context.Background(), "inv123")
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "adj-1", result[0].ID)
+	assert.Equal(t, 75.50, float64(result[0].Amount))
+	assert.Equal(t, "USD", result[0].Currency)
+}
+
+func TestListAllInvoiceAdjustments(t *testing.T) {
+	// Test with amount as string (actual API behavior)
+	response := map[string]any{
+		"data": []map[string]any{
+			{
+				"id":                      "db70024b-f535-481a-9bd9-a7ed8089f746",
+				"type":                    "expense",
+				"amount":                  "80.00", // API returns string
+				"currency":                "USD",
+				"description":             "I bought a keyboard",
+				"status":                  "processing",
+				"date_submitted":          "2025-12-26T16:50:04.578Z",
+				"contract_id":             "c123",
+				"created_at":              "2025-12-26T16:50:04.578Z",
+				"title":                   "Keyboard",
+				"adjustment_category_id":  "cat123",
+				"date_of_adjustment":      "2024-01-24T00:00:00.000Z",
+				"file":                    nil,
+				"actual_start_cycle_date": "2025-08-01T00:00:00.000Z",
+				"actual_end_cycle_date":   "2025-08-31T00:00:00.000Z",
+			},
+			{
+				"id":             "adj-2",
+				"type":           "bonus",
+				"amount":         "150.50", // API returns string
+				"currency":       "EUR",
+				"description":    "Performance bonus",
+				"status":         "approved",
+				"date_submitted": "2025-12-20T10:00:00.000Z",
+				"contract_id":    "c456",
+				"created_at":     "2025-12-20T10:00:00.000Z",
+			},
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListAllInvoiceAdjustments(context.Background(), ListAllInvoiceAdjustmentsParams{})
+
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+
+	// First adjustment
+	assert.Equal(t, "db70024b-f535-481a-9bd9-a7ed8089f746", result[0].ID)
+	assert.Equal(t, "expense", result[0].Type)
+	assert.Equal(t, 80.00, float64(result[0].Amount))
+	assert.Equal(t, "USD", result[0].Currency)
+	assert.Equal(t, "I bought a keyboard", result[0].Description)
+	assert.Equal(t, "processing", result[0].Status)
+	assert.Equal(t, "2025-12-26T16:50:04.578Z", result[0].DateSubmitted)
+	assert.Equal(t, "c123", result[0].ContractID)
+	assert.Equal(t, "Keyboard", result[0].Title)
+
+	// Second adjustment
+	assert.Equal(t, "adj-2", result[1].ID)
+	assert.Equal(t, "bonus", result[1].Type)
+	assert.Equal(t, 150.50, float64(result[1].Amount))
+	assert.Equal(t, "EUR", result[1].Currency)
+	assert.Equal(t, "approved", result[1].Status)
+}
+
+func TestListAllInvoiceAdjustments_WithNumericAmount(t *testing.T) {
+	// Test with amount as number (backward compatibility)
+	response := map[string]any{
+		"data": []map[string]any{
+			{
+				"id":       "adj-1",
+				"type":     "expense",
+				"amount":   100.25, // Some APIs might return as number
+				"currency": "USD",
+				"status":   "pending",
+			},
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListAllInvoiceAdjustments(context.Background(), ListAllInvoiceAdjustmentsParams{})
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, 100.25, float64(result[0].Amount))
+}
+
+func TestListAllInvoiceAdjustments_WithFilters(t *testing.T) {
+	response := map[string]any{
+		"data": []map[string]any{
+			{
+				"id":          "adj-1",
+				"type":        "expense",
+				"amount":      "50.00",
+				"status":      "pending",
+				"contract_id": "c123",
+			},
+		},
+	}
+	server := mockServerWithQuery(t, "/rest/v2/invoice-adjustments", func(t *testing.T, query map[string]string) {
+		assert.Equal(t, "expense", query["types[]"])
+		assert.Equal(t, "c123", query["contract_id"])
+		assert.Equal(t, "pending", query["status"])
+	}, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListAllInvoiceAdjustments(context.Background(), ListAllInvoiceAdjustmentsParams{
+		Types:      []string{"expense"},
+		ContractID: "c123",
+		Status:     "pending",
+	})
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "adj-1", result[0].ID)
+}
