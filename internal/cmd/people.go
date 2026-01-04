@@ -144,7 +144,7 @@ var peopleGetCmd = &cobra.Command{
 				}
 				firstName, _ := data["first_name"].(string)
 				lastName, _ := data["last_name"].(string)
-				f.PrintText("Name:       " + firstName + " " + lastName)
+				f.PrintText("Name:       " + strings.TrimSpace(firstName+" "+lastName))
 				if email, ok := data["email"].(string); ok {
 					f.PrintText("Email:      " + email)
 				}
