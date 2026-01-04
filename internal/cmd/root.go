@@ -84,7 +84,7 @@ Get started:
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Account to use (overrides DEEL_ACCOUNT)")
-	rootCmd.PersistentFlags().StringVar(&outputFlag, "output", "", "Output format: text or json (default: text)")
+	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "Output format: text or json (default: text)")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "", "Color mode: auto, always, or never (default: auto)")
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug output")
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")

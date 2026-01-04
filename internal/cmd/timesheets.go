@@ -13,7 +13,14 @@ import (
 var timesheetsCmd = &cobra.Command{
 	Use:   "timesheets",
 	Short: "Manage timesheets",
-	Long:  "List, view, and manage timesheets and timesheet entries in your Deel organization.",
+	Long: `Manage timesheets for hourly contractors to track hours worked.
+
+Use this for:
+  - Viewing/approving hours logged by hourly contractors
+  - Creating/updating timesheet entries
+  - Managing hourly presets
+
+Note: For expenses, bonuses, or deductions, use 'deel invoices adjustments' instead.`,
 }
 
 // Flags for list command

@@ -126,8 +126,18 @@ var (
 
 var invoicesAdjustmentsCmd = &cobra.Command{
 	Use:   "adjustments [invoice-id]",
-	Short: "List invoice adjustments",
-	Long: `List invoice adjustments. If invoice-id is provided, lists adjustments for that invoice.
+	Short: "Manage invoice adjustments (expenses, bonuses, deductions)",
+	Long: `Manage invoice adjustments for contractor payments.
+
+Use this for:
+  - Expenses (reimbursements, travel costs)
+  - Bonuses and commissions
+  - Deductions
+  - Overtime and time-off adjustments
+
+Note: For hourly contractor time tracking, use 'deel timesheets' instead.
+
+If invoice-id is provided, lists adjustments for that invoice.
 Otherwise lists all invoice adjustments across all contracts.
 
 Filter options (when listing all):
