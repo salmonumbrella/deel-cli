@@ -117,23 +117,63 @@ var invoicesGetCmd = &cobra.Command{
 	},
 }
 
+// Flags for invoice adjustments list
+var (
+	invoiceAdjustmentsTypeFlag     string
+	invoiceAdjustmentsContractFlag string
+	invoiceAdjustmentsStatusFlag   string
+)
+
 var invoicesAdjustmentsCmd = &cobra.Command{
 	Use:   "adjustments [invoice-id]",
 	Short: "List invoice adjustments",
-	Args:  cobra.MaximumNArgs(1),
+	Long: `List invoice adjustments. If invoice-id is provided, lists adjustments for that invoice.
+Otherwise lists all invoice adjustments across all contracts.
+
+Filter options (when listing all):
+  --type     Filter by type (bonus, expense, deduction, commission, overtime, time-off, vat)
+  --contract Filter by contract ID
+  --status   Filter by status (pending, approved, declined)`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-		if len(args) == 0 {
-			f.PrintError("invoice-id is required")
-			return fmt.Errorf("invoice-id is required")
-		}
 
 		client, err := getClient()
 		if err != nil {
 			return HandleError(f, err, "listing adjustments")
 		}
 
-		adjustments, err := client.ListInvoiceAdjustments(cmd.Context(), args[0])
+		// If invoice-id provided, list adjustments for that invoice
+		if len(args) == 1 {
+			adjustments, err := client.ListInvoiceAdjustments(cmd.Context(), args[0])
+			if err != nil {
+				return HandleError(f, err, "listing adjustments")
+			}
+
+			return f.Output(func() {
+				if len(adjustments) == 0 {
+					f.PrintText("No adjustments found.")
+					return
+				}
+				table := f.NewTable("ID", "TYPE", "AMOUNT", "STATUS", "CREATED")
+				for _, a := range adjustments {
+					amount := fmt.Sprintf("%.2f %s", a.Amount, a.Currency)
+					table.AddRow(a.ID, a.Type, amount, a.Status, a.CreatedAt)
+				}
+				table.Render()
+			}, adjustments)
+		}
+
+		// List all adjustments
+		params := api.ListAllInvoiceAdjustmentsParams{
+			ContractID: invoiceAdjustmentsContractFlag,
+			Status:     invoiceAdjustmentsStatusFlag,
+		}
+		if invoiceAdjustmentsTypeFlag != "" {
+			params.Types = []string{invoiceAdjustmentsTypeFlag}
+		}
+
+		adjustments, err := client.ListAllInvoiceAdjustments(cmd.Context(), params)
 		if err != nil {
 			return HandleError(f, err, "listing adjustments")
 		}
@@ -143,10 +183,10 @@ var invoicesAdjustmentsCmd = &cobra.Command{
 				f.PrintText("No adjustments found.")
 				return
 			}
-			table := f.NewTable("ID", "TYPE", "AMOUNT", "STATUS", "CREATED")
+			table := f.NewTable("ID", "TYPE", "AMOUNT", "STATUS", "CONTRACT", "SUBMITTED")
 			for _, a := range adjustments {
 				amount := fmt.Sprintf("%.2f %s", a.Amount, a.Currency)
-				table.AddRow(a.ID, a.Type, amount, a.Status, a.CreatedAt)
+				table.AddRow(a.ID, a.Type, amount, a.Status, a.ContractID, a.DateSubmitted)
 			}
 			table.Render()
 		}, adjustments)
@@ -159,6 +199,163 @@ var (
 	invoiceAdjustmentAmountFlag      float64
 	invoiceAdjustmentDescriptionFlag string
 )
+
+// Flags for invoice adjustment review
+var invoiceAdjustmentReasonFlag string
+
+var invoicesAdjustmentsGetCmd = &cobra.Command{
+	Use:   "get <adjustment-id>",
+	Short: "Get invoice adjustment details",
+	Long:  "Get full details for a single invoice adjustment by ID.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "getting adjustment")
+		}
+
+		adjustment, err := client.GetInvoiceAdjustment(cmd.Context(), args[0])
+		if err != nil {
+			return HandleError(f, err, "getting adjustment")
+		}
+
+		return f.Output(func() {
+			f.PrintText("ID:          " + adjustment.ID)
+			f.PrintText("Type:        " + adjustment.Type)
+			f.PrintText("Status:      " + adjustment.Status)
+			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", float64(adjustment.Amount), adjustment.Currency))
+			if adjustment.Title != "" {
+				f.PrintText("Title:       " + adjustment.Title)
+			}
+			if adjustment.Description != "" {
+				f.PrintText("Description: " + adjustment.Description)
+			}
+			if adjustment.ContractID != "" {
+				f.PrintText("Contract:    " + adjustment.ContractID)
+			}
+			if adjustment.DateSubmitted != "" {
+				f.PrintText("Submitted:   " + adjustment.DateSubmitted)
+			}
+			if adjustment.DateOfAdjustment != "" {
+				f.PrintText("Date:        " + adjustment.DateOfAdjustment)
+			}
+			if adjustment.AdjustmentCategoryID != "" {
+				f.PrintText("Category:    " + adjustment.AdjustmentCategoryID)
+			}
+			if adjustment.ActualStartCycleDate != "" {
+				f.PrintText("Cycle Start: " + adjustment.ActualStartCycleDate)
+			}
+			if adjustment.ActualEndCycleDate != "" {
+				f.PrintText("Cycle End:   " + adjustment.ActualEndCycleDate)
+			}
+			if adjustment.File != nil && *adjustment.File != "" {
+				f.PrintText("File:        " + *adjustment.File)
+			}
+			if adjustment.CreatedAt != "" {
+				f.PrintText("Created:     " + adjustment.CreatedAt)
+			}
+		}, adjustment)
+	},
+}
+
+var invoicesAdjustmentsApproveCmd = &cobra.Command{
+	Use:   "approve <adjustment-id>...",
+	Short: "Approve invoice adjustment(s)",
+	Long:  "Approve one or more invoice adjustments (expense reports, bonuses, etc.)",
+	Args:  cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "APPROVE",
+			Resource:    "InvoiceAdjustment",
+			Description: fmt.Sprintf("Approve %d adjustment(s)", len(args)),
+			Details: map[string]string{
+				"IDs":    fmt.Sprintf("%v", args),
+				"Reason": invoiceAdjustmentReasonFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "approving adjustment")
+		}
+
+		// Try batch approval first
+		if err := client.ReviewInvoiceAdjustmentsBatch(cmd.Context(), args, "approved", invoiceAdjustmentReasonFlag); err == nil {
+			for _, id := range args {
+				f.PrintSuccess("Approved: %s", id)
+			}
+			return nil
+		}
+
+		// Fall back to individual approval
+		for _, id := range args {
+			params := api.ReviewInvoiceAdjustmentParams{
+				Status: "approved",
+				Reason: invoiceAdjustmentReasonFlag,
+			}
+
+			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
+				f.PrintError("Failed to approve %s: %v", id, err)
+				continue
+			}
+			f.PrintSuccess("Approved: %s", id)
+		}
+
+		return nil
+	},
+}
+
+var invoicesAdjustmentsDeclineCmd = &cobra.Command{
+	Use:   "decline <adjustment-id>...",
+	Short: "Decline invoice adjustment(s)",
+	Long:  "Decline one or more invoice adjustments (expense reports, bonuses, etc.)",
+	Args:  cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if invoiceAdjustmentReasonFlag == "" {
+			f.PrintError("--reason is required when declining")
+			return fmt.Errorf("--reason is required when declining")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "DECLINE",
+			Resource:    "InvoiceAdjustment",
+			Description: fmt.Sprintf("Decline %d adjustment(s)", len(args)),
+			Details: map[string]string{
+				"IDs":    fmt.Sprintf("%v", args),
+				"Reason": invoiceAdjustmentReasonFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "declining adjustment")
+		}
+
+		for _, id := range args {
+			params := api.ReviewInvoiceAdjustmentParams{
+				Status: "declined",
+				Reason: invoiceAdjustmentReasonFlag,
+			}
+
+			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
+				f.PrintError("Failed to decline %s: %v", id, err)
+				continue
+			}
+			f.PrintSuccess("Declined: %s", id)
+		}
+
+		return nil
+	},
+}
 
 var invoicesAdjustmentsCreateCmd = &cobra.Command{
 	Use:   "create <invoice-id>",
@@ -337,6 +534,11 @@ func init() {
 	invoicesAdjustmentsCreateCmd.Flags().Float64Var(&invoiceAdjustmentAmountFlag, "amount", 0, "Adjustment amount (required)")
 	invoicesAdjustmentsCreateCmd.Flags().StringVar(&invoiceAdjustmentDescriptionFlag, "description", "", "Adjustment description")
 
+	// Flags for listing all adjustments
+	invoicesAdjustmentsCmd.Flags().StringVar(&invoiceAdjustmentsTypeFlag, "type", "", "Filter by type (bonus, expense, deduction, etc.)")
+	invoicesAdjustmentsCmd.Flags().StringVar(&invoiceAdjustmentsContractFlag, "contract", "", "Filter by contract ID")
+	invoicesAdjustmentsCmd.Flags().StringVar(&invoiceAdjustmentsStatusFlag, "status", "", "Filter by status (pending, approved, declined)")
+
 	invoicesCmd.AddCommand(invoicesListCmd)
 	invoicesCmd.AddCommand(invoicesGetCmd)
 	invoicesCmd.AddCommand(invoicesAdjustmentsCmd)
@@ -344,5 +546,11 @@ func init() {
 	invoicesCmd.AddCommand(deelInvoicesCmd)
 
 	invoicesPDFCmd.Flags().StringVar(&invoicesPDFOutputFlag, "output", "", "Output path for PDF ('-' for stdout)")
+	invoicesAdjustmentsCmd.AddCommand(invoicesAdjustmentsGetCmd)
 	invoicesAdjustmentsCmd.AddCommand(invoicesAdjustmentsCreateCmd)
+	invoicesAdjustmentsCmd.AddCommand(invoicesAdjustmentsApproveCmd)
+	invoicesAdjustmentsCmd.AddCommand(invoicesAdjustmentsDeclineCmd)
+
+	invoicesAdjustmentsApproveCmd.Flags().StringVar(&invoiceAdjustmentReasonFlag, "reason", "", "Reason for approval")
+	invoicesAdjustmentsDeclineCmd.Flags().StringVar(&invoiceAdjustmentReasonFlag, "reason", "", "Reason for decline (required)")
 }

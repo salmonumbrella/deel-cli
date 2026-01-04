@@ -267,3 +267,101 @@ func TestListAllInvoiceAdjustments_WithFilters(t *testing.T) {
 	assert.Len(t, result, 1)
 	assert.Equal(t, "adj-1", result[0].ID)
 }
+
+func TestGetInvoiceAdjustment(t *testing.T) {
+	// Single-item endpoint often returns more detailed data
+	response := map[string]any{
+		"data": map[string]any{
+			"id":                      "db70024b-f535-481a-9bd9-a7ed8089f746",
+			"type":                    "expense",
+			"amount":                  "80.00",
+			"currency":                "USD",
+			"description":             "I bought a keyboard",
+			"status":                  "processing",
+			"date_submitted":          "2025-12-26T16:50:04.578Z",
+			"contract_id":             "c123",
+			"created_at":              "2025-12-26T16:50:04.578Z",
+			"title":                   "Keyboard",
+			"adjustment_category_id":  "cat123",
+			"date_of_adjustment":      "2024-01-24T00:00:00.000Z",
+			"file":                    "https://deel.com/files/receipt.pdf",
+			"actual_start_cycle_date": "2025-08-01T00:00:00.000Z",
+			"actual_end_cycle_date":   "2025-08-31T00:00:00.000Z",
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments/db70024b-f535-481a-9bd9-a7ed8089f746", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.GetInvoiceAdjustment(context.Background(), "db70024b-f535-481a-9bd9-a7ed8089f746")
+
+	require.NoError(t, err)
+	assert.Equal(t, "db70024b-f535-481a-9bd9-a7ed8089f746", result.ID)
+	assert.Equal(t, "expense", result.Type)
+	assert.Equal(t, 80.00, float64(result.Amount))
+	assert.Equal(t, "USD", result.Currency)
+	assert.Equal(t, "I bought a keyboard", result.Description)
+	assert.Equal(t, "processing", result.Status)
+	assert.Equal(t, "2025-12-26T16:50:04.578Z", result.DateSubmitted)
+	assert.Equal(t, "c123", result.ContractID)
+	assert.Equal(t, "Keyboard", result.Title)
+	assert.Equal(t, "cat123", result.AdjustmentCategoryID)
+	assert.Equal(t, "2024-01-24T00:00:00.000Z", result.DateOfAdjustment)
+	assert.NotNil(t, result.File)
+	assert.Equal(t, "https://deel.com/files/receipt.pdf", *result.File)
+	assert.Equal(t, "2025-08-01T00:00:00.000Z", result.ActualStartCycleDate)
+	assert.Equal(t, "2025-08-31T00:00:00.000Z", result.ActualEndCycleDate)
+}
+
+func TestGetInvoiceAdjustment_NotFound(t *testing.T) {
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments/invalid-id", http.StatusNotFound, map[string]string{"error": "not found"})
+	defer server.Close()
+
+	client := testClient(server)
+	_, err := client.GetInvoiceAdjustment(context.Background(), "invalid-id")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "404")
+}
+
+func TestGetInvoiceAdjustment_WithNumericAmount(t *testing.T) {
+	// Test backward compatibility with numeric amount
+	response := map[string]any{
+		"data": map[string]any{
+			"id":       "adj-1",
+			"type":     "bonus",
+			"amount":   150.75, // API might return as number
+			"currency": "EUR",
+			"status":   "approved",
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments/adj-1", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.GetInvoiceAdjustment(context.Background(), "adj-1")
+
+	require.NoError(t, err)
+	assert.Equal(t, 150.75, float64(result.Amount))
+}
+
+func TestGetInvoiceAdjustment_NullFile(t *testing.T) {
+	// Test when file is null
+	response := map[string]any{
+		"data": map[string]any{
+			"id":     "adj-1",
+			"type":   "expense",
+			"amount": "100.00",
+			"status": "pending",
+			"file":   nil,
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/invoice-adjustments/adj-1", http.StatusOK, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.GetInvoiceAdjustment(context.Background(), "adj-1")
+
+	require.NoError(t, err)
+	assert.Nil(t, result.File)
+}

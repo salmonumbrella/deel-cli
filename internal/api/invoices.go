@@ -176,6 +176,23 @@ func (c *Client) ListAllInvoiceAdjustments(ctx context.Context, params ListAllIn
 	return wrapper.Data, nil
 }
 
+// GetInvoiceAdjustment returns a single invoice adjustment by ID
+func (c *Client) GetInvoiceAdjustment(ctx context.Context, adjustmentID string) (*AllInvoiceAdjustment, error) {
+	path := fmt.Sprintf("/rest/v2/invoice-adjustments/%s", escapePath(adjustmentID))
+	resp, err := c.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data AllInvoiceAdjustment `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &wrapper.Data, nil
+}
+
 // CreateInvoiceAdjustmentParams are params for creating an adjustment
 type CreateInvoiceAdjustmentParams struct {
 	Type        string  `json:"type"`

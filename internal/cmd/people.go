@@ -600,17 +600,6 @@ var adjustmentsListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
-		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
-			Operation:   "DELETE",
-			Resource:    "Adjustment",
-			Description: "Delete adjustment",
-			Details: map[string]string{
-				"ID": args[0],
-			},
-		}); ok {
-			return err
-		}
-
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
