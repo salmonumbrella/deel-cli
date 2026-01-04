@@ -222,23 +222,32 @@ type CreateContractParams struct {
 
 // createContractRequest is the API request body structure
 type createContractRequest struct {
-	Title                string                 `json:"title"`
-	Type                 string                 `json:"type"`
-	Worker               *workerDetails         `json:"worker,omitempty"`
-	Currency             string                 `json:"currency,omitempty"`
-	Country              string                 `json:"country,omitempty"`
-	JobTitle             *jobTitleObj           `json:"job_title,omitempty"`
-	ScopeOfWork          string                 `json:"scope_of_work,omitempty"`
-	StartDate            string                 `json:"start_date,omitempty"`
-	EndDate              string                 `json:"end_date,omitempty"`
-	Seniority            *seniorityRef          `json:"seniority,omitempty"`
-	PaymentCycle         string                 `json:"payment_cycle,omitempty"`
-	ContractTemplateID   string                 `json:"contract_template_id,omitempty"`
-	Client               *createContractClient  `json:"client,omitempty"`
-	CompensationDetails  *compensationDetails   `json:"compensation_details,omitempty"`
-	WorkplaceInformation *workplaceInformation  `json:"workplace_information,omitempty"`
-	Meta                 map[string]any         `json:"meta"`
-	SpecialClause        string                 `json:"special_clause,omitempty"`
+	Title               string                `json:"title"`
+	Type                string                `json:"type"`
+	Worker              *workerDetails        `json:"worker,omitempty"`
+	JobTitle            *jobTitleObj          `json:"job_title,omitempty"`
+	ScopeOfWork         string                `json:"scope_of_work,omitempty"`
+	StartDate           string                `json:"start_date,omitempty"`
+	EndDate             string                `json:"end_date,omitempty"`
+	Country             string                `json:"country,omitempty"` // Use "country" NOT "country_code" - allows worker to fill in tax residence during onboarding
+	Seniority           *seniorityRef         `json:"seniority,omitempty"`
+	PaymentCycle        string                `json:"payment_cycle,omitempty"`
+	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
+	Client              *createContractClient `json:"client,omitempty"`
+	Manager             *entityRef            `json:"manager,omitempty"` // Top-level manager assignment (Deel bug: may not work)
+	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
+	Meta                map[string]any        `json:"meta"`
+	SpecialClause       string                `json:"special_clause,omitempty"`
+}
+
+// mapContractType converts CLI contract types to API types
+func mapContractType(cliType string) string {
+	switch cliType {
+	case "pay_as_you_go_time_based", "payg_time_based":
+		return "payg_tasks"
+	default:
+		return cliType
+	}
 }
 
 type workerDetails struct {
@@ -258,7 +267,6 @@ type jobTitleObj struct {
 type createContractClient struct {
 	LegalEntity *entityRef `json:"legal_entity,omitempty"`
 	Team        *entityRef `json:"team,omitempty"`
-	Manager     *entityRef `json:"manager,omitempty"`
 }
 
 type entityRef struct {
@@ -276,16 +284,13 @@ type compensationDetails struct {
 	Scale          string  `json:"scale,omitempty"`
 }
 
-type workplaceInformation struct {
-	Manager *entityRef `json:"manager,omitempty"`
-}
 
 // CreateContract creates a new contractor contract
 func (c *Client) CreateContract(ctx context.Context, params CreateContractParams) (*Contract, error) {
 	req := createContractRequest{
 		Title:        params.Title,
-		Type:         params.Type,
-		Country:      params.Country,
+		Type:         mapContractType(params.Type),
+		Country:      params.Country, // Use "country" NOT "country_code" - allows worker to fill in tax residence during onboarding
 		ScopeOfWork:  params.ScopeOfWork,
 		StartDate:    params.StartDate,
 		EndDate:      params.EndDate,
@@ -322,15 +327,13 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		req.SpecialClause = params.SpecialClause
 	}
 
-	// Add workplace information (manager) if specified
+	// Add manager at top level (not nested under client or workplace_information)
 	if params.ManagerID != "" {
-		req.WorkplaceInformation = &workplaceInformation{
-			Manager: &entityRef{ID: params.ManagerID},
-		}
+		req.Manager = &entityRef{ID: params.ManagerID}
 	}
 
-	// Add client structure if legal entity, group, or manager specified
-	if params.LegalEntityID != "" || params.GroupID != "" || params.ManagerID != "" {
+	// Add client structure if legal entity or group specified
+	if params.LegalEntityID != "" || params.GroupID != "" {
 		req.Client = &createContractClient{}
 		if params.LegalEntityID != "" {
 			req.Client.LegalEntity = &entityRef{ID: params.LegalEntityID}
@@ -338,26 +341,21 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		if params.GroupID != "" {
 			req.Client.Team = &entityRef{ID: params.GroupID}
 		}
-		if params.ManagerID != "" {
-			req.Client.Manager = &entityRef{ID: params.ManagerID}
-		}
 	}
 
-	// Add compensation details
-	if params.Rate > 0 || params.Currency != "" || params.CycleEnd > 0 || params.Frequency != "" {
+	// Add compensation details (matching n8n format exactly - no amount, no scale)
+	if params.Currency != "" || params.CycleEnd > 0 || params.Frequency != "" {
 		cycleEndType := ""
 		if params.CycleEnd > 0 {
 			cycleEndType = params.CycleEndType
 		}
 		req.CompensationDetails = &compensationDetails{
-			Amount:         params.Rate,
 			CurrencyCode:   params.Currency,
 			CycleEnd:       params.CycleEnd,
 			CycleEndType:   cycleEndType,
 			Frequency:      params.Frequency,
-			PaymentDueType: "WITHIN_MONTH", // Due on last day of invoicing cycle
-			PaymentDueDays: 0,                 // Immediate
-			Scale:          "hourly",          // Hourly rate
+			PaymentDueType: "REGULAR",  // n8n uses REGULAR
+			PaymentDueDays: 5,          // n8n uses 5
 		}
 	}
 
@@ -365,6 +363,7 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 	reqWrapper := struct {
 		Data createContractRequest `json:"data"`
 	}{Data: req}
+
 	resp, err := c.Post(ctx, "/rest/v2/contracts", reqWrapper)
 	if err != nil {
 		return nil, err

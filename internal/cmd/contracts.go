@@ -290,6 +290,7 @@ var contractsCreateCmd = &cobra.Command{
 				"Template":    contractTemplateFlag,
 				"LegalEntity": contractLegalEntityFlag,
 				"Group":       contractGroupFlag,
+				"Manager":     contractManagerFlag,
 				"CycleEnd":     fmt.Sprintf("%d", contractCycleEndFlag),
 				"CycleEndType": contractCycleEndTypeFlag,
 				"Frequency":    contractFrequencyFlag,
@@ -361,8 +362,19 @@ var contractsSignCmd = &cobra.Command{
 
 var contractsTerminateCmd = &cobra.Command{
 	Use:   "terminate <contract-id>",
-	Short: "Terminate a contract",
-	Args:  cobra.ExactArgs(1),
+	Short: "Terminate or cancel a contract",
+	Long: `Terminate or cancel a contract.
+
+Use --immediate to cancel unsigned contracts (waiting_for_client_sign or waiting_for_contractor_sign).
+Use --date for scheduled termination of active contracts.
+
+Examples:
+  # Cancel an unsigned contract
+  deel contracts terminate abc123 --reason "Project has come to an end" --immediate
+
+  # Schedule termination for an active contract
+  deel contracts terminate abc123 --reason "Project has come to an end" --date 2026-02-01`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
