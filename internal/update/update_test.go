@@ -81,7 +81,9 @@ func TestCheckForUpdate_UpdateAvailable(t *testing.T) {
 			HTMLURL: "https://github.com/salmonumbrella/deel-cli/releases/tag/v2.0.0",
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Fatalf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -108,7 +110,9 @@ func TestCheckForUpdate_AlreadyLatest(t *testing.T) {
 			HTMLURL: "https://github.com/salmonumbrella/deel-cli/releases/tag/v1.0.0",
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Fatalf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -135,7 +139,9 @@ func TestCheckForUpdate_Timeout(t *testing.T) {
 			HTMLURL: "https://github.com/salmonumbrella/deel-cli/releases/tag/v2.0.0",
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(release)
+		if err := json.NewEncoder(w).Encode(release); err != nil {
+			t.Fatalf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 

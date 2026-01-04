@@ -63,7 +63,10 @@ func (m *MockServer) HandleJSON(method, path string, statusCode int, response an
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		if response != nil {
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				// Panic in test utility indicates programmer error
+				panic("mock server: failed to encode response: " + err.Error())
+			}
 		}
 	})
 }

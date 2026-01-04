@@ -22,7 +22,9 @@ func mockServer(t *testing.T, method, path string, statusCode int, response any)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		if response != nil {
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
 		}
 	}))
 }
@@ -44,7 +46,9 @@ func mockServerWithBody(t *testing.T, method, path string, validateBody func(t *
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		if response != nil {
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
 		}
 	}))
 }
@@ -70,7 +74,9 @@ func mockServerWithQuery(t *testing.T, method, path string, validateQuery func(t
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		if response != nil {
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
 		}
 	}))
 }
