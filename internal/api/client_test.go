@@ -90,7 +90,7 @@ func testClient(server *httptest.Server) *Client {
 
 func TestClient_Get_Success(t *testing.T) {
 	expected := map[string]any{"data": "test"}
-	server := mockServer(t, "GET", "/test", expected)
+	server := mockServer(t, "GET", "/test", http.StatusOK, expected)
 	defer server.Close()
 
 	client := testClient(server)
