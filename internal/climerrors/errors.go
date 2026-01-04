@@ -14,14 +14,22 @@ type Category int
 const (
 	// CategoryUnknown is used when no specific category matches.
 	CategoryUnknown Category = iota
-	CategoryAuth                // 401
-	CategoryForbidden           // 403
-	CategoryNotFound            // 404
-	CategoryValidation          // 400, 422
-	CategoryRateLimit           // 429
-	CategoryServer              // 500+
-	CategoryNetwork             // connection failures
-	CategoryConfig              // missing config
+	// CategoryAuth represents authentication failures (401).
+	CategoryAuth
+	// CategoryForbidden represents permission failures (403).
+	CategoryForbidden
+	// CategoryNotFound represents missing resources (404).
+	CategoryNotFound
+	// CategoryValidation represents validation failures (400, 422).
+	CategoryValidation
+	// CategoryRateLimit represents rate-limit responses (429).
+	CategoryRateLimit
+	// CategoryServer represents server errors (500+).
+	CategoryServer
+	// CategoryNetwork represents connection failures.
+	CategoryNetwork
+	// CategoryConfig represents missing configuration.
+	CategoryConfig
 )
 
 // CLIError wraps any error with context and suggestions

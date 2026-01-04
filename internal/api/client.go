@@ -332,8 +332,9 @@ func (c *Client) recordSuccess() {
 	c.consecutiveFails = 0
 }
 
-//revive:disable-next-line:exported
 // APIError represents an API error response.
+//
+//revive:disable-next-line:exported
 type APIError struct {
 	StatusCode int
 	Message    string

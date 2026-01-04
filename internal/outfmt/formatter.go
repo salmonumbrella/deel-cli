@@ -18,7 +18,9 @@ import (
 type Format string
 
 const (
+	// FormatText renders human-readable output.
 	FormatText Format = "text"
+	// FormatJSON renders JSON output.
 	FormatJSON Format = "json"
 )
 

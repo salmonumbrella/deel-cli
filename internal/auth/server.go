@@ -326,7 +326,7 @@ func (s *SetupServer) handleSetup(w http.ResponseWriter, r *http.Request) {
 // validateCredentials tests credentials against the Deel API
 func (s *SetupServer) validateCredentials(ctx context.Context, token string) error {
 	if token == "" {
-		return fmt.Errorf("Token is required") //nolint:stylecheck // ST1005: user-facing error message
+		return fmt.Errorf("token is required")
 	}
 
 	client := api.NewClient(token)
@@ -336,21 +336,18 @@ func (s *SetupServer) validateCredentials(ctx context.Context, token string) err
 	if err != nil {
 		// Check if it's an API error and provide cleaner messages
 		if apiErr, ok := err.(*api.APIError); ok {
-			// These error messages are intentionally capitalized because they are
-			// displayed directly to users in the browser UI, not logged or wrapped.
-			//nolint:stylecheck // ST1005: user-facing error messages are intentionally capitalized
 			switch apiErr.StatusCode {
 			case 401:
-				return fmt.Errorf("Invalid or expired token. Please check your Personal Access Token")
+				return fmt.Errorf("invalid or expired token. Please check your Personal Access Token")
 			case 403:
-				return fmt.Errorf("Access denied. Your token may not have the required permissions")
+				return fmt.Errorf("access denied. Your token may not have the required permissions")
 			case 429:
-				return fmt.Errorf("Rate limited. Please wait a moment and try again")
+				return fmt.Errorf("rate limited. Please wait a moment and try again")
 			default:
-				return fmt.Errorf("API error (%d): %s", apiErr.StatusCode, apiErr.Message)
+				return fmt.Errorf("api error (%d): %s", apiErr.StatusCode, apiErr.Message)
 			}
 		}
-		return fmt.Errorf("Connection failed: %v", err) //nolint:stylecheck // ST1005: user-facing error message
+		return fmt.Errorf("connection failed: %v", err)
 	}
 
 	return nil
