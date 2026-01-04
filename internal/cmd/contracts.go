@@ -36,6 +36,14 @@ var (
 	contractEndDateFlag      string
 	contractPaymentCycleFlag string
 
+	// Extended create command flags
+	contractTemplateFlag     string
+	contractLegalEntityFlag  string
+	contractGroupFlag        string
+	contractCycleEndFlag     int
+	contractCycleEndTypeFlag string
+	contractFrequencyFlag    string
+
 	// Terminate command flags
 	terminateReasonFlag    string
 	terminateDateFlag      string
@@ -227,17 +235,23 @@ var contractsCreateCmd = &cobra.Command{
 		}
 
 		params := api.CreateContractParams{
-			Title:        contractTitleFlag,
-			Type:         contractTypeFlag,
-			WorkerEmail:  contractWorkerEmailFlag,
-			Currency:     contractCurrencyFlag,
-			Rate:         contractRateFlag,
-			Country:      contractCountryFlag,
-			JobTitle:     contractJobTitleFlag,
-			ScopeOfWork:  contractScopeFlag,
-			StartDate:    contractStartDateFlag,
-			EndDate:      contractEndDateFlag,
-			PaymentCycle: contractPaymentCycleFlag,
+			Title:         contractTitleFlag,
+			Type:          contractTypeFlag,
+			WorkerEmail:   contractWorkerEmailFlag,
+			Currency:      contractCurrencyFlag,
+			Rate:          contractRateFlag,
+			Country:       contractCountryFlag,
+			JobTitle:      contractJobTitleFlag,
+			ScopeOfWork:   contractScopeFlag,
+			StartDate:     contractStartDateFlag,
+			EndDate:       contractEndDateFlag,
+			PaymentCycle:  contractPaymentCycleFlag,
+			TemplateID:    contractTemplateFlag,
+			LegalEntityID: contractLegalEntityFlag,
+			GroupID:       contractGroupFlag,
+			CycleEnd:      contractCycleEndFlag,
+			CycleEndType:  contractCycleEndTypeFlag,
+			Frequency:     contractFrequencyFlag,
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -254,6 +268,12 @@ var contractsCreateCmd = &cobra.Command{
 				"JobTitle":    contractJobTitleFlag,
 				"StartDate":   contractStartDateFlag,
 				"EndDate":     contractEndDateFlag,
+				"Template":    contractTemplateFlag,
+				"LegalEntity": contractLegalEntityFlag,
+				"Group":       contractGroupFlag,
+				"CycleEnd":     fmt.Sprintf("%d", contractCycleEndFlag),
+				"CycleEndType": contractCycleEndTypeFlag,
+				"Frequency":    contractFrequencyFlag,
 			},
 		}); ok {
 			return err
@@ -540,6 +560,14 @@ func init() {
 	contractsCreateCmd.Flags().StringVar(&contractStartDateFlag, "start-date", "", "Start date (YYYY-MM-DD)")
 	contractsCreateCmd.Flags().StringVar(&contractEndDateFlag, "end-date", "", "End date (YYYY-MM-DD)")
 	contractsCreateCmd.Flags().StringVar(&contractPaymentCycleFlag, "payment-cycle", "", "Payment cycle: weekly, bi_weekly, monthly")
+
+	// Extended create command flags
+	contractsCreateCmd.Flags().StringVar(&contractTemplateFlag, "template", "", "Contract template ID")
+	contractsCreateCmd.Flags().StringVar(&contractLegalEntityFlag, "legal-entity", "", "Legal entity ID")
+	contractsCreateCmd.Flags().StringVar(&contractGroupFlag, "group", "", "Group/team ID")
+	contractsCreateCmd.Flags().IntVar(&contractCycleEndFlag, "cycle-end", 0, "Payment cycle end day (e.g., 5 for 5th of month)")
+	contractsCreateCmd.Flags().StringVar(&contractCycleEndTypeFlag, "cycle-end-type", "", "Payment cycle end type: DAY_OF_MONTH, DAY_OF_WEEK, DAY_OF_LAST_WEEK")
+	contractsCreateCmd.Flags().StringVar(&contractFrequencyFlag, "frequency", "", "Payment frequency: monthly, weekly, biweekly, semimonthly")
 
 	// Terminate command flags
 	contractsTerminateCmd.Flags().StringVar(&terminateReasonFlag, "reason", "", "Termination reason (required)")
