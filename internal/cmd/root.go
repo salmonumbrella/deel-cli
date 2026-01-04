@@ -189,7 +189,18 @@ func getClient() (*api.Client, error) {
 		account = os.Getenv(config.EnvAccount)
 	}
 	if account == "" {
-		return nil, fmt.Errorf("no account specified. Use --account flag, DEEL_ACCOUNT env, or DEEL_TOKEN for direct auth")
+		// Try to list available accounts for a helpful error message
+		hint := "Use --account flag, DEEL_ACCOUNT env, or DEEL_TOKEN for direct auth"
+		if store, err := secrets.OpenDefault(); err == nil {
+			if creds, err := store.List(); err == nil && len(creds) > 0 {
+				names := make([]string, len(creds))
+				for i, c := range creds {
+					names[i] = c.Name
+				}
+				hint = fmt.Sprintf("Available accounts: %s. Use --account flag or set DEEL_ACCOUNT env", strings.Join(names, ", "))
+			}
+		}
+		return nil, fmt.Errorf("no account specified. %s", hint)
 	}
 
 	// Load from keychain
