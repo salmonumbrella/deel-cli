@@ -59,12 +59,18 @@ func parseAPIMessage(raw string) string {
 // FormatError writes a formatted error to the writer
 func FormatError(w io.Writer, err *CLIError) {
 	msg := FriendlyMessage(err.Err)
-	fmt.Fprintf(w, "Failed %s: %s\n", err.Operation, msg)
+	if _, writeErr := fmt.Fprintf(w, "Failed %s: %s\n", err.Operation, msg); writeErr != nil {
+		return
+	}
 
 	if len(err.Suggestions) > 0 {
-		fmt.Fprintln(w)
+		if _, writeErr := fmt.Fprintln(w); writeErr != nil {
+			return
+		}
 		for _, s := range err.Suggestions {
-			fmt.Fprintf(w, "  -> %s\n", s)
+			if _, writeErr := fmt.Fprintf(w, "  -> %s\n", s); writeErr != nil {
+				return
+			}
 		}
 	}
 }

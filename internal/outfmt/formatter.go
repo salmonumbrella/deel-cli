@@ -159,9 +159,9 @@ func (t *Table) AddRow(values ...string) {
 }
 
 // Render outputs the table
-func (t *Table) Render() error {
+func (t *Table) Render() {
 	if len(t.rows) == 0 {
-		return nil
+		return
 	}
 
 	// Print header
@@ -169,14 +169,16 @@ func (t *Table) Render() error {
 	if t.formatter.profile != termenv.Ascii {
 		headerLine = termenv.String(headerLine).Bold().String()
 	}
-	fmt.Fprintln(t.formatter.out, headerLine)
+	if _, err := fmt.Fprintln(t.formatter.out, headerLine); err != nil {
+		return
+	}
 
 	// Print rows
 	for _, row := range t.rows {
-		fmt.Fprintln(t.formatter.out, t.formatRow(row))
+		if _, err := fmt.Fprintln(t.formatter.out, t.formatRow(row)); err != nil {
+			return
+		}
 	}
-
-	return nil
 }
 
 func (t *Table) formatRow(values []string) string {

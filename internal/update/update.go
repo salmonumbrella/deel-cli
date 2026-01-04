@@ -62,7 +62,11 @@ func CheckForUpdate(ctx context.Context, currentVersion string) (*CheckResult, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for updates: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			return
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)

@@ -57,7 +57,11 @@ func ReadItems(filename string) ([]Item, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open file: %w", err)
 		}
-		defer f.Close()
+		defer func() {
+			if err := f.Close(); err != nil {
+				return
+			}
+		}()
 
 		// Check file size
 		stat, err := f.Stat()

@@ -21,7 +21,8 @@ func TestGetInvoicePDF(t *testing.T) {
 		w.Header().Set("Content-Type", "application/pdf")
 		w.WriteHeader(http.StatusOK)
 		// Write mock PDF data
-		w.Write([]byte("%PDF-1.4 mock pdf content"))
+		_, err := w.Write([]byte("%PDF-1.4 mock pdf content"))
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -36,7 +37,8 @@ func TestGetInvoicePDF(t *testing.T) {
 func TestGetInvoicePDF_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "invoice not found"}`))
+		_, err := w.Write([]byte(`{"error": "invoice not found"}`))
+		require.NoError(t, err)
 	}))
 	defer server.Close()
 
