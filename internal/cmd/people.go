@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -109,6 +110,8 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 	},
 }
 
+var peoplePersonalFlag bool
+
 var peopleGetCmd = &cobra.Command{
 	Use:   "get <hris-profile-id>",
 	Short: "Get person details",
@@ -118,6 +121,35 @@ var peopleGetCmd = &cobra.Command{
 		client, err := getClient()
 		if err != nil {
 			return HandleError(f, err, "getting person")
+		}
+
+		// If --personal flag is set, use the /personal endpoint
+		if peoplePersonalFlag {
+			rawData, err := client.GetPersonPersonal(cmd.Context(), args[0])
+			if err != nil {
+				return HandleError(f, err, "getting personal info")
+			}
+
+			// Parse into a map to access any field
+			var data map[string]any
+			if err := json.Unmarshal(rawData, &data); err != nil {
+				return HandleError(f, err, "parsing personal info")
+			}
+
+			return f.Output(func() {
+				if id, ok := data["id"]; ok {
+					f.PrintText(fmt.Sprintf("ID:         %v", id))
+				}
+				if workerID, ok := data["worker_id"]; ok {
+					f.PrintText(fmt.Sprintf("Worker ID:  %v", workerID))
+				}
+				firstName, _ := data["first_name"].(string)
+				lastName, _ := data["last_name"].(string)
+				f.PrintText("Name:       " + firstName + " " + lastName)
+				if email, ok := data["email"].(string); ok {
+					f.PrintText("Email:      " + email)
+				}
+			}, data)
 		}
 
 		person, err := client.GetPerson(cmd.Context(), args[0])
@@ -1183,6 +1215,9 @@ func init() {
 
 	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for (exact match)")
 	peopleSearchCmd.Flags().StringVar(&peopleNameFlag, "name", "", "Name to search for (partial match, case-insensitive)")
+
+	// People get command flags
+	peopleGetCmd.Flags().BoolVar(&peoplePersonalFlag, "personal", false, "Get personal info including numeric worker_id")
 
 	// People create command flags
 	peopleCreateCmd.Flags().StringVar(&peopleCreateEmailFlag, "email", "", "Email (required)")

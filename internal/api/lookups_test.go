@@ -77,7 +77,7 @@ func TestListSeniorityLevels(t *testing.T) {
 			{"id": "sl3", "name": "Senior"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/seniority-levels", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 200, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -89,6 +89,31 @@ func TestListSeniorityLevels(t *testing.T) {
 	assert.Equal(t, "Junior", result[0].Name)
 	assert.Equal(t, "sl2", result[1].ID)
 	assert.Equal(t, "Mid-Level", result[1].Name)
+}
+
+func TestListSeniorityLevels_NumericIDs(t *testing.T) {
+	// API returns numeric IDs - test that they're converted to strings
+	response := map[string]any{
+		"data": []map[string]any{
+			{"id": 1, "name": "Junior"},
+			{"id": 34, "name": "Not applicable"},
+			{"id": nil, "name": "Unknown"},
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 200, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListSeniorityLevels(context.Background())
+
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
+	assert.Equal(t, "1", result[0].ID)
+	assert.Equal(t, "Junior", result[0].Name)
+	assert.Equal(t, "34", result[1].ID)
+	assert.Equal(t, "Not applicable", result[1].Name)
+	assert.Equal(t, "", result[2].ID) // nil becomes empty string
+	assert.Equal(t, "Unknown", result[2].Name)
 }
 
 func TestListTimeOffTypes(t *testing.T) {
@@ -157,7 +182,7 @@ func TestListJobTitles_Error(t *testing.T) {
 }
 
 func TestListSeniorityLevels_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/seniority-levels", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 404, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()

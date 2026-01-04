@@ -43,7 +43,7 @@ type OrgStructure struct {
 
 // GetOrgStructures returns the org structure
 func (c *Client) GetOrgStructures(ctx context.Context) ([]OrgStructure, error) {
-	resp, err := c.Get(ctx, "/rest/v2/organization/structures")
+	resp, err := c.Get(ctx, "/rest/v2/hris/organization_structures")
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,33 @@ type SeniorityLevel struct {
 	Name string `json:"name"`
 }
 
+// UnmarshalJSON handles the API returning ID as either number or string
+func (s *SeniorityLevel) UnmarshalJSON(data []byte) error {
+	type Alias SeniorityLevel
+	aux := &struct {
+		ID any `json:"id"`
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	// Convert ID to string regardless of original type
+	// Note: JSON numbers unmarshal to float64, never int
+	switch v := aux.ID.(type) {
+	case string:
+		s.ID = v
+	case float64:
+		s.ID = fmt.Sprintf("%.0f", v)
+	case nil:
+		s.ID = ""
+	default:
+		s.ID = fmt.Sprintf("%v", v)
+	}
+	return nil
+}
+
 // TimeOffType represents a type of time off
 type TimeOffType struct {
 	ID   string `json:"id"`
@@ -87,7 +114,7 @@ func (c *Client) ListJobTitles(ctx context.Context) ([]JobTitle, error) {
 
 // ListSeniorityLevels returns all available seniority levels
 func (c *Client) ListSeniorityLevels(ctx context.Context) ([]SeniorityLevel, error) {
-	resp, err := c.Get(ctx, "/rest/v2/lookups/seniority-levels")
+	resp, err := c.Get(ctx, "/rest/v2/lookups/seniorities")
 	if err != nil {
 		return nil, err
 	}

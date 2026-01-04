@@ -15,16 +15,39 @@ type Department struct {
 
 // Person represents a Deel person/worker
 type Person struct {
-	ID            string      `json:"id"`
-	HRISProfileID string      `json:"hris_profile_id"`
-	FirstName     string      `json:"first_name"`
-	LastName      string      `json:"last_name"`
-	Email         string      `json:"email"`
-	JobTitle      string      `json:"job_title"`
-	DepartmentRaw any         `json:"department"` // API returns string or object
-	Status        string      `json:"status"`
-	StartDate     string      `json:"start_date"`
-	Country       string      `json:"country"`
+	ID            string `json:"id"`
+	HRISProfileID string `json:"hris_profile_id"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Name          string `json:"name"` // Computed: FirstName + LastName
+	Email         string `json:"email"`
+	JobTitle      string `json:"job_title"`
+	DepartmentRaw any    `json:"department"` // API returns string or object
+	Status        string `json:"status"`
+	StartDate     string `json:"start_date"`
+	Country       string `json:"country"`
+}
+
+// UnmarshalJSON implements custom unmarshaling to compute the Name field
+func (p *Person) UnmarshalJSON(data []byte) error {
+	type Alias Person
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(p),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	// Compute Name from FirstName and LastName
+	p.Name = p.FirstName
+	if p.LastName != "" {
+		if p.Name != "" {
+			p.Name += " "
+		}
+		p.Name += p.LastName
+	}
+	return nil
 }
 
 // Department returns the department name, handling both string and object formats
@@ -102,6 +125,24 @@ func (c *Client) GetPerson(ctx context.Context, hrisProfileID string) (*Person, 
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return &wrapper.Data, nil
+}
+
+// GetPersonPersonal returns personal info including numeric worker_id
+// Returns raw JSON to allow flexible handling of varied response shapes
+func (c *Client) GetPersonPersonal(ctx context.Context, hrisProfileID string) (json.RawMessage, error) {
+	path := fmt.Sprintf("/rest/v2/people/%s/personal", escapePath(hrisProfileID))
+	resp, err := c.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return wrapper.Data, nil
 }
 
 // SearchPeopleByEmail finds a person by email
