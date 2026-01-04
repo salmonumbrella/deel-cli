@@ -197,6 +197,8 @@ type CreateContractParams struct {
 	Title          string  `json:"title"`
 	Type           string  `json:"type"` // fixed_rate, pay_as_you_go, pay_as_you_go_time_based, milestone, task_based
 	WorkerEmail    string  `json:"worker_email"`
+	WorkerFirst    string  `json:"worker_first_name,omitempty"`
+	WorkerLast     string  `json:"worker_last_name,omitempty"`
 	Currency       string  `json:"currency"`
 	Rate           float64 `json:"rate,omitempty"`
 	Country        string  `json:"country"`
@@ -220,19 +222,29 @@ type CreateContractParams struct {
 type createContractRequest struct {
 	Title               string                `json:"title"`
 	Type                string                `json:"type"`
-	WorkerEmail         string                `json:"worker_email,omitempty"`
+	Worker              *workerDetails        `json:"worker,omitempty"`
 	Currency            string                `json:"currency,omitempty"`
 	Country             string                `json:"country,omitempty"`
 	JobTitle            *jobTitleObj          `json:"job_title,omitempty"`
 	ScopeOfWork         string                `json:"scope_of_work,omitempty"`
 	StartDate           string                `json:"start_date,omitempty"`
 	EndDate             string                `json:"end_date,omitempty"`
-	SeniorityLevel      string                `json:"seniority_level,omitempty"`
+	Seniority           *seniorityRef         `json:"seniority,omitempty"`
 	PaymentCycle        string                `json:"payment_cycle,omitempty"`
 	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
 	Client              *createContractClient `json:"client,omitempty"`
 	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
 	Meta                map[string]any        `json:"meta"`
+}
+
+type workerDetails struct {
+	FirstName     string `json:"first_name,omitempty"`
+	LastName      string `json:"last_name,omitempty"`
+	ExpectedEmail string `json:"expected_email,omitempty"`
+}
+
+type seniorityRef struct {
+	ID string `json:"id"`
 }
 
 type jobTitleObj struct {
@@ -262,21 +274,33 @@ type compensationDetails struct {
 // CreateContract creates a new contractor contract
 func (c *Client) CreateContract(ctx context.Context, params CreateContractParams) (*Contract, error) {
 	req := createContractRequest{
-		Title:          params.Title,
-		Type:           params.Type,
-		WorkerEmail:    params.WorkerEmail,
-		Country:        params.Country,
-		ScopeOfWork:    params.ScopeOfWork,
-		StartDate:      params.StartDate,
-		EndDate:        params.EndDate,
-		SeniorityLevel: params.SeniorityLevel,
-		PaymentCycle:   params.PaymentCycle,
-		Meta:           map[string]any{"documents_required": false},
+		Title:        params.Title,
+		Type:         params.Type,
+		Country:      params.Country,
+		ScopeOfWork:  params.ScopeOfWork,
+		StartDate:    params.StartDate,
+		EndDate:      params.EndDate,
+		PaymentCycle: params.PaymentCycle,
+		Meta:         map[string]any{"documents_required": false},
+	}
+
+	// Add worker details
+	if params.WorkerEmail != "" || params.WorkerFirst != "" || params.WorkerLast != "" {
+		req.Worker = &workerDetails{
+			FirstName:     params.WorkerFirst,
+			LastName:      params.WorkerLast,
+			ExpectedEmail: params.WorkerEmail,
+		}
 	}
 
 	// Add job title as object
 	if params.JobTitle != "" {
 		req.JobTitle = &jobTitleObj{Name: params.JobTitle}
+	}
+
+	// Add seniority level
+	if params.SeniorityLevel != "" {
+		req.Seniority = &seniorityRef{ID: params.SeniorityLevel}
 	}
 
 	// Add template if specified
