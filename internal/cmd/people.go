@@ -98,8 +98,7 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 			}
 			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
 			for _, p := range allPeople {
-				name := p.FirstName + " " + p.LastName
-				table.AddRow(p.HRISProfileID, name, p.Email, p.JobTitle, p.Status)
+				table.AddRow(p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status)
 			}
 			table.Render()
 			if !peopleAllFlag && cursor != "" {
@@ -158,7 +157,7 @@ var peopleGetCmd = &cobra.Command{
 		}
 
 		return f.Output(func() {
-			f.PrintText("Name:       " + person.FirstName + " " + person.LastName)
+			f.PrintText("Name:       " + person.Name)
 			f.PrintText("Email:      " + person.Email)
 			f.PrintText("Job Title:  " + person.JobTitle)
 			f.PrintText("Department: " + person.Department())
@@ -202,7 +201,7 @@ Examples:
 			}
 
 			return f.Output(func() {
-				f.PrintText("Found: " + person.FirstName + " " + person.LastName)
+				f.PrintText("Found: " + person.Name)
 				f.PrintText("ID:    " + person.HRISProfileID)
 				f.PrintText("Email: " + person.Email)
 			}, person)
@@ -249,8 +248,7 @@ Examples:
 			f.PrintText(fmt.Sprintf("Found %d match(es) for \"%s\":\n", len(matches), peopleNameFlag))
 			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
 			for _, p := range matches {
-				name := p.FirstName + " " + p.LastName
-				table.AddRow(p.HRISProfileID, name, p.Email, p.JobTitle, p.Status)
+				table.AddRow(p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status)
 			}
 			table.Render()
 		}, matches)
