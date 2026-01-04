@@ -142,6 +142,7 @@ var contractsGetCmd = &cobra.Command{
 			if contract.EndDate != "" {
 				f.PrintText("End Date:     " + contract.EndDate)
 			}
+			f.PrintText("URL:          https://app.deel.com/contract/" + contract.ID + "/contracts")
 		}, contract)
 	},
 }
@@ -292,6 +293,7 @@ var contractsCreateCmd = &cobra.Command{
 		f.PrintSuccess("Contract created successfully")
 		f.PrintText("Contract ID: " + contract.ID)
 		f.PrintText("Status: " + contract.Status)
+		f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
 		f.PrintText("\nNext steps:")
 		f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
 		f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID)
