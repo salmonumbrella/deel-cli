@@ -42,23 +42,23 @@ func TestValidateToken(t *testing.T) {
 	}{
 		{"valid token", "abc123xyz", false},
 		{"empty", "", true},
-		{"too long - 1025 chars", string(make([]byte, 1025)), true},
-		{"max length - 1024 chars", string(make([]byte, 1024)), false},
+		{"too long - 4097 chars", string(make([]byte, 4097)), true},
+		{"max length - 4096 chars", string(make([]byte, 4096)), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			input := tt.input
 			// For byte slice tests, fill with valid characters
-			if tt.name == "too long - 1025 chars" {
-				b := make([]byte, 1025)
+			if tt.name == "too long - 4097 chars" {
+				b := make([]byte, 4097)
 				for i := range b {
 					b[i] = 'a'
 				}
 				input = string(b)
 			}
-			if tt.name == "max length - 1024 chars" {
-				b := make([]byte, 1024)
+			if tt.name == "max length - 4096 chars" {
+				b := make([]byte, 4096)
 				for i := range b {
 					b[i] = 'a'
 				}

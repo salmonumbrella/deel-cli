@@ -92,7 +92,7 @@ func TestSignContract(t *testing.T) {
 }
 
 func TestTerminateContract(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1", func(t *testing.T, body map[string]any) {
+	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1/terminations", func(t *testing.T, body map[string]any) {
 		// Verify the data wrapper
 		data, ok := body["data"].(map[string]any)
 		require.True(t, ok, "body should have 'data' wrapper")
