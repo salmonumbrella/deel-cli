@@ -332,7 +332,8 @@ func (c *Client) recordSuccess() {
 	c.consecutiveFails = 0
 }
 
-// APIError represents an API error response
+//revive:disable-next-line:exported
+// APIError represents an API error response.
 type APIError struct {
 	StatusCode int
 	Message    string
@@ -355,6 +356,7 @@ func (e *APIError) APIMessage() string {
 // FlexFloat64 handles JSON number fields that may be strings or numbers
 type FlexFloat64 float64
 
+// UnmarshalJSON implements json.Unmarshaler.
 func (f *FlexFloat64) UnmarshalJSON(data []byte) error {
 	// Try as number first
 	var num float64

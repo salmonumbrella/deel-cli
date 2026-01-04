@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/muesli/termenv"
+
 	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 	"github.com/salmonumbrella/deel-cli/internal/filter"
 )

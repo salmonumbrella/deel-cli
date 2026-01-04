@@ -93,7 +93,7 @@ func (c *Client) ListTimeOffPolicies(ctx context.Context) ([]TimeOffPolicy, erro
 	return wrapper.Data, nil
 }
 
-// CreateTimeOffRequest creates a new time off request
+// CreateTimeOffParams are the parameters for creating a time off request.
 type CreateTimeOffParams struct {
 	HRISProfileID string `json:"hris_profile_id"`
 	PolicyID      string `json:"policy_id"`

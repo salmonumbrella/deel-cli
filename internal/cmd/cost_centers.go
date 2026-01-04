@@ -18,9 +18,7 @@ var costCentersCmd = &cobra.Command{
 	Long:    "List and sync cost centers for your organization.",
 }
 
-var (
-	costCenterFileFlag string
-)
+var costCenterFileFlag string
 
 var costCentersListCmd = &cobra.Command{
 	Use:   "list",

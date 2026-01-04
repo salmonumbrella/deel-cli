@@ -12,7 +12,8 @@ import (
 type Category int
 
 const (
-	CategoryUnknown    Category = iota
+	// CategoryUnknown is used when no specific category matches.
+	CategoryUnknown Category = iota
 	CategoryAuth                // 401
 	CategoryForbidden           // 403
 	CategoryNotFound            // 404

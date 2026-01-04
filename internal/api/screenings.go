@@ -1,3 +1,4 @@
+//revive:disable:var-naming
 package api
 
 import (
@@ -117,6 +118,8 @@ type ExternalKYCSubmission struct {
 	Status      string `json:"status"`
 	SubmittedAt string `json:"submitted_at"`
 }
+
+//revive:enable:var-naming
 
 // SubmitExternalKYC submits external KYC verification data
 func (c *Client) SubmitExternalKYC(ctx context.Context, params SubmitExternalKYCParams) (*ExternalKYCSubmission, error) {

@@ -246,7 +246,7 @@ var invoicesPDFCmd = &cobra.Command{
 			return nil
 		}
 
-		if err := os.WriteFile(outputPath, pdfBytes, 0644); err != nil {
+		if err := os.WriteFile(outputPath, pdfBytes, 0o644); err != nil {
 			return HandleError(f, err, "saving PDF")
 		}
 

@@ -24,20 +24,20 @@ var (
 	contractsAllFlag    bool
 
 	// Create command flags
-	contractTitleFlag        string
-	contractTypeFlag         string
-	contractWorkerEmailFlag  string
-	contractWorkerFirstFlag  string
-	contractWorkerLastFlag   string
-	contractCurrencyFlag     string
-	contractRateFlag         float64
-	contractCountryFlag      string
-	contractJobTitleFlag     string
-	contractScopeFlag        string
-	contractStartDateFlag    string
-	contractEndDateFlag      string
-	contractPaymentCycleFlag string
-	contractSeniorityFlag    string
+	contractTitleFlag         string
+	contractTypeFlag          string
+	contractWorkerEmailFlag   string
+	contractWorkerFirstFlag   string
+	contractWorkerLastFlag    string
+	contractCurrencyFlag      string
+	contractRateFlag          float64
+	contractCountryFlag       string
+	contractJobTitleFlag      string
+	contractScopeFlag         string
+	contractStartDateFlag     string
+	contractEndDateFlag       string
+	contractPaymentCycleFlag  string
+	contractSeniorityFlag     string
 	contractSpecialClauseFlag string
 
 	// Extended create command flags
@@ -278,19 +278,19 @@ var contractsCreateCmd = &cobra.Command{
 			Resource:    "Contract",
 			Description: "Create contract",
 			Details: map[string]string{
-				"Title":       contractTitleFlag,
-				"Type":        contractTypeFlag,
-				"WorkerEmail": contractWorkerEmailFlag,
-				"Currency":    contractCurrencyFlag,
-				"Rate":        fmt.Sprintf("%.2f", contractRateFlag),
-				"Country":     contractCountryFlag,
-				"JobTitle":    contractJobTitleFlag,
-				"StartDate":   contractStartDateFlag,
-				"EndDate":     contractEndDateFlag,
-				"Template":    contractTemplateFlag,
-				"LegalEntity": contractLegalEntityFlag,
-				"Group":       contractGroupFlag,
-				"Manager":     contractManagerFlag,
+				"Title":        contractTitleFlag,
+				"Type":         contractTypeFlag,
+				"WorkerEmail":  contractWorkerEmailFlag,
+				"Currency":     contractCurrencyFlag,
+				"Rate":         fmt.Sprintf("%.2f", contractRateFlag),
+				"Country":      contractCountryFlag,
+				"JobTitle":     contractJobTitleFlag,
+				"StartDate":    contractStartDateFlag,
+				"EndDate":      contractEndDateFlag,
+				"Template":     contractTemplateFlag,
+				"LegalEntity":  contractLegalEntityFlag,
+				"Group":        contractGroupFlag,
+				"Manager":      contractManagerFlag,
 				"CycleEnd":     fmt.Sprintf("%d", contractCycleEndFlag),
 				"CycleEndType": contractCycleEndTypeFlag,
 				"Frequency":    contractFrequencyFlag,

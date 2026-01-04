@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/99designs/keyring"
+
 	"github.com/salmonumbrella/deel-cli/internal/config"
 )
 
