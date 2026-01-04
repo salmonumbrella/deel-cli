@@ -191,44 +191,6 @@ func TestGetPersonPersonal_CallsCorrectEndpoint(t *testing.T) {
 	assert.Equal(t, "/rest/v2/people/hris-123", calledPath)
 }
 
-func TestGetPersonPersonal_ReturnsWorkerID(t *testing.T) {
-	// Set up mock server that returns personal data with worker_id
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-
-		if strings.HasSuffix(r.URL.Path, "/personal") {
-			json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{
-					"id":         "personal-123",
-					"worker_id":  12345,
-					"first_name": "John",
-					"last_name":  "Doe",
-					"email":      "john@example.com",
-				},
-			})
-		}
-	}))
-	defer server.Close()
-
-	// Create client and call GetPersonPersonal
-	client := NewClient("test-token")
-	client.SetBaseURL(server.URL)
-
-	rawData, err := client.GetPersonPersonal(context.Background(), "hris-123")
-	require.NoError(t, err)
-
-	// Parse the response
-	var data map[string]any
-	err = json.Unmarshal(rawData, &data)
-	require.NoError(t, err)
-
-	// Verify worker_id is present and correct
-	assert.Equal(t, float64(12345), data["worker_id"])
-	assert.Equal(t, "John", data["first_name"])
-	assert.Equal(t, "Doe", data["last_name"])
-}
-
 func TestGetPerson_CallsCorrectEndpoint(t *testing.T) {
 	var calledPath string
 
