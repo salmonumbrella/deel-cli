@@ -69,7 +69,7 @@ type LegalEntity struct {
 
 // ListLegalEntities returns legal entities
 func (c *Client) ListLegalEntities(ctx context.Context) ([]LegalEntity, error) {
-	resp, err := c.Get(ctx, "/rest/v2/organization/entities")
+	resp, err := c.Get(ctx, "/rest/v2/legal-entities")
 	if err != nil {
 		return nil, err
 	}

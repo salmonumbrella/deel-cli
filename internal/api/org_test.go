@@ -283,3 +283,22 @@ func TestGetPayrollSettings_NotFound(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, 404, apiErr.StatusCode)
 }
+
+func TestListLegalEntities(t *testing.T) {
+	response := map[string]any{
+		"data": []map[string]any{
+			{"id": "le-1", "name": "Delicious Milk Corporation", "country": "CA"},
+			{"id": "le-2", "name": "Wanver Inc", "country": "US"},
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/legal-entities", 200, response)
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.ListLegalEntities(context.Background())
+
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Equal(t, "le-1", result[0].ID)
+	assert.Equal(t, "Delicious Milk Corporation", result[0].Name)
+}
