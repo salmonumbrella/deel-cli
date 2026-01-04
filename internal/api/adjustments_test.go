@@ -165,7 +165,7 @@ func TestListAdjustments_WithFilters(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/adjustments", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "c1", query["contract_id"])
 		assert.Equal(t, "cat1", query["category_id"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)

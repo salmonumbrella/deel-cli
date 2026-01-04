@@ -28,7 +28,7 @@ func TestListATSJobs(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/ats/jobs", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "open", query["status"])
 		assert.Equal(t, "dept1", query["department_id"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -95,7 +95,7 @@ func TestListATSJobPostings(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/ats/job-postings", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "published", query["status"])
 		assert.Equal(t, "job1", query["job_id"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -159,7 +159,7 @@ func TestListATSApplications(t *testing.T) {
 		assert.Equal(t, "active", query["status"])
 		assert.Equal(t, "job1", query["job_id"])
 		assert.Equal(t, "phone-screen", query["stage"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -195,7 +195,7 @@ func TestListATSCandidates(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/ats/candidates", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "Jane Smith", query["search"])
 		assert.Equal(t, "50", query["limit"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -230,7 +230,7 @@ func TestListATSDepartments(t *testing.T) {
 	}
 	server := mockServerWithQuery(t, "/rest/v2/ats/departments", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "100", query["limit"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -262,7 +262,7 @@ func TestListATSLocations(t *testing.T) {
 		}
 		server := mockServerWithQuery(t, "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			assert.Equal(t, "true", query["remote"])
-		}, http.StatusOK, response)
+		}, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -292,7 +292,7 @@ func TestListATSLocations(t *testing.T) {
 		}
 		server := mockServerWithQuery(t, "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			assert.Equal(t, "false", query["remote"])
-		}, http.StatusOK, response)
+		}, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -331,7 +331,7 @@ func TestListATSLocations(t *testing.T) {
 		server := mockServerWithQuery(t, "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			_, hasRemote := query["remote"]
 			assert.False(t, hasRemote, "remote parameter should not be present")
-		}, http.StatusOK, response)
+		}, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -395,7 +395,7 @@ func TestListATSOffers(t *testing.T) {
 	}
 	server := mockServerWithQuery(t, "/rest/v2/ats/offers", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "pending", query["status"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)

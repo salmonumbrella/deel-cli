@@ -109,7 +109,7 @@ func TestListDeelInvoices_WithParams(t *testing.T) {
 		assert.Equal(t, "10", query["limit"])
 		assert.Equal(t, "paid", query["status"])
 		assert.Equal(t, "cursor-abc", query["cursor"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)

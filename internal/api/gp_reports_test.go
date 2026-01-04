@@ -13,7 +13,7 @@ func TestListG2NReports(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/reports/gross-to-net", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-123", query["worker_id"])
 		assert.Equal(t, "2024-03", query["period"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":           "g2n-001",
@@ -68,7 +68,7 @@ func TestListG2NReports(t *testing.T) {
 func TestListG2NReports_EmptyResults(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/reports/gross-to-net", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-999", query["worker_id"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": []map[string]any{},
 	})
 	defer server.Close()

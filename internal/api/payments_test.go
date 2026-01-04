@@ -131,7 +131,7 @@ func TestListDetailedPaymentReceipts_WithParams(t *testing.T) {
 		assert.Equal(t, "c123", query["contract_id"])
 		assert.Equal(t, "pay123", query["payment_id"])
 		assert.Equal(t, "cursor-def", query["cursor"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -220,7 +220,7 @@ func TestGetDetailedPaymentsReport_WithParams(t *testing.T) {
 		assert.Equal(t, "2024-01-31", query["end_date"])
 		assert.Equal(t, "c123", query["contract_id"])
 		assert.Equal(t, "paid", query["status"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)

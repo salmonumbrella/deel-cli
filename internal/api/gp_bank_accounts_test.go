@@ -133,7 +133,7 @@ func TestAddGPBankAccount_ValidationError(t *testing.T) {
 func TestListGPBankAccounts(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/bank-accounts", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-123", query["worker_id"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":             "ba-456",
@@ -182,7 +182,7 @@ func TestListGPBankAccounts(t *testing.T) {
 func TestListGPBankAccounts_Empty(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/bank-accounts", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-999", query["worker_id"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": []map[string]any{},
 	})
 	defer server.Close()
@@ -264,7 +264,7 @@ func TestUpdateGPBankAccount_NotFound(t *testing.T) {
 func TestGetGPBankGuide(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/bank-guide", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "GB", query["country"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": map[string]any{
 			"country": "GB",
 			"required_fields": []string{
@@ -320,7 +320,7 @@ func TestGetGPBankGuide(t *testing.T) {
 func TestGetGPBankGuide_USGuide(t *testing.T) {
 	server := mockServerWithQuery(t, "/rest/v2/gp/bank-guide", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "US", query["country"])
-	}, http.StatusOK, map[string]any{
+	}, map[string]any{
 		"data": map[string]any{
 			"country": "US",
 			"required_fields": []string{

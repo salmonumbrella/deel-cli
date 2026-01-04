@@ -54,7 +54,7 @@ func TestListTimesheets_WithQueryParams(t *testing.T) {
 		assert.Equal(t, "approved", query["status"])
 		assert.Equal(t, "10", query["limit"])
 		assert.Equal(t, "abc123", query["cursor"])
-	}, http.StatusOK, response)
+	}, response)
 	defer server.Close()
 
 	client := testClient(server)

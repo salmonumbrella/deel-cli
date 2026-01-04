@@ -54,7 +54,7 @@ func mockServerWithBody(t *testing.T, method, path string, validateBody func(t *
 }
 
 // mockServerWithQuery creates a test server that validates query parameters.
-func mockServerWithQuery(t *testing.T, path string, validateQuery func(t *testing.T, query map[string]string), statusCode int, response any) *httptest.Server {
+func mockServerWithQuery(t *testing.T, path string, validateQuery func(t *testing.T, query map[string]string), response any) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -72,7 +72,7 @@ func mockServerWithQuery(t *testing.T, path string, validateQuery func(t *testin
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
+		w.WriteHeader(http.StatusOK)
 		if response != nil {
 			if err := json.NewEncoder(w).Encode(response); err != nil {
 				t.Fatalf("failed to encode response: %v", err)
@@ -90,7 +90,7 @@ func testClient(server *httptest.Server) *Client {
 
 func TestClient_Get_Success(t *testing.T) {
 	expected := map[string]any{"data": "test"}
-	server := mockServer(t, "GET", "/test", http.StatusOK, expected)
+	server := mockServer(t, "GET", "/test", expected)
 	defer server.Close()
 
 	client := testClient(server)
