@@ -195,7 +195,7 @@ func (c *Client) GetContractPaymentDates(ctx context.Context, contractID string)
 // CreateContractParams are params for creating a contract
 type CreateContractParams struct {
 	Title          string  `json:"title"`
-	Type           string  `json:"type"` // fixed_rate, pay_as_you_go, milestone, task_based
+	Type           string  `json:"type"` // fixed_rate, pay_as_you_go, pay_as_you_go_time_based, milestone, task_based
 	WorkerEmail    string  `json:"worker_email"`
 	Currency       string  `json:"currency"`
 	Rate           float64 `json:"rate,omitempty"`
@@ -204,13 +204,100 @@ type CreateContractParams struct {
 	ScopeOfWork    string  `json:"scope_of_work,omitempty"`
 	StartDate      string  `json:"start_date,omitempty"`
 	EndDate        string  `json:"end_date,omitempty"`
-	PaymentCycle   string  `json:"payment_cycle,omitempty"` // weekly, bi_weekly, monthly
+	PaymentCycle   string  `json:"payment_cycle,omitempty"` // weekly, bi_weekly, monthly (legacy)
 	SeniorityLevel string  `json:"seniority_level,omitempty"`
+
+	// Extended fields for pay-as-you-go contracts
+	TemplateID    string `json:"-"` // Handled specially in request
+	LegalEntityID string `json:"-"` // Handled specially in request
+	GroupID       string `json:"-"` // Handled specially in request
+	CycleEnd      int    `json:"-"` // Day of month/week for payment cycle
+	CycleEndType  string `json:"-"` // DAY_OF_MONTH, DAY_OF_WEEK, DAY_OF_LAST_WEEK
+	Frequency     string `json:"-"` // monthly, weekly, biweekly, semimonthly
+}
+
+// createContractRequest is the API request body structure
+type createContractRequest struct {
+	Title               string                `json:"title"`
+	Type                string                `json:"type"`
+	WorkerEmail         string                `json:"worker_email,omitempty"`
+	Currency            string                `json:"currency,omitempty"`
+	Country             string                `json:"country,omitempty"`
+	JobTitle            string                `json:"job_title,omitempty"`
+	ScopeOfWork         string                `json:"scope_of_work,omitempty"`
+	StartDate           string                `json:"start_date,omitempty"`
+	EndDate             string                `json:"end_date,omitempty"`
+	SeniorityLevel      string                `json:"seniority_level,omitempty"`
+	PaymentCycle        string                `json:"payment_cycle,omitempty"`
+	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
+	Client              *createContractClient `json:"client,omitempty"`
+	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
+}
+
+type createContractClient struct {
+	LegalEntity *entityRef `json:"legal_entity,omitempty"`
+	Team        *entityRef `json:"team,omitempty"`
+}
+
+type entityRef struct {
+	ID string `json:"id"`
+}
+
+type compensationDetails struct {
+	Amount       float64 `json:"amount,omitempty"`
+	CurrencyCode string  `json:"currency_code,omitempty"`
+	CycleEnd     int     `json:"cycle_end,omitempty"`
+	CycleEndType string  `json:"cycle_end_type,omitempty"`
+	Frequency    string  `json:"frequency,omitempty"`
 }
 
 // CreateContract creates a new contractor contract
 func (c *Client) CreateContract(ctx context.Context, params CreateContractParams) (*Contract, error) {
-	resp, err := c.Post(ctx, "/rest/v2/contracts", params)
+	req := createContractRequest{
+		Title:          params.Title,
+		Type:           params.Type,
+		WorkerEmail:    params.WorkerEmail,
+		Country:        params.Country,
+		JobTitle:       params.JobTitle,
+		ScopeOfWork:    params.ScopeOfWork,
+		StartDate:      params.StartDate,
+		EndDate:        params.EndDate,
+		SeniorityLevel: params.SeniorityLevel,
+		PaymentCycle:   params.PaymentCycle,
+	}
+
+	// Add template if specified
+	if params.TemplateID != "" {
+		req.ContractTemplateID = params.TemplateID
+	}
+
+	// Add client structure if legal entity or group specified
+	if params.LegalEntityID != "" || params.GroupID != "" {
+		req.Client = &createContractClient{}
+		if params.LegalEntityID != "" {
+			req.Client.LegalEntity = &entityRef{ID: params.LegalEntityID}
+		}
+		if params.GroupID != "" {
+			req.Client.Team = &entityRef{ID: params.GroupID}
+		}
+	}
+
+	// Add compensation details
+	if params.Rate > 0 || params.Currency != "" || params.CycleEnd > 0 || params.Frequency != "" {
+		cycleEndType := ""
+		if params.CycleEnd > 0 {
+			cycleEndType = params.CycleEndType
+		}
+		req.CompensationDetails = &compensationDetails{
+			Amount:       params.Rate,
+			CurrencyCode: params.Currency,
+			CycleEnd:     params.CycleEnd,
+			CycleEndType: cycleEndType,
+			Frequency:    params.Frequency,
+		}
+	}
+
+	resp, err := c.Post(ctx, "/rest/v2/contracts", req)
 	if err != nil {
 		return nil, err
 	}

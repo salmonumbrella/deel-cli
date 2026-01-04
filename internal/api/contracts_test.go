@@ -176,3 +176,60 @@ func TestListContractTemplates(t *testing.T) {
 	assert.Len(t, result, 1)
 	assert.Equal(t, "tpl1", result[0].ID)
 }
+
+func TestCreateContractWithExtendedFields(t *testing.T) {
+	server := mockServerWithBody(t, "POST", "/rest/v2/contracts", func(t *testing.T, body map[string]any) {
+		// Verify basic fields
+		assert.Equal(t, "Host Contract", body["title"])
+		assert.Equal(t, "pay_as_you_go_time_based", body["type"])
+
+		// Verify template
+		assert.Equal(t, "tpl-host-ca", body["contract_template_id"])
+
+		// Verify client structure
+		client, ok := body["client"].(map[string]any)
+		require.True(t, ok, "body should have 'client' object")
+
+		legalEntity, ok := client["legal_entity"].(map[string]any)
+		require.True(t, ok, "client should have 'legal_entity' object")
+		assert.Equal(t, "le-123", legalEntity["id"])
+
+		team, ok := client["team"].(map[string]any)
+		require.True(t, ok, "client should have 'team' object")
+		assert.Equal(t, "team-456", team["id"])
+
+		// Verify compensation_details
+		comp, ok := body["compensation_details"].(map[string]any)
+		require.True(t, ok, "body should have 'compensation_details' object")
+		assert.Equal(t, float64(5), comp["cycle_end"])
+		assert.Equal(t, "DAY_OF_MONTH", comp["cycle_end_type"])
+		assert.Equal(t, "monthly", comp["frequency"])
+	}, 201, map[string]any{
+		"data": map[string]any{
+			"id":     "c-new",
+			"title":  "Host Contract",
+			"type":   "pay_as_you_go_time_based",
+			"status": "draft",
+		},
+	})
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.CreateContract(context.Background(), CreateContractParams{
+		Title:         "Host Contract",
+		Type:          "pay_as_you_go_time_based",
+		WorkerEmail:   "worker@example.com",
+		Currency:      "CAD",
+		Rate:          23.00,
+		Country:       "CA",
+		TemplateID:    "tpl-host-ca",
+		LegalEntityID: "le-123",
+		GroupID:       "team-456",
+		CycleEnd:      5,
+		CycleEndType:  "DAY_OF_MONTH",
+		Frequency:     "monthly",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "c-new", result.ID)
+}
