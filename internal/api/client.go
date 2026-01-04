@@ -73,7 +73,9 @@ func (c *Client) SetIdempotencyKey(key string) {
 	c.idempotencyKey = key
 }
 
-// SetBaseURL sets the base URL for API requests (for testing).
+// SetBaseURL sets the base URL for API requests.
+// Note: For tests, prefer using testClient() from client_test.go
+// which handles this automatically.
 func (c *Client) SetBaseURL(url string) {
 	c.baseURL = url
 }
