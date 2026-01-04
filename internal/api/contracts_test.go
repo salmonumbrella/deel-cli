@@ -49,8 +49,11 @@ func TestGetContract(t *testing.T) {
 
 func TestCreateContract(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/contracts", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "New Contract", body["title"])
-		assert.Equal(t, "fixed_rate", body["type"])
+		// Body is wrapped in data object
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "New Contract", data["title"])
+		assert.Equal(t, "fixed_rate", data["type"])
 	}, 201, map[string]any{
 		"data": map[string]any{
 			"id":     "c-new",
@@ -179,16 +182,20 @@ func TestListContractTemplates(t *testing.T) {
 
 func TestCreateContractWithExtendedFields(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/contracts", func(t *testing.T, body map[string]any) {
+		// Body is wrapped in data object
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+
 		// Verify basic fields
-		assert.Equal(t, "Host Contract", body["title"])
-		assert.Equal(t, "pay_as_you_go_time_based", body["type"])
+		assert.Equal(t, "Host Contract", data["title"])
+		assert.Equal(t, "pay_as_you_go_time_based", data["type"])
 
 		// Verify template
-		assert.Equal(t, "tpl-host-ca", body["contract_template_id"])
+		assert.Equal(t, "tpl-host-ca", data["contract_template_id"])
 
 		// Verify client structure
-		client, ok := body["client"].(map[string]any)
-		require.True(t, ok, "body should have 'client' object")
+		client, ok := data["client"].(map[string]any)
+		require.True(t, ok, "data should have 'client' object")
 
 		legalEntity, ok := client["legal_entity"].(map[string]any)
 		require.True(t, ok, "client should have 'legal_entity' object")
@@ -199,8 +206,8 @@ func TestCreateContractWithExtendedFields(t *testing.T) {
 		assert.Equal(t, "team-456", team["id"])
 
 		// Verify compensation_details
-		comp, ok := body["compensation_details"].(map[string]any)
-		require.True(t, ok, "body should have 'compensation_details' object")
+		comp, ok := data["compensation_details"].(map[string]any)
+		require.True(t, ok, "data should have 'compensation_details' object")
 		assert.Equal(t, float64(5), comp["cycle_end"])
 		assert.Equal(t, "DAY_OF_MONTH", comp["cycle_end_type"])
 		assert.Equal(t, "monthly", comp["frequency"])

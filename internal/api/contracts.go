@@ -223,7 +223,7 @@ type createContractRequest struct {
 	WorkerEmail         string                `json:"worker_email,omitempty"`
 	Currency            string                `json:"currency,omitempty"`
 	Country             string                `json:"country,omitempty"`
-	JobTitle            string                `json:"job_title,omitempty"`
+	JobTitle            *jobTitleObj          `json:"job_title,omitempty"`
 	ScopeOfWork         string                `json:"scope_of_work,omitempty"`
 	StartDate           string                `json:"start_date,omitempty"`
 	EndDate             string                `json:"end_date,omitempty"`
@@ -232,6 +232,11 @@ type createContractRequest struct {
 	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
 	Client              *createContractClient `json:"client,omitempty"`
 	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
+	Meta                map[string]any        `json:"meta"`
+}
+
+type jobTitleObj struct {
+	Name string `json:"name"`
 }
 
 type createContractClient struct {
@@ -244,11 +249,14 @@ type entityRef struct {
 }
 
 type compensationDetails struct {
-	Amount       float64 `json:"amount,omitempty"`
-	CurrencyCode string  `json:"currency_code,omitempty"`
-	CycleEnd     int     `json:"cycle_end,omitempty"`
-	CycleEndType string  `json:"cycle_end_type,omitempty"`
-	Frequency    string  `json:"frequency,omitempty"`
+	Amount         float64 `json:"amount,omitempty"`
+	CurrencyCode   string  `json:"currency_code,omitempty"`
+	CycleEnd       int     `json:"cycle_end"`
+	CycleEndType   string  `json:"cycle_end_type,omitempty"`
+	Frequency      string  `json:"frequency,omitempty"`
+	PaymentDueType string  `json:"payment_due_type"`
+	PaymentDueDays int     `json:"payment_due_days"`
+	Scale          string  `json:"scale,omitempty"`
 }
 
 // CreateContract creates a new contractor contract
@@ -258,12 +266,17 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		Type:           params.Type,
 		WorkerEmail:    params.WorkerEmail,
 		Country:        params.Country,
-		JobTitle:       params.JobTitle,
 		ScopeOfWork:    params.ScopeOfWork,
 		StartDate:      params.StartDate,
 		EndDate:        params.EndDate,
 		SeniorityLevel: params.SeniorityLevel,
 		PaymentCycle:   params.PaymentCycle,
+		Meta:           map[string]any{"documents_required": false},
+	}
+
+	// Add job title as object
+	if params.JobTitle != "" {
+		req.JobTitle = &jobTitleObj{Name: params.JobTitle}
 	}
 
 	// Add template if specified
@@ -289,15 +302,22 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 			cycleEndType = params.CycleEndType
 		}
 		req.CompensationDetails = &compensationDetails{
-			Amount:       params.Rate,
-			CurrencyCode: params.Currency,
-			CycleEnd:     params.CycleEnd,
-			CycleEndType: cycleEndType,
-			Frequency:    params.Frequency,
+			Amount:         params.Rate,
+			CurrencyCode:   params.Currency,
+			CycleEnd:       params.CycleEnd,
+			CycleEndType:   cycleEndType,
+			Frequency:      params.Frequency,
+			PaymentDueType: "WITHIN_MONTH", // Due on last day of invoicing cycle
+			PaymentDueDays: 0,                 // Immediate
+			Scale:          "hourly",          // Hourly rate
 		}
 	}
 
-	resp, err := c.Post(ctx, "/rest/v2/contracts", req)
+	// Wrap request in data object as required by Deel API
+	reqWrapper := struct {
+		Data createContractRequest `json:"data"`
+	}{Data: req}
+	resp, err := c.Post(ctx, "/rest/v2/contracts", reqWrapper)
 	if err != nil {
 		return nil, err
 	}
