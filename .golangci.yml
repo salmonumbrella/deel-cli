@@ -45,7 +45,8 @@ formatters:
     - goimports
   settings:
     goimports:
-      local-prefixes: github.com/salmonumbrella/deel-cli
+      local-prefixes:
+        - github.com/salmonumbrella/deel-cli
 
 issues:
   max-issues-per-linter: 0
