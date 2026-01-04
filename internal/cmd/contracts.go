@@ -38,6 +38,7 @@ var (
 	contractEndDateFlag      string
 	contractPaymentCycleFlag string
 	contractSeniorityFlag    string
+	contractSpecialClauseFlag string
 
 	// Extended create command flags
 	contractTemplateFlag     string
@@ -46,6 +47,7 @@ var (
 	contractCycleEndFlag     int
 	contractCycleEndTypeFlag string
 	contractFrequencyFlag    string
+	contractManagerFlag      string
 
 	// Terminate command flags
 	terminateReasonFlag    string
@@ -54,6 +56,14 @@ var (
 	terminateImmediateFlag bool
 	terminateTypeFlag      string
 	terminateRehireFlag    string
+
+	// Sign command flags
+	signSignerFlag string
+
+	// Invite command flags
+	inviteEmailFlag   string
+	inviteLocaleFlag  string
+	inviteMessageFlag string
 )
 
 var contractsListCmd = &cobra.Command{
@@ -253,12 +263,14 @@ var contractsCreateCmd = &cobra.Command{
 			EndDate:        contractEndDateFlag,
 			PaymentCycle:   contractPaymentCycleFlag,
 			SeniorityLevel: contractSeniorityFlag,
+			SpecialClause:  contractSpecialClauseFlag,
 			TemplateID:     contractTemplateFlag,
 			LegalEntityID:  contractLegalEntityFlag,
 			GroupID:        contractGroupFlag,
 			CycleEnd:       contractCycleEndFlag,
 			CycleEndType:   contractCycleEndTypeFlag,
 			Frequency:      contractFrequencyFlag,
+			ManagerID:      contractManagerFlag,
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -313,12 +325,18 @@ var contractsSignCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if signSignerFlag == "" {
+			return HandleError(f, fmt.Errorf("--signer is required"), "validating input")
+		}
+
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
 			Operation:   "SIGN",
 			Resource:    "Contract",
 			Description: "Sign contract",
 			Details: map[string]string{
-				"ID": args[0],
+				"ID":     args[0],
+				"Signer": signSignerFlag,
 			},
 		}); ok {
 			return err
@@ -329,7 +347,7 @@ var contractsSignCmd = &cobra.Command{
 			return HandleError(f, err, "initializing client")
 		}
 
-		contract, err := client.SignContract(cmd.Context(), args[0])
+		contract, err := client.SignContract(cmd.Context(), args[0], signSignerFlag)
 		if err != nil {
 			return HandleError(f, err, "signing contract")
 		}
@@ -480,18 +498,30 @@ var contractsInviteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if inviteEmailFlag == "" {
+			return HandleError(f, fmt.Errorf("--email is required"), "validating input")
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return HandleError(f, err, "initializing client")
 		}
 
-		err = client.InviteWorker(cmd.Context(), args[0])
+		params := api.InviteWorkerParams{
+			Email:   inviteEmailFlag,
+			Locale:  inviteLocaleFlag,
+			Message: inviteMessageFlag,
+		}
+
+		err = client.InviteWorker(cmd.Context(), args[0], params)
 		if err != nil {
 			return HandleError(f, err, "sending invitation")
 		}
 
 		f.PrintSuccess("Invitation email sent successfully")
 		f.PrintText("Contract ID: " + args[0])
+		f.PrintText("Sent to: " + inviteEmailFlag)
 		return nil
 	},
 }
@@ -579,6 +609,16 @@ func init() {
 	contractsCreateCmd.Flags().StringVar(&contractCycleEndTypeFlag, "cycle-end-type", "", "Payment cycle end type: DAY_OF_MONTH, DAY_OF_WEEK, DAY_OF_LAST_WEEK")
 	contractsCreateCmd.Flags().StringVar(&contractFrequencyFlag, "frequency", "", "Payment frequency: monthly, weekly, biweekly, semimonthly")
 	contractsCreateCmd.Flags().StringVar(&contractSeniorityFlag, "seniority", "", "Seniority level ID (e.g., junior, mid, senior)")
+	contractsCreateCmd.Flags().StringVar(&contractSpecialClauseFlag, "special-clause", "", "Special clause text for contract")
+	contractsCreateCmd.Flags().StringVar(&contractManagerFlag, "manager", "", "Manager ID for workplace information")
+
+	// Sign command flags
+	contractsSignCmd.Flags().StringVar(&signSignerFlag, "signer", "", "Full name of person signing on behalf of client (required)")
+
+	// Invite command flags
+	contractsInviteCmd.Flags().StringVar(&inviteEmailFlag, "email", "", "Worker email address (required)")
+	contractsInviteCmd.Flags().StringVar(&inviteLocaleFlag, "locale", "en", "Locale for invitation (default: en)")
+	contractsInviteCmd.Flags().StringVar(&inviteMessageFlag, "message", "", "Custom message for invitation")
 
 	// Terminate command flags
 	contractsTerminateCmd.Flags().StringVar(&terminateReasonFlag, "reason", "", "Termination reason (required)")

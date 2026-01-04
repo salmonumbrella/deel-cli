@@ -216,25 +216,29 @@ type CreateContractParams struct {
 	CycleEnd      int    `json:"-"` // Day of month/week for payment cycle
 	CycleEndType  string `json:"-"` // DAY_OF_MONTH, DAY_OF_WEEK, DAY_OF_LAST_WEEK
 	Frequency     string `json:"-"` // monthly, weekly, biweekly, semimonthly
+	SpecialClause string `json:"-"` // Special clause text for contract
+	ManagerID     string `json:"-"` // Manager ID for workplace information
 }
 
 // createContractRequest is the API request body structure
 type createContractRequest struct {
-	Title               string                `json:"title"`
-	Type                string                `json:"type"`
-	Worker              *workerDetails        `json:"worker,omitempty"`
-	Currency            string                `json:"currency,omitempty"`
-	Country             string                `json:"country,omitempty"`
-	JobTitle            *jobTitleObj          `json:"job_title,omitempty"`
-	ScopeOfWork         string                `json:"scope_of_work,omitempty"`
-	StartDate           string                `json:"start_date,omitempty"`
-	EndDate             string                `json:"end_date,omitempty"`
-	Seniority           *seniorityRef         `json:"seniority,omitempty"`
-	PaymentCycle        string                `json:"payment_cycle,omitempty"`
-	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
-	Client              *createContractClient `json:"client,omitempty"`
-	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
-	Meta                map[string]any        `json:"meta"`
+	Title                string                 `json:"title"`
+	Type                 string                 `json:"type"`
+	Worker               *workerDetails         `json:"worker,omitempty"`
+	Currency             string                 `json:"currency,omitempty"`
+	Country              string                 `json:"country,omitempty"`
+	JobTitle             *jobTitleObj           `json:"job_title,omitempty"`
+	ScopeOfWork          string                 `json:"scope_of_work,omitempty"`
+	StartDate            string                 `json:"start_date,omitempty"`
+	EndDate              string                 `json:"end_date,omitempty"`
+	Seniority            *seniorityRef          `json:"seniority,omitempty"`
+	PaymentCycle         string                 `json:"payment_cycle,omitempty"`
+	ContractTemplateID   string                 `json:"contract_template_id,omitempty"`
+	Client               *createContractClient  `json:"client,omitempty"`
+	CompensationDetails  *compensationDetails   `json:"compensation_details,omitempty"`
+	WorkplaceInformation *workplaceInformation  `json:"workplace_information,omitempty"`
+	Meta                 map[string]any         `json:"meta"`
+	SpecialClause        string                 `json:"special_clause,omitempty"`
 }
 
 type workerDetails struct {
@@ -254,6 +258,7 @@ type jobTitleObj struct {
 type createContractClient struct {
 	LegalEntity *entityRef `json:"legal_entity,omitempty"`
 	Team        *entityRef `json:"team,omitempty"`
+	Manager     *entityRef `json:"manager,omitempty"`
 }
 
 type entityRef struct {
@@ -269,6 +274,10 @@ type compensationDetails struct {
 	PaymentDueType string  `json:"payment_due_type"`
 	PaymentDueDays int     `json:"payment_due_days"`
 	Scale          string  `json:"scale,omitempty"`
+}
+
+type workplaceInformation struct {
+	Manager *entityRef `json:"manager,omitempty"`
 }
 
 // CreateContract creates a new contractor contract
@@ -308,14 +317,29 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		req.ContractTemplateID = params.TemplateID
 	}
 
-	// Add client structure if legal entity or group specified
-	if params.LegalEntityID != "" || params.GroupID != "" {
+	// Add special clause if specified
+	if params.SpecialClause != "" {
+		req.SpecialClause = params.SpecialClause
+	}
+
+	// Add workplace information (manager) if specified
+	if params.ManagerID != "" {
+		req.WorkplaceInformation = &workplaceInformation{
+			Manager: &entityRef{ID: params.ManagerID},
+		}
+	}
+
+	// Add client structure if legal entity, group, or manager specified
+	if params.LegalEntityID != "" || params.GroupID != "" || params.ManagerID != "" {
 		req.Client = &createContractClient{}
 		if params.LegalEntityID != "" {
 			req.Client.LegalEntity = &entityRef{ID: params.LegalEntityID}
 		}
 		if params.GroupID != "" {
 			req.Client.Team = &entityRef{ID: params.GroupID}
+		}
+		if params.ManagerID != "" {
+			req.Client.Manager = &entityRef{ID: params.ManagerID}
 		}
 	}
 
@@ -356,9 +380,17 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 }
 
 // SignContract signs a contract (as the client/employer)
-func (c *Client) SignContract(ctx context.Context, contractID string) (*Contract, error) {
-	path := fmt.Sprintf("/rest/v2/contracts/%s/sign", escapePath(contractID))
-	resp, err := c.Post(ctx, path, nil)
+// signerName is the full name of the person signing on behalf of the client
+func (c *Client) SignContract(ctx context.Context, contractID string, signerName string) (*Contract, error) {
+	path := fmt.Sprintf("/rest/v2/contracts/%s/signatures", escapePath(contractID))
+	// Request body with client_signature containing signer's full name
+	reqBody := struct {
+		Data struct {
+			ClientSignature string `json:"client_signature"`
+		} `json:"data"`
+	}{}
+	reqBody.Data.ClientSignature = signerName
+	resp, err := c.Post(ctx, path, reqBody)
 	if err != nil {
 		return nil, err
 	}
@@ -440,10 +472,20 @@ func (c *Client) GetContractPDF(ctx context.Context, contractID string) (string,
 	return wrapper.Data.URL, nil
 }
 
+// InviteWorkerParams contains parameters for inviting a worker
+type InviteWorkerParams struct {
+	Email   string `json:"email"`
+	Locale  string `json:"locale,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 // InviteWorker sends an invitation email to the worker
-func (c *Client) InviteWorker(ctx context.Context, contractID string) error {
-	path := fmt.Sprintf("/rest/v2/contracts/%s/invite", escapePath(contractID))
-	_, err := c.Post(ctx, path, nil)
+func (c *Client) InviteWorker(ctx context.Context, contractID string, params InviteWorkerParams) error {
+	path := fmt.Sprintf("/rest/v2/contracts/%s/invitations", escapePath(contractID))
+	reqBody := struct {
+		Data InviteWorkerParams `json:"data"`
+	}{Data: params}
+	_, err := c.Post(ctx, path, reqBody)
 	return err
 }
 

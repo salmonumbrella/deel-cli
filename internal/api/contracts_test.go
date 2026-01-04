@@ -79,7 +79,12 @@ func TestCreateContract(t *testing.T) {
 }
 
 func TestSignContract(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/contracts/c1/sign", 200, map[string]any{
+	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1/signatures", func(t *testing.T, body map[string]any) {
+		// Verify the data wrapper with client_signature as signer name
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "John Smith", data["client_signature"])
+	}, 200, map[string]any{
 		"data": map[string]any{
 			"id":     "c1",
 			"status": "signed",
@@ -88,7 +93,7 @@ func TestSignContract(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(server)
-	result, err := client.SignContract(context.Background(), "c1")
+	result, err := client.SignContract(context.Background(), "c1", "John Smith")
 
 	require.NoError(t, err)
 	assert.Equal(t, "signed", result.Status)
@@ -136,7 +141,12 @@ func TestGetContractPDF(t *testing.T) {
 }
 
 func TestInviteWorker(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/contracts/c1/invite", 200, map[string]any{
+	server := mockServerWithBody(t, "POST", "/rest/v2/contracts/c1/invitations", func(t *testing.T, body map[string]any) {
+		data, ok := body["data"].(map[string]any)
+		require.True(t, ok, "body should have 'data' wrapper")
+		assert.Equal(t, "worker@example.com", data["email"])
+		assert.Equal(t, "en", data["locale"])
+	}, 201, map[string]any{
 		"data": map[string]any{
 			"invited": true,
 		},
@@ -144,7 +154,10 @@ func TestInviteWorker(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(server)
-	err := client.InviteWorker(context.Background(), "c1")
+	err := client.InviteWorker(context.Background(), "c1", InviteWorkerParams{
+		Email:  "worker@example.com",
+		Locale: "en",
+	})
 
 	require.NoError(t, err)
 }
