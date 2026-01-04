@@ -202,7 +202,7 @@ func TestCreateContractWithExtendedFields(t *testing.T) {
 
 		// Verify basic fields
 		assert.Equal(t, "Host Contract", data["title"])
-		assert.Equal(t, "pay_as_you_go_time_based", data["type"])
+		assert.Equal(t, "payg_tasks", data["type"])
 
 		// Verify template
 		assert.Equal(t, "tpl-host-ca", data["contract_template_id"])
