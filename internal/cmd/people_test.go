@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPeopleGetCmd_PersonalFlag_Exists(t *testing.T) {
+func TestPeopleGetCmd_HasPersonalFlagWithCorrectDefaults(t *testing.T) {
 	// Verify the --personal flag exists on the people get command
 	flag := peopleGetCmd.Flags().Lookup("personal")
 	require.NotNil(t, flag, "expected --personal flag to exist")
