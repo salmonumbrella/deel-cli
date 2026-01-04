@@ -3,9 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,95 +126,42 @@ func TestGetPersonPersonal_EmptyData(t *testing.T) {
 }
 
 func TestGetPersonPersonal_CallsCorrectEndpoint(t *testing.T) {
-	// Track which endpoint was called
-	var calledPath string
-	var calledMethod string
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calledPath = r.URL.Path
-		calledMethod = r.Method
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-
-		// Return appropriate response based on endpoint
-		if strings.HasSuffix(r.URL.Path, "/personal") {
-			// Personal endpoint response
-			json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{
-					"id":         "personal-123",
-					"worker_id":  12345,
-					"first_name": "John",
-					"last_name":  "Doe",
-					"email":      "john@example.com",
-				},
-			})
-		} else {
-			// Regular endpoint response
-			json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{
-					"hris_profile_id": "hris-123",
-					"first_name":      "John",
-					"last_name":       "Doe",
-					"email":           "john@example.com",
-					"job_title":       "Engineer",
-					"status":          "active",
-					"country":         "US",
-					"start_date":      "2024-01-01",
-				},
-			})
-		}
-	}))
+	// mockServer validates that the correct method and path are called
+	response := map[string]any{
+		"data": map[string]any{
+			"id":         "personal-123",
+			"worker_id":  12345,
+			"first_name": "John",
+			"last_name":  "Doe",
+			"email":      "john@example.com",
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", 200, response)
 	defer server.Close()
 
-	// Create client pointing to test server
-	client := NewClient("test-token")
-	client.SetBaseURL(server.URL)
-
-	// Test that GetPersonPersonal calls the /personal endpoint
+	client := testClient(server)
 	_, err := client.GetPersonPersonal(context.Background(), "hris-123")
 	require.NoError(t, err)
-	assert.Equal(t, "GET", calledMethod)
-	assert.Equal(t, "/rest/v2/people/hris-123/personal", calledPath)
-
-	// Reset for next call
-	calledPath = ""
-	calledMethod = ""
-
-	// Test that GetPerson calls the regular endpoint
-	_, err = client.GetPerson(context.Background(), "hris-123")
-	require.NoError(t, err)
-	assert.Equal(t, "GET", calledMethod)
-	assert.Equal(t, "/rest/v2/people/hris-123", calledPath)
 }
 
 func TestGetPerson_CallsCorrectEndpoint(t *testing.T) {
-	var calledPath string
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calledPath = r.URL.Path
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(map[string]any{
-			"data": map[string]any{
-				"hris_profile_id": "hris-123",
-				"first_name":      "John",
-				"last_name":       "Doe",
-				"email":           "john@example.com",
-				"job_title":       "Engineer",
-				"status":          "active",
-				"country":         "US",
-				"start_date":      "2024-01-01",
-			},
-		})
-	}))
+	// mockServer validates that the correct method and path are called
+	response := map[string]any{
+		"data": map[string]any{
+			"hris_profile_id": "hris-123",
+			"first_name":      "John",
+			"last_name":       "Doe",
+			"email":           "john@example.com",
+			"job_title":       "Engineer",
+			"status":          "active",
+			"country":         "US",
+			"start_date":      "2024-01-01",
+		},
+	}
+	server := mockServer(t, "GET", "/rest/v2/people/hris-123", 200, response)
 	defer server.Close()
 
-	client := NewClient("test-token")
-	client.SetBaseURL(server.URL)
-
+	client := testClient(server)
 	_, err := client.GetPerson(context.Background(), "hris-123")
 	require.NoError(t, err)
-	assert.Equal(t, "/rest/v2/people/hris-123", calledPath)
 }
