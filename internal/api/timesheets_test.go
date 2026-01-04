@@ -49,7 +49,7 @@ func TestListTimesheets_WithQueryParams(t *testing.T) {
 		},
 	}
 
-	server := mockServerWithQuery(t, "GET", "/rest/v2/timesheets", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/timesheets", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "c1", query["contract_id"])
 		assert.Equal(t, "approved", query["status"])
 		assert.Equal(t, "10", query["limit"])

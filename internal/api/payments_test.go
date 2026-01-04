@@ -126,7 +126,7 @@ func TestListDetailedPaymentReceipts_WithParams(t *testing.T) {
 		},
 		"page": map[string]any{},
 	}
-	server := mockServerWithQuery(t, "GET", "/rest/v2/payment-receipts", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/payment-receipts", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "20", query["limit"])
 		assert.Equal(t, "c123", query["contract_id"])
 		assert.Equal(t, "pay123", query["payment_id"])
@@ -215,7 +215,7 @@ func TestGetDetailedPaymentsReport_WithParams(t *testing.T) {
 			"payments":  []map[string]any{},
 		},
 	}
-	server := mockServerWithQuery(t, "GET", "/rest/v2/reports/payments/detailed", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/reports/payments/detailed", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "2024-01-01", query["start_date"])
 		assert.Equal(t, "2024-01-31", query["end_date"])
 		assert.Equal(t, "c123", query["contract_id"])

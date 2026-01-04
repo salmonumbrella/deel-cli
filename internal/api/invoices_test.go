@@ -105,7 +105,7 @@ func TestListDeelInvoices_WithParams(t *testing.T) {
 		},
 		"page": map[string]any{},
 	}
-	server := mockServerWithQuery(t, "GET", "/rest/v2/deel-invoices", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/deel-invoices", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "10", query["limit"])
 		assert.Equal(t, "paid", query["status"])
 		assert.Equal(t, "cursor-abc", query["cursor"])

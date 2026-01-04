@@ -94,7 +94,7 @@ func TestListVisaTypes(t *testing.T) {
 			},
 		},
 	}
-	server := mockServerWithQuery(t, "GET", "/rest/v2/immigration/visa-types", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/immigration/visa-types", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "US", query["country"])
 	}, http.StatusOK, response)
 	defer server.Close()
@@ -119,7 +119,7 @@ func TestCheckVisaRequirement(t *testing.T) {
 			"notes":          "Work permit required for employment",
 		},
 	}
-	server := mockServerWithQuery(t, "GET", "/rest/v2/immigration/check", func(t *testing.T, query map[string]string) {
+	server := mockServerWithQuery(t, "/rest/v2/immigration/check", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "CA", query["from"])
 		assert.Equal(t, "US", query["to"])
 	}, http.StatusOK, response)

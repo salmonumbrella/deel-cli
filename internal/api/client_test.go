@@ -53,11 +53,11 @@ func mockServerWithBody(t *testing.T, method, path string, validateBody func(t *
 	}))
 }
 
-// mockServerWithQuery creates a test server that validates query parameters
-func mockServerWithQuery(t *testing.T, method, path string, validateQuery func(t *testing.T, query map[string]string), statusCode int, response any) *httptest.Server {
+// mockServerWithQuery creates a test server that validates query parameters.
+func mockServerWithQuery(t *testing.T, path string, validateQuery func(t *testing.T, query map[string]string), statusCode int, response any) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, method, r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, path, r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
