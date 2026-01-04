@@ -73,6 +73,11 @@ func (c *Client) SetIdempotencyKey(key string) {
 	c.idempotencyKey = key
 }
 
+// SetBaseURL sets the base URL for API requests (for testing).
+func (c *Client) SetBaseURL(url string) {
+	c.baseURL = url
+}
+
 // Get performs a GET request
 func (c *Client) Get(ctx context.Context, path string) (json.RawMessage, error) {
 	return c.do(ctx, http.MethodGet, path, nil)
