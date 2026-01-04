@@ -32,7 +32,7 @@ type rawContract struct {
 	Status    string `json:"status"`
 	StartDate string `json:"start_date"`
 	EndDate   string `json:"termination_date"`
-	Client struct {
+	Client    struct {
 		LegalEntity struct {
 			Name string `json:"name"`
 		} `json:"legal_entity"`
@@ -284,7 +284,6 @@ type compensationDetails struct {
 	Scale          string  `json:"scale,omitempty"`
 }
 
-
 // CreateContract creates a new contractor contract
 func (c *Client) CreateContract(ctx context.Context, params CreateContractParams) (*Contract, error) {
 	req := createContractRequest{
@@ -354,8 +353,8 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 			CycleEnd:       params.CycleEnd,
 			CycleEndType:   cycleEndType,
 			Frequency:      params.Frequency,
-			PaymentDueType: "REGULAR",  // n8n uses REGULAR
-			PaymentDueDays: 5,          // n8n uses 5
+			PaymentDueType: "REGULAR", // n8n uses REGULAR
+			PaymentDueDays: 5,         // n8n uses 5
 		}
 	}
 
@@ -406,12 +405,12 @@ func (c *Client) SignContract(ctx context.Context, contractID string, signerName
 // TerminateContractParams are params for terminating a contractor contract
 type TerminateContractParams struct {
 	TerminateNow                 bool   `json:"terminate_now,omitempty"`
-	CompletionDate               string `json:"completion_date,omitempty"`                 // Required if terminate_now is false (YYYY-MM-DD)
-	TerminationType              string `json:"termination_type,omitempty"`                // RESIGNATION, TERMINATION, END_OF_CONTRACT
-	TerminationReasonID          string `json:"termination_reason_id,omitempty"`           // UUID from termination reasons endpoint
-	TerminationReasonDescription string `json:"termination_reason_description,omitempty"`  // Free text description
-	EligibleForRehire            string `json:"eligible_for_rehire,omitempty"`             // YES, NO, DONT_KNOW
-	Message                      string `json:"message,omitempty"`                         // Optional message (max 1000 chars)
+	CompletionDate               string `json:"completion_date,omitempty"`                // Required if terminate_now is false (YYYY-MM-DD)
+	TerminationType              string `json:"termination_type,omitempty"`               // RESIGNATION, TERMINATION, END_OF_CONTRACT
+	TerminationReasonID          string `json:"termination_reason_id,omitempty"`          // UUID from termination reasons endpoint
+	TerminationReasonDescription string `json:"termination_reason_description,omitempty"` // Free text description
+	EligibleForRehire            string `json:"eligible_for_rehire,omitempty"`            // YES, NO, DONT_KNOW
+	Message                      string `json:"message,omitempty"`                        // Optional message (max 1000 chars)
 }
 
 // terminateContractRequest wraps params in data object as required by API

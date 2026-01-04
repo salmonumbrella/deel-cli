@@ -77,7 +77,9 @@ func (f *Formatter) PrintJSON(data any) error {
 
 // PrintText outputs plain text
 func (f *Formatter) PrintText(text string) {
-	fmt.Fprintln(f.out, text)
+	if _, err := fmt.Fprintln(f.out, text); err != nil {
+		return
+	}
 }
 
 // PrintError outputs an error message to stderr
@@ -86,7 +88,9 @@ func (f *Formatter) PrintError(format string, args ...any) {
 	if f.profile != termenv.Ascii {
 		msg = termenv.String(msg).Foreground(f.profile.Color("1")).String()
 	}
-	fmt.Fprintln(f.errOut, msg)
+	if _, err := fmt.Fprintln(f.errOut, msg); err != nil {
+		return
+	}
 }
 
 // PrintSuccess outputs a success message
@@ -95,7 +99,9 @@ func (f *Formatter) PrintSuccess(format string, args ...any) {
 	if f.profile != termenv.Ascii {
 		msg = termenv.String(msg).Foreground(f.profile.Color("2")).String()
 	}
-	fmt.Fprintln(f.out, msg)
+	if _, err := fmt.Fprintln(f.out, msg); err != nil {
+		return
+	}
 }
 
 // PrintWarning outputs a warning message
@@ -104,7 +110,9 @@ func (f *Formatter) PrintWarning(format string, args ...any) {
 	if f.profile != termenv.Ascii {
 		msg = termenv.String(msg).Foreground(f.profile.Color("3")).String()
 	}
-	fmt.Fprintln(f.errOut, msg)
+	if _, err := fmt.Fprintln(f.errOut, msg); err != nil {
+		return
+	}
 }
 
 // PrintDryRun outputs a dry-run preview in the configured format.

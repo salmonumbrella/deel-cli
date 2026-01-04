@@ -161,7 +161,9 @@ func TestCheckForUpdate_Timeout(t *testing.T) {
 func TestCheckForUpdate_InvalidJSON(t *testing.T) {
 	// Create mock server returning invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("not json"))
+		if _, err := w.Write([]byte("not json")); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 

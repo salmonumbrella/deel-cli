@@ -12,8 +12,10 @@ var benefitsCmd = &cobra.Command{
 	Long:  "View available benefits by country and employee benefit enrollments.",
 }
 
-var benefitsCountryFlag string
-var benefitsEmployeeFlag string
+var (
+	benefitsCountryFlag  string
+	benefitsEmployeeFlag string
+)
 
 var benefitsListCmd = &cobra.Command{
 	Use:   "list",

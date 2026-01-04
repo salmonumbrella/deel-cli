@@ -12,8 +12,10 @@ var complianceCmd = &cobra.Command{
 	Long:  "View compliance documents, templates, and validation status.",
 }
 
-var complianceContractFlag string
-var complianceCountryFlag string
+var (
+	complianceContractFlag string
+	complianceCountryFlag  string
+)
 
 var complianceDocsCmd = &cobra.Command{
 	Use:   "docs",

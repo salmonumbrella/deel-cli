@@ -13,8 +13,10 @@ var bgCheckCmd = &cobra.Command{
 	Long:    "View background check options and status.",
 }
 
-var bgCheckCountryFlag string
-var bgCheckContractFlag string
+var (
+	bgCheckCountryFlag  string
+	bgCheckContractFlag string
+)
 
 var bgCheckOptionsCmd = &cobra.Command{
 	Use:   "options",

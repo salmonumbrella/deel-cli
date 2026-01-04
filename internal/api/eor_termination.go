@@ -30,7 +30,7 @@ type EORUsedTimeOff struct {
 
 // EORResignationParams are parameters for requesting an EOR resignation (employee-initiated)
 type EORResignationParams struct {
-	Reason                string `json:"reason"`                   // Enum: EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY, etc.
+	Reason                string `json:"reason"` // Enum: EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY, etc.
 	IsEmployeeStayingDeel bool   `json:"is_employee_staying_with_deel"`
 }
 
