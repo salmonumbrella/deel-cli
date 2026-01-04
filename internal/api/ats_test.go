@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ func TestListATSJobs(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/ats/jobs", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "open", query["status"])
 		assert.Equal(t, "dept1", query["department_id"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -48,7 +49,7 @@ func TestCreateATSJob(t *testing.T) {
 		assert.Equal(t, "Backend Engineer", body["title"])
 		assert.Equal(t, "dept2", body["department_id"])
 		assert.Equal(t, "full-time", body["employment_type"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":              "job-new",
 			"title":           "Backend Engineer",
@@ -94,7 +95,7 @@ func TestListATSJobPostings(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/ats/job-postings", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "published", query["status"])
 		assert.Equal(t, "job1", query["job_id"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -125,7 +126,7 @@ func TestGetATSJobPosting(t *testing.T) {
 			"url":             "https://careers.example.com/jobs/posting1",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/ats/job-postings/posting1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/ats/job-postings/posting1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -158,7 +159,7 @@ func TestListATSApplications(t *testing.T) {
 		assert.Equal(t, "active", query["status"])
 		assert.Equal(t, "job1", query["job_id"])
 		assert.Equal(t, "phone-screen", query["stage"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -194,7 +195,7 @@ func TestListATSCandidates(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/ats/candidates", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "Jane Smith", query["search"])
 		assert.Equal(t, "50", query["limit"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -229,7 +230,7 @@ func TestListATSDepartments(t *testing.T) {
 	}
 	server := mockServerWithQuery(t, "GET", "/rest/v2/ats/departments", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "100", query["limit"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -261,7 +262,7 @@ func TestListATSLocations(t *testing.T) {
 		}
 		server := mockServerWithQuery(t, "GET", "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			assert.Equal(t, "true", query["remote"])
-		}, 200, response)
+		}, http.StatusOK, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -291,7 +292,7 @@ func TestListATSLocations(t *testing.T) {
 		}
 		server := mockServerWithQuery(t, "GET", "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			assert.Equal(t, "false", query["remote"])
-		}, 200, response)
+		}, http.StatusOK, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -330,7 +331,7 @@ func TestListATSLocations(t *testing.T) {
 		server := mockServerWithQuery(t, "GET", "/rest/v2/ats/locations", func(t *testing.T, query map[string]string) {
 			_, hasRemote := query["remote"]
 			assert.False(t, hasRemote, "remote parameter should not be present")
-		}, 200, response)
+		}, http.StatusOK, response)
 		defer server.Close()
 
 		client := testClient(server)
@@ -362,7 +363,7 @@ func TestListRejectionReasons(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/ats/rejection-reasons", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/ats/rejection-reasons", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -394,7 +395,7 @@ func TestListATSOffers(t *testing.T) {
 	}
 	server := mockServerWithQuery(t, "GET", "/rest/v2/ats/offers", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "pending", query["status"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

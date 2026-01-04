@@ -19,7 +19,7 @@ func TestGetInvoicePDF(t *testing.T) {
 		assert.Equal(t, "application/pdf", r.Header.Get("Accept"))
 
 		w.Header().Set("Content-Type", "application/pdf")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		// Write mock PDF data
 		w.Write([]byte("%PDF-1.4 mock pdf content"))
 	}))
@@ -35,7 +35,7 @@ func TestGetInvoicePDF(t *testing.T) {
 
 func TestGetInvoicePDF_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error": "invoice not found"}`))
 	}))
 	defer server.Close()
@@ -77,7 +77,7 @@ func TestListDeelInvoices(t *testing.T) {
 			"total": 2,
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/deel-invoices", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/deel-invoices", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -107,7 +107,7 @@ func TestListDeelInvoices_WithParams(t *testing.T) {
 		assert.Equal(t, "10", query["limit"])
 		assert.Equal(t, "paid", query["status"])
 		assert.Equal(t, "cursor-abc", query["cursor"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

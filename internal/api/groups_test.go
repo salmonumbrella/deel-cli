@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ func TestListGroups(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/groups", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/groups", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -49,7 +50,7 @@ func TestGetGroup(t *testing.T) {
 			"created_at":   "2024-01-01T00:00:00Z",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/groups/grp1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/groups/grp1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -67,7 +68,7 @@ func TestCreateGroup(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/groups", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "Marketing", body["name"])
 		assert.Equal(t, "Marketing department", body["description"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":           "grp-new",
 			"name":         "Marketing",
@@ -95,7 +96,7 @@ func TestUpdateGroup(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/groups/grp1", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "Engineering Team", body["name"])
 		assert.Equal(t, "Updated description", body["description"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":           "grp1",
 			"name":         "Engineering Team",
@@ -119,7 +120,7 @@ func TestUpdateGroup(t *testing.T) {
 }
 
 func TestDeleteGroup(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/groups/grp1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/groups/grp1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -138,7 +139,7 @@ func TestCloneGroup(t *testing.T) {
 			"created_at":   "2024-01-15T00:00:00Z",
 		},
 	}
-	server := mockServer(t, "POST", "/rest/v2/groups/grp1/clone", 201, response)
+	server := mockServer(t, "POST", "/rest/v2/groups/grp1/clone", http.StatusCreated, response)
 	defer server.Close()
 
 	client := testClient(server)

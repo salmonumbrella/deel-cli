@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestListTasks(t *testing.T) {
 			{"id": "t1", "title": "Task 1", "status": "pending", "amount": 100},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/tasks", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/tasks", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -27,7 +28,7 @@ func TestListTasks(t *testing.T) {
 func TestCreateTask(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/tasks", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "c1", body["contract_id"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{"id": "t-new"},
 	})
 	defer server.Close()
@@ -46,7 +47,7 @@ func TestCreateTask(t *testing.T) {
 func TestReviewTask(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/tasks/t1/review", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "approved", body["status"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{"id": "t1", "status": "approved"},
 	})
 	defer server.Close()

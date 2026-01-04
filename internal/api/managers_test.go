@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func TestListManagers(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/managers", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/managers", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -60,7 +61,7 @@ func TestCreateManager(t *testing.T) {
 		assert.Len(t, teamIDs, 2)
 		assert.Equal(t, "team-1", teamIDs[0])
 		assert.Equal(t, "team-3", teamIDs[1])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "mgr-new",
 			"email":      "newmgr@example.com",
@@ -104,7 +105,7 @@ func TestCreateManagerWithoutTeams(t *testing.T) {
 		if hasTeamIDs {
 			assert.Empty(t, body["team_ids"])
 		}
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "mgr-min",
 			"email":      "minimal@example.com",
@@ -133,7 +134,7 @@ func TestCreateManagerWithoutTeams(t *testing.T) {
 func TestCreateManagerMagicLink(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/managers/magic-link", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "magiclink@example.com", body["email"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"manager_id": "mgr-123",
 			"link":       "https://app.deel.com/magic/abc123xyz",

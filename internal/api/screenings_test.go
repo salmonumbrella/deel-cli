@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ func TestCreateVeriffSession(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/screenings/veriff/session", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "worker123", body["worker_id"])
 		assert.Equal(t, "https://example.com/callback", body["callback"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "session123",
 			"url":        "https://veriff.com/verify/session123",
@@ -50,7 +51,7 @@ func TestGetKYCDetails(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/screenings/kyc/worker123", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/screenings/kyc/worker123", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -87,7 +88,7 @@ func TestGetAMLData(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/screenings/aml", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/screenings/aml", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -113,7 +114,7 @@ func TestSubmitExternalKYC(t *testing.T) {
 		assert.Equal(t, "passport", body["document_type"])
 		assert.Equal(t, "P12345678", body["document_id"])
 		assert.Equal(t, "2030-12-31", body["expiration_date"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":           "sub123",
 			"worker_id":    "worker123",
@@ -149,7 +150,7 @@ func TestCreateManualVerification(t *testing.T) {
 		assert.Len(t, docs, 2)
 		assert.Contains(t, docs, "https://example.com/doc1.pdf")
 		assert.Contains(t, docs, "https://example.com/doc2.pdf")
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "ver123",
 			"worker_id":   "worker123",

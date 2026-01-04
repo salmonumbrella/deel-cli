@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestCreatePerson(t *testing.T) {
 		assert.Equal(t, "Doe", body["last_name"])
 		assert.Equal(t, "contractor", body["type"])
 		assert.Equal(t, "US", body["country"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "p-123",
 			"email":      "john.doe@example.com",
@@ -55,7 +56,7 @@ func TestUpdatePersonalInfo(t *testing.T) {
 		assert.Equal(t, "1990-05-15", body["date_of_birth"])
 		assert.Equal(t, "+1234567890", body["phone"])
 		assert.Equal(t, "US", body["nationality"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":            "p-123",
 			"first_name":    "Jane",
@@ -93,7 +94,7 @@ func TestUpdateWorkingLocation(t *testing.T) {
 		assert.Equal(t, "123 Market St", body["address"])
 		assert.Equal(t, "94103", body["postal_code"])
 		assert.Equal(t, "America/Los_Angeles", body["timezone"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":          "p-123",
 			"country":     "US",
@@ -135,7 +136,7 @@ func TestCreateDirectEmployee(t *testing.T) {
 		assert.Equal(t, "2025-02-01", body["start_date"])
 		assert.Equal(t, "Software Engineer", body["job_title"])
 		assert.Equal(t, "Engineering", body["department"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "p-456",
 			"email":      "employee@example.com",

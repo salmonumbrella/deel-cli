@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestCreateLegalEntity(t *testing.T) {
 		assert.Equal(t, "US", body["country"])
 		assert.Equal(t, "llc", body["type"])
 		assert.Equal(t, "12-3456789", body["registration_number"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":                  "le-123",
 			"name":                "Acme Corp",
@@ -50,7 +51,7 @@ func TestCreateLegalEntity_WithoutRegistrationNumber(t *testing.T) {
 		assert.Equal(t, "limited", body["type"])
 		_, hasRegNum := body["registration_number"]
 		assert.False(t, hasRegNum)
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":      "le-456",
 			"name":    "Global Inc",
@@ -75,7 +76,7 @@ func TestCreateLegalEntity_WithoutRegistrationNumber(t *testing.T) {
 }
 
 func TestCreateLegalEntity_Error(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/legal-entities", 400, map[string]any{
+	server := mockServer(t, "POST", "/rest/v2/legal-entities", http.StatusBadRequest, map[string]any{
 		"error": "Invalid country code",
 	})
 	defer server.Close()
@@ -90,14 +91,14 @@ func TestCreateLegalEntity_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateLegalEntity(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/legal-entities/le-123", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "Updated Corp", body["name"])
 		assert.Equal(t, "98-7654321", body["registration_number"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":                  "le-123",
 			"name":                "Updated Corp",
@@ -127,7 +128,7 @@ func TestUpdateLegalEntity_PartialUpdate(t *testing.T) {
 		// Only type should be in the request
 		_, hasName := body["name"]
 		assert.False(t, hasName)
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":      "le-789",
 			"name":    "Unchanged Name",
@@ -149,7 +150,7 @@ func TestUpdateLegalEntity_PartialUpdate(t *testing.T) {
 }
 
 func TestUpdateLegalEntity_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/legal-entities/le-999", 404, map[string]any{
+	server := mockServer(t, "PATCH", "/rest/v2/legal-entities/le-999", http.StatusNotFound, map[string]any{
 		"error": "Legal entity not found",
 	})
 	defer server.Close()
@@ -162,11 +163,11 @@ func TestUpdateLegalEntity_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteLegalEntity(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-123", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-123", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -176,7 +177,7 @@ func TestDeleteLegalEntity(t *testing.T) {
 }
 
 func TestDeleteLegalEntity_NotFound(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-999", 404, map[string]any{
+	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-999", http.StatusNotFound, map[string]any{
 		"error": "Legal entity not found",
 	})
 	defer server.Close()
@@ -187,11 +188,11 @@ func TestDeleteLegalEntity_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteLegalEntity_Conflict(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-123", 409, map[string]any{
+	server := mockServer(t, "DELETE", "/rest/v2/legal-entities/le-123", http.StatusConflict, map[string]any{
 		"error": "Cannot delete legal entity with active contracts",
 	})
 	defer server.Close()
@@ -202,7 +203,7 @@ func TestDeleteLegalEntity_Conflict(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 409, apiErr.StatusCode)
+	assert.Equal(t, http.StatusConflict, apiErr.StatusCode)
 }
 
 func TestGetPayrollSettings(t *testing.T) {
@@ -220,7 +221,7 @@ func TestGetPayrollSettings(t *testing.T) {
 			"notification_email": "payroll@example.com",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-123/payroll-settings", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-123/payroll-settings", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -250,7 +251,7 @@ func TestGetPayrollSettings_MinimalData(t *testing.T) {
 			"auto_approval":     false,
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-456/payroll-settings", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-456/payroll-settings", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -270,7 +271,7 @@ func TestGetPayrollSettings_MinimalData(t *testing.T) {
 }
 
 func TestGetPayrollSettings_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-999/payroll-settings", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/legal-entities/le-999/payroll-settings", http.StatusNotFound, map[string]any{
 		"error": "Payroll settings not found",
 	})
 	defer server.Close()
@@ -281,7 +282,7 @@ func TestGetPayrollSettings_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListLegalEntities(t *testing.T) {
@@ -291,7 +292,7 @@ func TestListLegalEntities(t *testing.T) {
 			{"id": "le-2", "name": "Wanver Inc", "country": "US"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/legal-entities", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/legal-entities", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

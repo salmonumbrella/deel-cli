@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestListCurrencies(t *testing.T) {
 			{"code": "EUR", "name": "Euro", "symbol": "€"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/currencies", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/currencies", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -36,7 +37,7 @@ func TestListCountries(t *testing.T) {
 			{"code": "GB", "name": "United Kingdom"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/countries", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/countries", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -56,7 +57,7 @@ func TestListJobTitles(t *testing.T) {
 			{"id": "jt2", "name": "Product Manager"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/job-titles", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/job-titles", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -77,7 +78,7 @@ func TestListSeniorityLevels(t *testing.T) {
 			{"id": "sl3", "name": "Senior"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -100,7 +101,7 @@ func TestListSeniorityLevels_NumericIDs(t *testing.T) {
 			{"id": nil, "name": "Unknown"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -123,7 +124,7 @@ func TestListTimeOffTypes(t *testing.T) {
 			{"id": "tot2", "name": "Sick Leave"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/lookups/time-off-types", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/lookups/time-off-types", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -137,7 +138,7 @@ func TestListTimeOffTypes(t *testing.T) {
 }
 
 func TestListCurrencies_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/currencies", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/currencies", http.StatusNotFound, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()
@@ -148,11 +149,11 @@ func TestListCurrencies_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListCountries_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/countries", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/countries", http.StatusNotFound, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()
@@ -163,11 +164,11 @@ func TestListCountries_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListJobTitles_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/job-titles", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/job-titles", http.StatusNotFound, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()
@@ -178,11 +179,11 @@ func TestListJobTitles_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListSeniorityLevels_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/seniorities", http.StatusNotFound, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()
@@ -193,11 +194,11 @@ func TestListSeniorityLevels_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListTimeOffTypes_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/lookups/time-off-types", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/lookups/time-off-types", http.StatusNotFound, map[string]any{
 		"error": "not found",
 	})
 	defer server.Close()
@@ -208,5 +209,5 @@ func TestListTimeOffTypes_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }

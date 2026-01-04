@@ -90,7 +90,7 @@ func testClient(server *httptest.Server) *Client {
 
 func TestClient_Get_Success(t *testing.T) {
 	expected := map[string]any{"data": "test"}
-	server := mockServer(t, "GET", "/test", 200, expected)
+	server := mockServer(t, "GET", "/test", http.StatusOK, expected)
 	defer server.Close()
 
 	client := testClient(server)
@@ -101,7 +101,7 @@ func TestClient_Get_Success(t *testing.T) {
 }
 
 func TestClient_Get_APIError(t *testing.T) {
-	server := mockServer(t, "GET", "/test", 404, map[string]string{"error": "not found"})
+	server := mockServer(t, "GET", "/test", http.StatusNotFound, map[string]string{"error": "not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -110,13 +110,13 @@ func TestClient_Get_APIError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestClient_Post_Success(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/test", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "value", body["key"])
-	}, 201, map[string]any{"id": "123"})
+	}, http.StatusCreated, map[string]any{"id": "123"})
 	defer server.Close()
 
 	client := testClient(server)

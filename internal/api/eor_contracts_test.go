@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func TestCreateEORContract(t *testing.T) {
 		assert.Equal(t, "Software Engineer", body["job_title"])
 		assert.Equal(t, "senior", body["seniority_level"])
 		assert.Equal(t, "Full-stack development", body["scope"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":              "eor-123",
 			"title":           "Senior Software Engineer - Full Stack",
@@ -66,7 +67,7 @@ func TestCreateEORContract(t *testing.T) {
 }
 
 func TestCreateEORContract_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts", 400, map[string]string{"error": "invalid country code"})
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts", http.StatusBadRequest, map[string]string{"error": "invalid country code"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -85,7 +86,7 @@ func TestCreateEORContract_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestGetEORContract(t *testing.T) {
@@ -117,7 +118,7 @@ func TestGetEORContract(t *testing.T) {
 			"created_at": "2024-01-15T10:00:00Z",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -134,7 +135,7 @@ func TestGetEORContract(t *testing.T) {
 }
 
 func TestGetEORContract_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/invalid", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "GET", "/rest/v2/eor/contracts/invalid", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -143,7 +144,7 @@ func TestGetEORContract_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestUpdateEORContract(t *testing.T) {
@@ -152,7 +153,7 @@ func TestUpdateEORContract(t *testing.T) {
 		assert.Equal(t, 140000.0, body["salary"])
 		assert.Equal(t, "Staff Engineer", body["job_title"])
 		assert.Equal(t, "staff", body["seniority_level"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":              "eor-123",
 			"title":           "Principal Software Engineer",
@@ -190,7 +191,7 @@ func TestUpdateEORContract(t *testing.T) {
 }
 
 func TestUpdateEORContract_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/eor/contracts/invalid", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/eor/contracts/invalid", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -201,13 +202,13 @@ func TestUpdateEORContract_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestCancelEORContract(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/eor/contracts/eor-123/cancel", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "Employee resigned", body["reason"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":              "eor-123",
 			"title":           "Senior Software Engineer",
@@ -240,7 +241,7 @@ func TestCancelEORContract(t *testing.T) {
 }
 
 func TestCancelEORContract_Forbidden(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/cancel", 403, map[string]string{"error": "cannot cancel active contract"})
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/cancel", http.StatusForbidden, map[string]string{"error": "cannot cancel active contract"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -251,11 +252,11 @@ func TestCancelEORContract_Forbidden(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 403, apiErr.StatusCode)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
 }
 
 func TestSignEORContract(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/sign", 200, map[string]any{
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/sign", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":              "eor-123",
 			"title":           "Senior Software Engineer",
@@ -284,7 +285,7 @@ func TestSignEORContract(t *testing.T) {
 }
 
 func TestSignEORContract_AlreadySigned(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/sign", 400, map[string]string{"error": "contract already signed"})
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/sign", http.StatusBadRequest, map[string]string{"error": "contract already signed"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -293,5 +294,5 @@ func TestSignEORContract_AlreadySigned(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }

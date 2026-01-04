@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ func TestListG2NReports(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/reports/gross-to-net", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-123", query["worker_id"])
 		assert.Equal(t, "2024-03", query["period"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":           "g2n-001",
@@ -67,7 +68,7 @@ func TestListG2NReports(t *testing.T) {
 func TestListG2NReports_EmptyResults(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/reports/gross-to-net", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-999", query["worker_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": []map[string]any{},
 	})
 	defer server.Close()
@@ -82,7 +83,7 @@ func TestListG2NReports_EmptyResults(t *testing.T) {
 }
 
 func TestListG2NReports_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -93,11 +94,11 @@ func TestListG2NReports_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDownloadG2NReport(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net/download", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net/download", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"report_id":    "g2n-001",
 			"download_url": "https://example.com/reports/g2n-001.pdf",
@@ -118,7 +119,7 @@ func TestDownloadG2NReport(t *testing.T) {
 }
 
 func TestDownloadG2NReport_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net/download", 404, map[string]string{"error": "report not found"})
+	server := mockServer(t, "GET", "/rest/v2/gp/reports/gross-to-net/download", http.StatusNotFound, map[string]string{"error": "report not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -127,7 +128,7 @@ func TestDownloadG2NReport_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestRequestGPTermination(t *testing.T) {
@@ -135,7 +136,7 @@ func TestRequestGPTermination(t *testing.T) {
 		assert.Equal(t, "w-123", body["worker_id"])
 		assert.Equal(t, "Resignation", body["reason"])
 		assert.Equal(t, "2024-05-31", body["effective_date"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "term-001",
 			"worker_id":      "w-123",
@@ -164,7 +165,7 @@ func TestRequestGPTermination(t *testing.T) {
 }
 
 func TestRequestGPTermination_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/gp/termination-requests", 400, map[string]string{"error": "effective_date is required"})
+	server := mockServer(t, "POST", "/rest/v2/gp/termination-requests", http.StatusBadRequest, map[string]string{"error": "effective_date is required"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -176,11 +177,11 @@ func TestRequestGPTermination_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestRequestGPTermination_WorkerNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/gp/termination-requests", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "POST", "/rest/v2/gp/termination-requests", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -193,5 +194,5 @@ func TestRequestGPTermination_WorkerNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }

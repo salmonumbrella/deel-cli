@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestListMilestones(t *testing.T) {
 			{"id": "m1", "title": "Phase 1", "amount": 5000, "status": "pending"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/contracts/c1/milestones", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/contracts/c1/milestones", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -29,7 +30,7 @@ func TestCreateMilestone(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/milestones", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "c1", body["contract_id"])
 		assert.Equal(t, "New Milestone", body["title"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":    "m-new",
 			"title": "New Milestone",
@@ -50,7 +51,7 @@ func TestCreateMilestone(t *testing.T) {
 }
 
 func TestDeleteMilestone(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/milestones/m1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/milestones/m1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)

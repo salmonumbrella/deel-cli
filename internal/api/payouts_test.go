@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestWithdrawFunds(t *testing.T) {
 		assert.Equal(t, 1000.0, body["amount"])
 		assert.Equal(t, "USD", body["currency"])
 		assert.Equal(t, "Monthly payout", body["description"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "wd-123",
 			"amount":      1000.0,
@@ -45,7 +46,7 @@ func TestWithdrawFunds_MinimalParams(t *testing.T) {
 		assert.Equal(t, 500.0, body["amount"])
 		assert.Equal(t, "EUR", body["currency"])
 		assert.Nil(t, body["description"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "wd-456",
 			"amount":     500.0,
@@ -76,7 +77,7 @@ func TestGetAutoWithdrawal(t *testing.T) {
 			"schedule":  "weekly",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/payouts/auto-withdrawal", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/payouts/auto-withdrawal", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -95,7 +96,7 @@ func TestGetAutoWithdrawal_Disabled(t *testing.T) {
 			"enabled": false,
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/payouts/auto-withdrawal", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/payouts/auto-withdrawal", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -111,7 +112,7 @@ func TestSetAutoWithdrawal_Enable(t *testing.T) {
 		assert.Equal(t, 10000.0, body["threshold"])
 		assert.Equal(t, "USD", body["currency"])
 		assert.Equal(t, "monthly", body["schedule"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"enabled":   true,
 			"threshold": 10000.0,
@@ -139,7 +140,7 @@ func TestSetAutoWithdrawal_Enable(t *testing.T) {
 func TestSetAutoWithdrawal_Disable(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/payouts/auto-withdrawal", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, false, body["enabled"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"enabled": false,
 		},
@@ -176,7 +177,7 @@ func TestListContractorBalances(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/contractors/balances", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/contractors/balances", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -201,7 +202,7 @@ func TestListContractorBalances_Empty(t *testing.T) {
 	response := map[string]any{
 		"data": []map[string]any{},
 	}
-	server := mockServer(t, "GET", "/rest/v2/contractors/balances", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/contractors/balances", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

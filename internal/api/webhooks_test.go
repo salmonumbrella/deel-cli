@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestListWebhooks(t *testing.T) {
 			{"id": "wh1", "url": "https://example.com/hook", "events": []string{"contract.created"}},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/webhooks", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/webhooks", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -34,7 +35,7 @@ func TestGetWebhook(t *testing.T) {
 			"status": "active",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/webhooks/wh1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/webhooks/wh1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -50,7 +51,7 @@ func TestCreateWebhook(t *testing.T) {
 		assert.Equal(t, "https://example.com/hook", body["url"])
 		events := body["events"].([]any)
 		assert.Contains(t, events, "contract.created")
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":     "wh-new",
 			"url":    "https://example.com/hook",
@@ -74,7 +75,7 @@ func TestCreateWebhook(t *testing.T) {
 func TestUpdateWebhook(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/webhooks/wh1", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "https://new-url.com/hook", body["url"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":  "wh1",
 			"url": "https://new-url.com/hook",
@@ -92,7 +93,7 @@ func TestUpdateWebhook(t *testing.T) {
 }
 
 func TestDeleteWebhook(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/webhooks/wh1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/webhooks/wh1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -108,7 +109,7 @@ func TestListWebhookEventTypes(t *testing.T) {
 			{"name": "contract.signed", "description": "When a contract is signed"},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/webhooks/event-types", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/webhooks/event-types", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

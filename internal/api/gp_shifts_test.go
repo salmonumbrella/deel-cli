@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestCreateGPShift(t *testing.T) {
 		assert.Equal(t, "17:00", body["end_time"])
 		assert.Equal(t, 60.0, body["break_minutes"])
 		assert.Equal(t, "rate-001", body["rate_id"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":            "shift-456",
 			"external_id":   "ext-shift-123",
@@ -69,7 +70,7 @@ func TestCreateGPShift_WithoutOptionalFields(t *testing.T) {
 		assert.False(t, hasExternalID)
 		_, hasRateID := body["rate_id"]
 		assert.False(t, hasRateID)
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":            "shift-457",
 			"worker_id":     "w-789",
@@ -101,7 +102,7 @@ func TestCreateGPShift_WithoutOptionalFields(t *testing.T) {
 }
 
 func TestCreateGPShift_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/gp/shifts", 400, map[string]string{"error": "invalid date format"})
+	server := mockServer(t, "POST", "/rest/v2/gp/shifts", http.StatusBadRequest, map[string]string{"error": "invalid date format"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -116,7 +117,7 @@ func TestCreateGPShift_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateGPShift(t *testing.T) {
@@ -126,7 +127,7 @@ func TestUpdateGPShift(t *testing.T) {
 		assert.Equal(t, "16:00", body["end_time"])
 		assert.Equal(t, 45.0, body["break_minutes"])
 		assert.Equal(t, "rate-002", body["rate_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":            "shift-456",
 			"external_id":   "ext-shift-123",
@@ -173,7 +174,7 @@ func TestUpdateGPShift_PartialUpdate(t *testing.T) {
 		assert.False(t, hasEndTime)
 		_, hasRateID := body["rate_id"]
 		assert.False(t, hasRateID)
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":            "shift-456",
 			"external_id":   "ext-shift-123",
@@ -202,7 +203,7 @@ func TestUpdateGPShift_PartialUpdate(t *testing.T) {
 }
 
 func TestUpdateGPShift_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/gp/shifts/invalid", 404, map[string]string{"error": "shift not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/gp/shifts/invalid", http.StatusNotFound, map[string]string{"error": "shift not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -213,11 +214,11 @@ func TestUpdateGPShift_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteGPShift(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/ext-shift-123", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/ext-shift-123", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -227,7 +228,7 @@ func TestDeleteGPShift(t *testing.T) {
 }
 
 func TestDeleteGPShift_NotFound(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/invalid", 404, map[string]string{"error": "shift not found"})
+	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/invalid", http.StatusNotFound, map[string]string{"error": "shift not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -236,11 +237,11 @@ func TestDeleteGPShift_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteGPShift_Conflict(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/ext-shift-123", 409, map[string]string{"error": "shift already processed"})
+	server := mockServer(t, "DELETE", "/rest/v2/gp/shifts/external/ext-shift-123", http.StatusConflict, map[string]string{"error": "shift already processed"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -249,5 +250,5 @@ func TestDeleteGPShift_Conflict(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 409, apiErr.StatusCode)
+	assert.Equal(t, http.StatusConflict, apiErr.StatusCode)
 }

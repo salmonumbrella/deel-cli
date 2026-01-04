@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func TestListTimesheets(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/timesheets", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/timesheets", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -53,7 +54,7 @@ func TestListTimesheets_WithQueryParams(t *testing.T) {
 		assert.Equal(t, "approved", query["status"])
 		assert.Equal(t, "10", query["limit"])
 		assert.Equal(t, "abc123", query["cursor"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -71,7 +72,7 @@ func TestListTimesheets_WithQueryParams(t *testing.T) {
 }
 
 func TestListTimesheets_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/timesheets", 400, map[string]string{"error": "bad request"})
+	server := mockServer(t, "GET", "/rest/v2/timesheets", http.StatusBadRequest, map[string]string{"error": "bad request"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -80,7 +81,7 @@ func TestListTimesheets_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestGetTimesheet(t *testing.T) {
@@ -103,7 +104,7 @@ func TestGetTimesheet(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/timesheets/ts1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/timesheets/ts1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -117,7 +118,7 @@ func TestGetTimesheet(t *testing.T) {
 }
 
 func TestGetTimesheet_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/timesheets/invalid", 404, map[string]string{"error": "timesheet not found"})
+	server := mockServer(t, "GET", "/rest/v2/timesheets/invalid", http.StatusNotFound, map[string]string{"error": "timesheet not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -126,7 +127,7 @@ func TestGetTimesheet_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestCreateTimesheetEntry(t *testing.T) {
@@ -135,7 +136,7 @@ func TestCreateTimesheetEntry(t *testing.T) {
 		assert.Equal(t, "2024-01-02", body["date"])
 		assert.Equal(t, 8.0, body["hours"])
 		assert.Equal(t, "Development work", body["description"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":           "e-new",
 			"timesheet_id": "ts1",
@@ -160,7 +161,7 @@ func TestCreateTimesheetEntry(t *testing.T) {
 }
 
 func TestCreateTimesheetEntry_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/timesheet-entries", 400, map[string]string{"error": "invalid hours value"})
+	server := mockServer(t, "POST", "/rest/v2/timesheet-entries", http.StatusBadRequest, map[string]string{"error": "invalid hours value"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -174,14 +175,14 @@ func TestCreateTimesheetEntry_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateTimesheetEntry(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/timesheet-entries/e1", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, 9.5, body["hours"])
 		assert.Equal(t, "Updated description", body["description"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":           "e1",
 			"timesheet_id": "ts1",
@@ -205,7 +206,7 @@ func TestUpdateTimesheetEntry(t *testing.T) {
 }
 
 func TestUpdateTimesheetEntry_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/timesheet-entries/invalid", 404, map[string]string{"error": "entry not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/timesheet-entries/invalid", http.StatusNotFound, map[string]string{"error": "entry not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -216,11 +217,11 @@ func TestUpdateTimesheetEntry_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteTimesheetEntry(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/timesheet-entries/e1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/timesheet-entries/e1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -230,7 +231,7 @@ func TestDeleteTimesheetEntry(t *testing.T) {
 }
 
 func TestDeleteTimesheetEntry_Forbidden(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/timesheet-entries/e1", 403, map[string]string{"error": "forbidden"})
+	server := mockServer(t, "DELETE", "/rest/v2/timesheet-entries/e1", http.StatusForbidden, map[string]string{"error": "forbidden"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -239,14 +240,14 @@ func TestDeleteTimesheetEntry_Forbidden(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 403, apiErr.StatusCode)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
 }
 
 func TestReviewTimesheet(t *testing.T) {
 	server := mockServerWithBody(t, "POST", "/rest/v2/timesheets/ts1/review", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "approved", body["status"])
 		assert.Equal(t, "Looks good!", body["comment"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":           "ts1",
 			"contract_id":  "c1",
@@ -270,7 +271,7 @@ func TestReviewTimesheet(t *testing.T) {
 }
 
 func TestReviewTimesheet_Unauthorized(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/timesheets/ts1/review", 401, map[string]string{"error": "unauthorized"})
+	server := mockServer(t, "POST", "/rest/v2/timesheets/ts1/review", http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -282,5 +283,5 @@ func TestReviewTimesheet_Unauthorized(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 401, apiErr.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
 }

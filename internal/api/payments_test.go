@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestGetIndividualPaymentBreakdown(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/payments/pay123/breakdown", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/payments/pay123/breakdown", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -56,7 +57,7 @@ func TestGetIndividualPaymentBreakdown(t *testing.T) {
 }
 
 func TestGetIndividualPaymentBreakdown_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/payments/invalid/breakdown", 404, map[string]string{
+	server := mockServer(t, "GET", "/rest/v2/payments/invalid/breakdown", http.StatusNotFound, map[string]string{
 		"error": "payment not found",
 	})
 	defer server.Close()
@@ -98,7 +99,7 @@ func TestListDetailedPaymentReceipts(t *testing.T) {
 			"total": 2,
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/payment-receipts", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/payment-receipts", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -130,7 +131,7 @@ func TestListDetailedPaymentReceipts_WithParams(t *testing.T) {
 		assert.Equal(t, "c123", query["contract_id"])
 		assert.Equal(t, "pay123", query["payment_id"])
 		assert.Equal(t, "cursor-def", query["cursor"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -188,7 +189,7 @@ func TestGetDetailedPaymentsReport(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/reports/payments/detailed", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/reports/payments/detailed", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -219,7 +220,7 @@ func TestGetDetailedPaymentsReport_WithParams(t *testing.T) {
 		assert.Equal(t, "2024-01-31", query["end_date"])
 		assert.Equal(t, "c123", query["contract_id"])
 		assert.Equal(t, "paid", query["status"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -235,7 +236,7 @@ func TestGetDetailedPaymentsReport_WithParams(t *testing.T) {
 }
 
 func TestGetDetailedPaymentsReport_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/reports/payments/detailed", 400, map[string]string{
+	server := mockServer(t, "GET", "/rest/v2/reports/payments/detailed", http.StatusBadRequest, map[string]string{
 		"error": "invalid date range",
 	})
 	defer server.Close()

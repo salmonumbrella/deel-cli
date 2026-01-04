@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestListWorkerRelations(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/profiles/profile-123/worker-relations", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/profiles/profile-123/worker-relations", http.StatusOK, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":            "relation-001",
@@ -62,7 +63,7 @@ func TestCreateWorkerRelation(t *testing.T) {
 		assert.Equal(t, "manager-456", body["manager_id"])
 		assert.Equal(t, "direct_report", body["relation_type"])
 		assert.Equal(t, "2024-01-15", body["start_date"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":            "relation-new",
 			"profile_id":    "profile-123",
@@ -96,7 +97,7 @@ func TestCreateWorkerRelation(t *testing.T) {
 }
 
 func TestDeleteWorkerRelation(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/worker-relations/relation-123", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/worker-relations/relation-123", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)

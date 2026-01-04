@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestGetOffboardingTracker(t *testing.T) {
 			"created_at":     "2024-12-01T10:00:00Z",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/offboarding/tracker/off1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/offboarding/tracker/off1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -46,7 +47,7 @@ func TestGetTerminationDetails(t *testing.T) {
 			"final_pay_date": "2024-12-15",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/terminations/term1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/terminations/term1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -73,7 +74,7 @@ func TestGetTerminationDetails_WithoutFinalPayDate(t *testing.T) {
 			"effective_date": "2025-01-01",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/terminations/term2", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/terminations/term2", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

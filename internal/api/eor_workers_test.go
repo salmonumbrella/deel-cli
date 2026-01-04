@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func TestCreateEORWorker(t *testing.T) {
 		assert.Equal(t, "GB", body["country"])
 		assert.Equal(t, "1990-05-15", body["date_of_birth"])
 		assert.Equal(t, "+44 20 1234 5678", body["phone"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":            "worker-789",
 			"email":         "jane.smith@example.com",
@@ -51,7 +52,7 @@ func TestCreateEORWorker(t *testing.T) {
 }
 
 func TestCreateEORWorker_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/workers", 400, map[string]string{"error": "invalid email"})
+	server := mockServer(t, "POST", "/rest/v2/eor/workers", http.StatusBadRequest, map[string]string{"error": "invalid email"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -65,7 +66,7 @@ func TestCreateEORWorker_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateEORWorker(t *testing.T) {
@@ -73,7 +74,7 @@ func TestUpdateEORWorker(t *testing.T) {
 		assert.Equal(t, "Janet", body["first_name"])
 		assert.Equal(t, "+44 20 9876 5432", body["phone"])
 		assert.Equal(t, "123 High Street, London", body["address"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":            "worker-789",
 			"email":         "jane.smith@example.com",
@@ -104,7 +105,7 @@ func TestUpdateEORWorker(t *testing.T) {
 }
 
 func TestUpdateEORWorker_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/eor/workers/invalid", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/eor/workers/invalid", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -115,7 +116,7 @@ func TestUpdateEORWorker_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetEORWorkerBenefits(t *testing.T) {
@@ -141,7 +142,7 @@ func TestGetEORWorkerBenefits(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/benefits", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/benefits", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -158,7 +159,7 @@ func TestGetEORWorkerBenefits(t *testing.T) {
 }
 
 func TestGetEORWorkerBenefits_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/workers/invalid/benefits", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "GET", "/rest/v2/eor/workers/invalid/benefits", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -167,7 +168,7 @@ func TestGetEORWorkerBenefits_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetEORWorkerTaxDocuments(t *testing.T) {
@@ -192,7 +193,7 @@ func TestGetEORWorkerTaxDocuments(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/tax-documents", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/tax-documents", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -209,7 +210,7 @@ func TestGetEORWorkerTaxDocuments(t *testing.T) {
 }
 
 func TestGetEORWorkerTaxDocuments_Unauthorized(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/tax-documents", 403, map[string]string{"error": "access denied"})
+	server := mockServer(t, "GET", "/rest/v2/eor/workers/worker-789/tax-documents", http.StatusForbidden, map[string]string{"error": "access denied"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -218,7 +219,7 @@ func TestGetEORWorkerTaxDocuments_Unauthorized(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 403, apiErr.StatusCode)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
 }
 
 func TestAddEORWorkerBankAccount(t *testing.T) {
@@ -230,7 +231,7 @@ func TestAddEORWorkerBankAccount(t *testing.T) {
 		assert.Equal(t, "HBUKGB4B", body["swift"])
 		assert.Equal(t, "GBP", body["currency"])
 		assert.Equal(t, true, body["is_primary"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "bank-001",
 			"account_holder": "Jane Smith",
@@ -264,7 +265,7 @@ func TestAddEORWorkerBankAccount(t *testing.T) {
 }
 
 func TestAddEORWorkerBankAccount_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/workers/worker-789/bank-account", 400, map[string]string{"error": "invalid IBAN"})
+	server := mockServer(t, "POST", "/rest/v2/eor/workers/worker-789/bank-account", http.StatusBadRequest, map[string]string{"error": "invalid IBAN"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -279,11 +280,11 @@ func TestAddEORWorkerBankAccount_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestAddEORWorkerBankAccount_WorkerNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/workers/invalid/bank-account", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/workers/invalid/bank-account", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -297,5 +298,5 @@ func TestAddEORWorkerBankAccount_WorkerNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }

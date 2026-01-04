@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func TestListContracts(t *testing.T) {
 		},
 		"page": map[string]any{"next": "cursor123", "total": 2},
 	}
-	server := mockServer(t, "GET", "/rest/v2/contracts", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/contracts", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -36,7 +37,7 @@ func TestGetContract(t *testing.T) {
 			"status": "active",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/contracts/c1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/contracts/c1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -54,7 +55,7 @@ func TestCreateContract(t *testing.T) {
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "New Contract", data["title"])
 		assert.Equal(t, "fixed_rate", data["type"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":     "c-new",
 			"title":  "New Contract",
@@ -84,7 +85,7 @@ func TestSignContract(t *testing.T) {
 		data, ok := body["data"].(map[string]any)
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "John Smith", data["client_signature"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":     "c1",
 			"status": "signed",
@@ -107,7 +108,7 @@ func TestTerminateContract(t *testing.T) {
 		assert.Equal(t, true, data["terminate_now"])
 		assert.Equal(t, "TERMINATION", data["termination_type"])
 		assert.Equal(t, "reason-123", data["termination_reason_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":     "term-1",
 			"status": "pending",
@@ -126,7 +127,7 @@ func TestTerminateContract(t *testing.T) {
 }
 
 func TestGetContractPDF(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/contracts/c1/pdf", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/contracts/c1/pdf", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"url": "https://storage.deel.com/contracts/c1.pdf",
 		},
@@ -146,7 +147,7 @@ func TestInviteWorker(t *testing.T) {
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "worker@example.com", data["email"])
 		assert.Equal(t, "en", data["locale"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"invited": true,
 		},
@@ -163,7 +164,7 @@ func TestInviteWorker(t *testing.T) {
 }
 
 func TestGetInviteLink(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/contracts/c1/invite-link", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/contracts/c1/invite-link", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"url": "https://app.deel.com/invite/abc123",
 		},
@@ -178,7 +179,7 @@ func TestGetInviteLink(t *testing.T) {
 }
 
 func TestListContractTemplates(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/contract-templates", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/contract-templates", http.StatusOK, map[string]any{
 		"data": []map[string]any{
 			{"id": "tpl1", "name": "Standard Contractor", "type": "fixed_rate"},
 		},
@@ -224,7 +225,7 @@ func TestCreateContractWithExtendedFields(t *testing.T) {
 		assert.Equal(t, float64(5), comp["cycle_end"])
 		assert.Equal(t, "DAY_OF_MONTH", comp["cycle_end_type"])
 		assert.Equal(t, "monthly", comp["frequency"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":     "c-new",
 			"title":  "Host Contract",

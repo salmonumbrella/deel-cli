@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestListCostCenters(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/cost-centers", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/cost-centers", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -58,7 +59,7 @@ func TestSyncCostCenters(t *testing.T) {
 		cc2 := costCenters[1].(map[string]any)
 		assert.Equal(t, "Marketing", cc2["name"])
 		assert.Equal(t, "MKT", cc2["code"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":          "cc-new1",

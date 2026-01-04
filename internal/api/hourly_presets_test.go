@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestListHourlyPresets(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/hourly-presets", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/hourly-presets", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -37,7 +38,7 @@ func TestListHourlyPresets(t *testing.T) {
 }
 
 func TestListHourlyPresets_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/hourly-presets", 404, map[string]string{"error": "not found"})
+	server := mockServer(t, "GET", "/rest/v2/hourly-presets", http.StatusNotFound, map[string]string{"error": "not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -46,7 +47,7 @@ func TestListHourlyPresets_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestCreateHourlyPreset(t *testing.T) {
@@ -57,7 +58,7 @@ func TestCreateHourlyPreset(t *testing.T) {
 		assert.Equal(t, 20.0, body["hours_per_week"])
 		assert.Equal(t, 45.0, body["rate"])
 		assert.Equal(t, "EUR", body["currency"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "hp-new",
 			"name":           "Part-time 20h",
@@ -88,7 +89,7 @@ func TestCreateHourlyPreset(t *testing.T) {
 }
 
 func TestCreateHourlyPreset_Error(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/hourly-presets", 400, map[string]string{"error": "invalid parameters"})
+	server := mockServer(t, "POST", "/rest/v2/hourly-presets", http.StatusBadRequest, map[string]string{"error": "invalid parameters"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -101,14 +102,14 @@ func TestCreateHourlyPreset_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateHourlyPreset(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/hourly-presets/hp1", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "Updated name", body["name"])
 		assert.Equal(t, 50.0, body["rate"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":             "hp1",
 			"name":           "Updated name",
@@ -134,7 +135,7 @@ func TestUpdateHourlyPreset(t *testing.T) {
 }
 
 func TestUpdateHourlyPreset_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/hourly-presets/nonexistent", 404, map[string]string{"error": "not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/hourly-presets/nonexistent", http.StatusNotFound, map[string]string{"error": "not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -145,11 +146,11 @@ func TestUpdateHourlyPreset_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestDeleteHourlyPreset(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/hourly-presets/hp1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/hourly-presets/hp1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -159,7 +160,7 @@ func TestDeleteHourlyPreset(t *testing.T) {
 }
 
 func TestDeleteHourlyPreset_NotFound(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/hourly-presets/nonexistent", 404, map[string]string{"error": "not found"})
+	server := mockServer(t, "DELETE", "/rest/v2/hourly-presets/nonexistent", http.StatusNotFound, map[string]string{"error": "not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -168,5 +169,5 @@ func TestDeleteHourlyPreset_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }

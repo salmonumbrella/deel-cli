@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func TestAddGPBankAccount(t *testing.T) {
 		assert.Equal(t, "NWBKGB2L", body["swift"])
 		assert.Equal(t, "GBP", body["currency"])
 		assert.Equal(t, true, body["is_primary"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "ba-456",
 			"worker_id":      "w-123",
@@ -70,7 +71,7 @@ func TestAddGPBankAccount_USAccount(t *testing.T) {
 		assert.Equal(t, "021000021", body["routing_number"])
 		assert.Equal(t, "USD", body["currency"])
 		assert.Equal(t, false, body["is_primary"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "ba-789",
 			"worker_id":      "w-456",
@@ -109,7 +110,7 @@ func TestAddGPBankAccount_USAccount(t *testing.T) {
 }
 
 func TestAddGPBankAccount_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/gp/bank-accounts", 400, map[string]string{"error": "invalid IBAN format"})
+	server := mockServer(t, "POST", "/rest/v2/gp/bank-accounts", http.StatusBadRequest, map[string]string{"error": "invalid IBAN format"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -126,13 +127,13 @@ func TestAddGPBankAccount_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestListGPBankAccounts(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/bank-accounts", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-123", query["worker_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": []map[string]any{
 			{
 				"id":             "ba-456",
@@ -181,7 +182,7 @@ func TestListGPBankAccounts(t *testing.T) {
 func TestListGPBankAccounts_Empty(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/bank-accounts", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "w-999", query["worker_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": []map[string]any{},
 	})
 	defer server.Close()
@@ -194,7 +195,7 @@ func TestListGPBankAccounts_Empty(t *testing.T) {
 }
 
 func TestListGPBankAccounts_WorkerNotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/gp/bank-accounts", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "GET", "/rest/v2/gp/bank-accounts", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -203,7 +204,7 @@ func TestListGPBankAccounts_WorkerNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestUpdateGPBankAccount(t *testing.T) {
@@ -212,7 +213,7 @@ func TestUpdateGPBankAccount(t *testing.T) {
 		assert.Equal(t, "HSBC UK", body["bank_name"])
 		assert.Equal(t, "99887766", body["account_number"])
 		assert.Equal(t, true, body["is_primary"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":             "ba-456",
 			"worker_id":      "w-123",
@@ -246,7 +247,7 @@ func TestUpdateGPBankAccount(t *testing.T) {
 }
 
 func TestUpdateGPBankAccount_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/gp/bank-accounts/invalid", 404, map[string]string{"error": "bank account not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/gp/bank-accounts/invalid", http.StatusNotFound, map[string]string{"error": "bank account not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -257,13 +258,13 @@ func TestUpdateGPBankAccount_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetGPBankGuide(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/bank-guide", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "GB", query["country"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"country": "GB",
 			"required_fields": []string{
@@ -319,7 +320,7 @@ func TestGetGPBankGuide(t *testing.T) {
 func TestGetGPBankGuide_USGuide(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/gp/bank-guide", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "US", query["country"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"country": "US",
 			"required_fields": []string{
@@ -359,7 +360,7 @@ func TestGetGPBankGuide_USGuide(t *testing.T) {
 }
 
 func TestGetGPBankGuide_InvalidCountry(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/gp/bank-guide", 400, map[string]string{"error": "invalid country code"})
+	server := mockServer(t, "GET", "/rest/v2/gp/bank-guide", http.StatusBadRequest, map[string]string{"error": "invalid country code"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -368,5 +369,5 @@ func TestGetGPBankGuide_InvalidCountry(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }

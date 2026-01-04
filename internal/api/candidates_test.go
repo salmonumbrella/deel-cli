@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestAddCandidate(t *testing.T) {
 		assert.Equal(t, "Doe", body["last_name"])
 		assert.Equal(t, "john.doe@example.com", body["email"])
 		assert.Equal(t, "+1234567890", body["phone"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "cand-123",
 			"first_name": "John",
@@ -52,7 +53,7 @@ func TestAddCandidate_WithoutPhone(t *testing.T) {
 		assert.Equal(t, "jane.smith@example.com", body["email"])
 		_, hasPhone := body["phone"]
 		assert.False(t, hasPhone)
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "cand-456",
 			"first_name": "Jane",
@@ -81,7 +82,7 @@ func TestUpdateCandidate(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/candidates/cand-123", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, "interviewed", body["status"])
 		assert.Equal(t, "+9876543210", body["phone"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":         "cand-123",
 			"first_name": "John",
@@ -116,7 +117,7 @@ func TestUpdateCandidate_PartialUpdate(t *testing.T) {
 		assert.False(t, hasLastName)
 		_, hasEmail := body["email"]
 		assert.False(t, hasEmail)
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":         "cand-456",
 			"first_name": "Jane",

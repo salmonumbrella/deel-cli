@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func TestCreateGPContract(t *testing.T) {
 		assert.Equal(t, 80000.0, body["salary"])
 		assert.Equal(t, "GBP", body["currency"])
 		assert.Equal(t, "monthly", body["pay_frequency"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":            "gp-789",
 			"worker_id":     "w-789",
@@ -64,7 +65,7 @@ func TestCreateGPContract(t *testing.T) {
 }
 
 func TestCreateGPContract_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/gp/contracts", 400, map[string]string{"error": "invalid country code"})
+	server := mockServer(t, "POST", "/rest/v2/gp/contracts", http.StatusBadRequest, map[string]string{"error": "invalid country code"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -82,7 +83,7 @@ func TestCreateGPContract_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestUpdateGPWorker(t *testing.T) {
@@ -92,7 +93,7 @@ func TestUpdateGPWorker(t *testing.T) {
 		assert.Equal(t, "+44 20 7123 4567", body["phone"])
 		assert.Equal(t, "123 Main St, London", body["address"])
 		assert.Equal(t, "GB123456789", body["tax_id"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":            "w-789",
 			"email":         "jane.smith@example.com",
@@ -128,7 +129,7 @@ func TestUpdateGPWorker(t *testing.T) {
 }
 
 func TestUpdateGPWorker_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/invalid", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/invalid", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -139,7 +140,7 @@ func TestUpdateGPWorker_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestUpdateGPCompensation(t *testing.T) {
@@ -159,7 +160,7 @@ func TestUpdateGPCompensation(t *testing.T) {
 		assert.Equal(t, "Transport Allowance", allow2["name"])
 		assert.Equal(t, 200.0, allow2["amount"])
 		assert.Equal(t, "GBP", allow2["currency"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"worker_id":      "w-789",
 			"salary":         90000.0,
@@ -216,7 +217,7 @@ func TestUpdateGPCompensation(t *testing.T) {
 }
 
 func TestUpdateGPCompensation_NotFound(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/invalid/compensation", 404, map[string]string{"error": "worker not found"})
+	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/invalid/compensation", http.StatusNotFound, map[string]string{"error": "worker not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -228,11 +229,11 @@ func TestUpdateGPCompensation_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestUpdateGPCompensation_InvalidEffectiveDate(t *testing.T) {
-	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/w-789/compensation", 400, map[string]string{"error": "effective_date is required"})
+	server := mockServer(t, "PATCH", "/rest/v2/gp/workers/w-789/compensation", http.StatusBadRequest, map[string]string{"error": "effective_date is required"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -244,5 +245,5 @@ func TestUpdateGPCompensation_InvalidEffectiveDate(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }

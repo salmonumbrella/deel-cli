@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func TestCreateEORAmendment(t *testing.T) {
 		changes, ok := body["changes"].(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, 130000.0, changes["salary"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":             "amend-456",
 			"contract_id":    "eor-123",
@@ -49,7 +50,7 @@ func TestCreateEORAmendment(t *testing.T) {
 }
 
 func TestCreateEORAmendment_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/amendments", 400, map[string]string{"error": "invalid effective date"})
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts/eor-123/amendments", http.StatusBadRequest, map[string]string{"error": "invalid effective date"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -62,11 +63,11 @@ func TestCreateEORAmendment_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestCreateEORAmendment_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/contracts/invalid/amendments", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/contracts/invalid/amendments", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -79,7 +80,7 @@ func TestCreateEORAmendment_ContractNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestListEORAmendments(t *testing.T) {
@@ -108,7 +109,7 @@ func TestListEORAmendments(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/amendments", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/amendments", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -130,7 +131,7 @@ func TestListEORAmendments_Empty(t *testing.T) {
 	response := map[string]any{
 		"data": []map[string]any{},
 	}
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/amendments", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/eor/contracts/eor-123/amendments", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -141,7 +142,7 @@ func TestListEORAmendments_Empty(t *testing.T) {
 }
 
 func TestListEORAmendments_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/contracts/invalid/amendments", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "GET", "/rest/v2/eor/contracts/invalid/amendments", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -150,11 +151,11 @@ func TestListEORAmendments_ContractNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestAcceptEORAmendment(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/accept", 200, map[string]any{
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/accept", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":             "amend-456",
 			"contract_id":    "eor-123",
@@ -179,7 +180,7 @@ func TestAcceptEORAmendment(t *testing.T) {
 }
 
 func TestAcceptEORAmendment_NotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/invalid/accept", 404, map[string]string{"error": "amendment not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/invalid/accept", http.StatusNotFound, map[string]string{"error": "amendment not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -188,11 +189,11 @@ func TestAcceptEORAmendment_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestAcceptEORAmendment_AlreadyAccepted(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/accept", 400, map[string]string{"error": "amendment already accepted"})
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/accept", http.StatusBadRequest, map[string]string{"error": "amendment already accepted"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -201,11 +202,11 @@ func TestAcceptEORAmendment_AlreadyAccepted(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestSignEORAmendment(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", 200, map[string]any{
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":             "amend-456",
 			"contract_id":    "eor-123",
@@ -231,7 +232,7 @@ func TestSignEORAmendment(t *testing.T) {
 }
 
 func TestSignEORAmendment_NotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/invalid/sign", 404, map[string]string{"error": "amendment not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/invalid/sign", http.StatusNotFound, map[string]string{"error": "amendment not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -240,11 +241,11 @@ func TestSignEORAmendment_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestSignEORAmendment_NotAccepted(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", 400, map[string]string{"error": "amendment must be accepted before signing"})
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", http.StatusBadRequest, map[string]string{"error": "amendment must be accepted before signing"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -253,11 +254,11 @@ func TestSignEORAmendment_NotAccepted(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestSignEORAmendment_AlreadySigned(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", 400, map[string]string{"error": "amendment already signed"})
+	server := mockServer(t, "POST", "/rest/v2/eor/amendments/amend-456/sign", http.StatusBadRequest, map[string]string{"error": "amendment already signed"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -266,5 +267,5 @@ func TestSignEORAmendment_AlreadySigned(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }

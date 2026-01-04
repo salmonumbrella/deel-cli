@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestRequestEORResignation(t *testing.T) {
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "EMPLOYEE_IS_MOVING_TO_ANOTHER_COUNTRY", data["reason"])
 		assert.Equal(t, true, data["is_employee_staying_with_deel"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-456",
 			"contract_id":        "eor-123",
@@ -48,7 +49,7 @@ func TestRequestEORResignation(t *testing.T) {
 }
 
 func TestRequestEORResignation_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 400, map[string]string{"error": "invalid reason"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", http.StatusBadRequest, map[string]string{"error": "invalid reason"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -60,11 +61,11 @@ func TestRequestEORResignation_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestRequestEORResignation_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -76,7 +77,7 @@ func TestRequestEORResignation_ContractNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestRequestEORTermination(t *testing.T) {
@@ -94,7 +95,7 @@ func TestRequestEORTermination(t *testing.T) {
 		assert.Equal(t, float64(5), usedTimeOff["paid_time_off"])
 		assert.Equal(t, float64(0), usedTimeOff["unpaid_time_off"])
 		assert.Equal(t, float64(2), usedTimeOff["sick_leave"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-789",
 			"contract_id":        "eor-123",
@@ -138,7 +139,7 @@ func TestRequestEORTermination_WithSeverance(t *testing.T) {
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "POSITION_ELIMINATION", data["reason"])
 		assert.Equal(t, "WEEKS", data["severance_type"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-890",
 			"contract_id":        "eor-123",
@@ -177,7 +178,7 @@ func TestRequestEORTermination_WithSeverance(t *testing.T) {
 }
 
 func TestRequestEORTermination_ValidationError(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 400, map[string]string{"error": "reason_detail must be at least 100 characters"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", http.StatusBadRequest, map[string]string{"error": "reason_detail must be at least 100 characters"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -191,11 +192,11 @@ func TestRequestEORTermination_ValidationError(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 400, apiErr.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func TestRequestEORTermination_ContractNotFound(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "POST", "/rest/v2/eor/invalid/terminations/", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -209,11 +210,11 @@ func TestRequestEORTermination_ContractNotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestRequestEORTermination_Unauthorized(t *testing.T) {
-	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", 403, map[string]string{"error": "insufficient permissions"})
+	server := mockServer(t, "POST", "/rest/v2/eor/eor-123/terminations/", http.StatusForbidden, map[string]string{"error": "insufficient permissions"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -227,11 +228,11 @@ func TestRequestEORTermination_Unauthorized(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 403, apiErr.StatusCode)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
 }
 
 func TestGetEORTermination(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-456",
 			"contract_id":        "eor-123",
@@ -261,7 +262,7 @@ func TestGetEORTermination(t *testing.T) {
 }
 
 func TestGetEORTermination_WithSeverance(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 200, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":                 "term-890",
 			"contract_id":        "eor-123",
@@ -290,7 +291,7 @@ func TestGetEORTermination_WithSeverance(t *testing.T) {
 }
 
 func TestGetEORTermination_NotFound(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/invalid/terminations/", 404, map[string]string{"error": "contract not found"})
+	server := mockServer(t, "GET", "/rest/v2/eor/invalid/terminations/", http.StatusNotFound, map[string]string{"error": "contract not found"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -299,11 +300,11 @@ func TestGetEORTermination_NotFound(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetEORTermination_NoTermination(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", 404, map[string]string{"error": "no termination found for this contract"})
+	server := mockServer(t, "GET", "/rest/v2/eor/eor-123/terminations/", http.StatusNotFound, map[string]string{"error": "no termination found for this contract"})
 	defer server.Close()
 
 	client := testClient(server)
@@ -312,5 +313,5 @@ func TestGetEORTermination_NoTermination(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }

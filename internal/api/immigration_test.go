@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestGetImmigrationCaseDetails(t *testing.T) {
 			"case_number": "WP-2024-001",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/immigration/cases/case-123", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/immigration/cases/case-123", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -58,7 +59,7 @@ func TestListImmigrationDocs(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/immigration/cases/case-123/documents", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/immigration/cases/case-123/documents", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -95,7 +96,7 @@ func TestListVisaTypes(t *testing.T) {
 	}
 	server := mockServerWithQuery(t, "GET", "/rest/v2/immigration/visa-types", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "US", query["country"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -121,7 +122,7 @@ func TestCheckVisaRequirement(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/immigration/check", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "CA", query["from"])
 		assert.Equal(t, "US", query["to"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -140,7 +141,7 @@ func TestCreateImmigrationCase(t *testing.T) {
 		assert.Equal(t, "work_permit", body["type"])
 		assert.Equal(t, "US", body["country"])
 		assert.Equal(t, "2024-02-01", body["start_date"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "case-new",
 			"contract_id": "contract-456",
@@ -177,7 +178,7 @@ func TestUploadImmigrationDocument(t *testing.T) {
 		assert.Equal(t, "passport_copy.pdf", body["name"])
 		assert.Equal(t, "passport", body["type"])
 		assert.Equal(t, "https://storage.deel.com/docs/abc123", body["document_url"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":         "doc-new",
 			"case_id":    "case-123",

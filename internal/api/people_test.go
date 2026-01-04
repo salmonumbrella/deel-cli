@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -74,7 +75,7 @@ func TestGetPersonPersonal(t *testing.T) {
 	response := map[string]any{
 		"data": personalData,
 	}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -97,7 +98,7 @@ func TestGetPersonPersonal(t *testing.T) {
 }
 
 func TestGetPersonPersonal_Error(t *testing.T) {
-	server := mockServer(t, "GET", "/rest/v2/people/nonexistent/personal", 404, map[string]any{
+	server := mockServer(t, "GET", "/rest/v2/people/nonexistent/personal", http.StatusNotFound, map[string]any{
 		"error": "person not found",
 	})
 	defer server.Close()
@@ -108,13 +109,13 @@ func TestGetPersonPersonal_Error(t *testing.T) {
 	require.Error(t, err)
 	apiErr, ok := err.(*APIError)
 	require.True(t, ok)
-	assert.Equal(t, 404, apiErr.StatusCode)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetPersonPersonal_EmptyData(t *testing.T) {
 	// API returns 200 but with no data field
 	response := map[string]any{}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-empty/personal", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/people/hris-empty/personal", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -136,7 +137,7 @@ func TestGetPersonPersonal_CallsCorrectEndpoint(t *testing.T) {
 			"email":      "john@example.com",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/people/hris-123/personal", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -158,7 +159,7 @@ func TestGetPerson_CallsCorrectEndpoint(t *testing.T) {
 			"start_date":      "2024-01-01",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/people/hris-123", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/people/hris-123", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)

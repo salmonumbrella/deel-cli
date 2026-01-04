@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func TestCreateAdjustment(t *testing.T) {
 		assert.Equal(t, "USD", body["currency"])
 		assert.Equal(t, "Performance bonus", body["description"])
 		assert.Equal(t, "2024-01-15", body["date"])
-	}, 201, map[string]any{
+	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "adj1",
 			"contract_id": "c1",
@@ -62,7 +63,7 @@ func TestGetAdjustment(t *testing.T) {
 			"created_at":  "2024-01-15T10:00:00Z",
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/adjustments/adj1", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/adjustments/adj1", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -78,7 +79,7 @@ func TestUpdateAdjustment(t *testing.T) {
 	server := mockServerWithBody(t, "PATCH", "/rest/v2/adjustments/adj1", func(t *testing.T, body map[string]any) {
 		assert.Equal(t, 1500.0, body["amount"])
 		assert.Equal(t, "Updated bonus amount", body["description"])
-	}, 200, map[string]any{
+	}, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"id":          "adj1",
 			"contract_id": "c1",
@@ -106,7 +107,7 @@ func TestUpdateAdjustment(t *testing.T) {
 }
 
 func TestDeleteAdjustment(t *testing.T) {
-	server := mockServer(t, "DELETE", "/rest/v2/adjustments/adj1", 204, nil)
+	server := mockServer(t, "DELETE", "/rest/v2/adjustments/adj1", http.StatusNoContent, nil)
 	defer server.Close()
 
 	client := testClient(server)
@@ -136,7 +137,7 @@ func TestListAdjustments(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/adjustments", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/adjustments", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -164,7 +165,7 @@ func TestListAdjustments_WithFilters(t *testing.T) {
 	server := mockServerWithQuery(t, "GET", "/rest/v2/adjustments", func(t *testing.T, query map[string]string) {
 		assert.Equal(t, "c1", query["contract_id"])
 		assert.Equal(t, "cat1", query["category_id"])
-	}, 200, response)
+	}, http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
@@ -200,7 +201,7 @@ func TestListAdjustmentCategories(t *testing.T) {
 			},
 		},
 	}
-	server := mockServer(t, "GET", "/rest/v2/adjustments/categories", 200, response)
+	server := mockServer(t, "GET", "/rest/v2/adjustments/categories", http.StatusOK, response)
 	defer server.Close()
 
 	client := testClient(server)
