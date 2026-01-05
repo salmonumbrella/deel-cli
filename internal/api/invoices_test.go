@@ -365,3 +365,60 @@ func TestGetInvoiceAdjustment_NullFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result.File)
 }
+
+func TestReviewInvoiceAdjustmentsBatch(t *testing.T) {
+	server := mockServerWithBody(t, "POST", "/rest/v2/invoice-adjustments/many/reviews",
+		func(t *testing.T, body map[string]any) {
+			// Verify the request body has the correct structure
+			data, ok := body["data"].(map[string]any)
+			require.True(t, ok, "body should have 'data' wrapper")
+
+			ids, ok := data["ids"].([]any)
+			require.True(t, ok, "data should have 'ids' array")
+			assert.Len(t, ids, 2)
+			assert.Equal(t, "adj-1", ids[0])
+			assert.Equal(t, "adj-2", ids[1])
+
+			assert.Equal(t, "approved", data["status"])
+			assert.Equal(t, "Looks good", data["reason"])
+		}, http.StatusOK, map[string]any{})
+	defer server.Close()
+
+	client := testClient(server)
+	err := client.ReviewInvoiceAdjustmentsBatch(context.Background(),
+		[]string{"adj-1", "adj-2"}, "approved", "Looks good")
+
+	require.NoError(t, err)
+}
+
+func TestReviewInvoiceAdjustmentsBatch_Decline(t *testing.T) {
+	server := mockServerWithBody(t, "POST", "/rest/v2/invoice-adjustments/many/reviews",
+		func(t *testing.T, body map[string]any) {
+			data, ok := body["data"].(map[string]any)
+			require.True(t, ok)
+
+			assert.Equal(t, "declined", data["status"])
+			assert.Equal(t, "Missing documentation", data["reason"])
+		}, http.StatusOK, map[string]any{})
+	defer server.Close()
+
+	client := testClient(server)
+	err := client.ReviewInvoiceAdjustmentsBatch(context.Background(),
+		[]string{"adj-1"}, "declined", "Missing documentation")
+
+	require.NoError(t, err)
+}
+
+func TestReviewInvoiceAdjustmentsBatch_Error(t *testing.T) {
+	// Test that errors are properly propagated (e.g., endpoint not available)
+	server := mockServer(t, "POST", "/rest/v2/invoice-adjustments/many/reviews",
+		http.StatusNotFound, map[string]string{"error": "endpoint not found"})
+	defer server.Close()
+
+	client := testClient(server)
+	err := client.ReviewInvoiceAdjustmentsBatch(context.Background(),
+		[]string{"adj-1"}, "approved", "")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "404")
+}

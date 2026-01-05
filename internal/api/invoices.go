@@ -218,34 +218,30 @@ func (c *Client) ReviewInvoiceAdjustment(ctx context.Context, adjustmentID strin
 	return err
 }
 
-// ReviewInvoiceAdjustmentsBatch approves or declines multiple invoice adjustments
+// ReviewInvoiceAdjustmentsBatch approves or declines multiple invoice adjustments.
+//
+// This attempts to use the batch review endpoint, which may not be available in all
+// Deel API versions. The caller should fall back to individual ReviewInvoiceAdjustment
+// calls if this returns an error.
+//
+// API Format: POST /rest/v2/invoice-adjustments/many/reviews
+// Body: {"data": {"ids": [...], "status": "approved|declined", "reason": "..."}}
+//
+// This follows the same pattern as the single-item endpoint which uses a "data" wrapper.
 func (c *Client) ReviewInvoiceAdjustmentsBatch(ctx context.Context, ids []string, status string, reason string) error {
-	// Try multiple endpoint formats
-	endpoints := []string{
-		"/rest/v2/invoice-adjustments/many/reviews",
-		"/rest/v2/hourly_reports/review_batch",
+	// Use the standard Deel API format with data wrapper, consistent with
+	// ReviewInvoiceAdjustment which uses {"data": params}
+	path := "/rest/v2/invoice-adjustments/many/reviews"
+	body := map[string]any{
+		"data": map[string]any{
+			"ids":    ids,
+			"status": status,
+			"reason": reason,
+		},
 	}
 
-	bodyFormats := []map[string]any{
-		// Format 1: with data wrapper
-		{"data": map[string]any{"ids": ids, "status": status, "reason": reason}},
-		// Format 2: without data wrapper
-		{"ids": ids, "status": status, "reason": reason},
-		// Format 3: with items array
-		{"items": ids, "status": status, "reason": reason},
-	}
-
-	var lastErr error
-	for _, path := range endpoints {
-		for _, body := range bodyFormats {
-			_, err := c.Post(ctx, path, body)
-			if err == nil {
-				return nil
-			}
-			lastErr = err
-		}
-	}
-	return lastErr
+	_, err := c.Post(ctx, path, body)
+	return err
 }
 
 // CreateInvoiceAdjustment creates an adjustment on an invoice
