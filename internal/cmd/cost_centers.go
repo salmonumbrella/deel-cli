@@ -18,8 +18,10 @@ var costCentersCmd = &cobra.Command{
 	Long:    "List and sync cost centers for your organization.",
 }
 
-var costCenterFileFlag string
-var costCentersLimitFlag int
+var (
+	costCenterFileFlag   string
+	costCentersLimitFlag int
+)
 
 var costCentersListCmd = &cobra.Command{
 	Use:   "list",

@@ -141,8 +141,10 @@ var gpBankAccountsCmd = &cobra.Command{
 }
 
 // Flags for bank-accounts list command
-var gpBankAccountsListWorkerIDFlag string
-var gpBankAccountsLimitFlag int
+var (
+	gpBankAccountsListWorkerIDFlag string
+	gpBankAccountsLimitFlag        int
+)
 
 var gpBankAccountsListCmd = &cobra.Command{
 	Use:   "list",

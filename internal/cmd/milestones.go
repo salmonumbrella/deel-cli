@@ -16,8 +16,10 @@ var milestonesCmd = &cobra.Command{
 	Long:    "Create, list, and delete milestones for milestone-based contracts.",
 }
 
-var milestonesContractIDFlag string
-var milestonesLimitFlag int
+var (
+	milestonesContractIDFlag string
+	milestonesLimitFlag      int
+)
 
 var milestonesListCmd = &cobra.Command{
 	Use:   "list",
