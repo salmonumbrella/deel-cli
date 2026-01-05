@@ -17,6 +17,7 @@ var milestonesCmd = &cobra.Command{
 }
 
 var milestonesContractIDFlag string
+var milestonesLimitFlag int
 
 var milestonesListCmd = &cobra.Command{
 	Use:   "list",
@@ -38,6 +39,11 @@ var milestonesListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list milestones: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if milestonesLimitFlag > 0 && len(milestones) > milestonesLimitFlag {
+			milestones = milestones[:milestonesLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -164,6 +170,7 @@ var milestonesDeleteCmd = &cobra.Command{
 
 func init() {
 	milestonesListCmd.Flags().StringVar(&milestonesContractIDFlag, "contract-id", "", "Contract ID (required)")
+	milestonesListCmd.Flags().IntVar(&milestonesLimitFlag, "limit", 100, "Maximum results")
 
 	milestonesCreateCmd.Flags().StringVar(&milestonesContractIDFlag, "contract-id", "", "Contract ID (required)")
 	milestonesCreateCmd.Flags().StringVar(&milestonesTitleFlag, "title", "", "Milestone title (required)")

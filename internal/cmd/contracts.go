@@ -652,7 +652,7 @@ var contractsTemplatesCmd = &cobra.Command{
 
 func init() {
 	// List command flags
-	contractsListCmd.Flags().IntVar(&contractsLimitFlag, "limit", 100, "Maximum results per page")
+	contractsListCmd.Flags().IntVar(&contractsLimitFlag, "limit", 100, "Maximum results")
 	contractsListCmd.Flags().StringVar(&contractsCursorFlag, "cursor", "", "Pagination cursor")
 	contractsListCmd.Flags().StringVar(&contractsStatusFlag, "status", "active", "Filter by status (default: active)")
 	contractsListCmd.Flags().StringVar(&contractsTypeFlag, "type", "", "Filter by type")

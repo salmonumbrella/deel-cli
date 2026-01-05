@@ -417,6 +417,8 @@ var eorAmendmentsCmd = &cobra.Command{
 	Long:  "List, sign, and accept amendments for EOR contracts.",
 }
 
+var eorAmendmentsLimitFlag int
+
 var eorAmendmentsListCmd = &cobra.Command{
 	Use:   "list <contract-id>",
 	Short: "List amendments for an EOR contract",
@@ -431,6 +433,11 @@ var eorAmendmentsListCmd = &cobra.Command{
 		amendments, err := client.ListEORAmendments(cmd.Context(), args[0])
 		if err != nil {
 			return HandleError(f, err, "listing amendments")
+		}
+
+		// Apply client-side limit
+		if eorAmendmentsLimitFlag > 0 && len(amendments) > eorAmendmentsLimitFlag {
+			amendments = amendments[:eorAmendmentsLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -898,6 +905,9 @@ func init() {
 
 	// Add subcommands to bank-accounts
 	bankAccountsCmd.AddCommand(bankAccountsAddCmd)
+
+	// Amendments list command flags
+	eorAmendmentsListCmd.Flags().IntVar(&eorAmendmentsLimitFlag, "limit", 100, "Maximum results")
 
 	// Add subcommands to amendments
 	eorAmendmentsCmd.AddCommand(eorAmendmentsListCmd)

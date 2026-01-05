@@ -15,6 +15,7 @@ var benefitsCmd = &cobra.Command{
 var (
 	benefitsCountryFlag  string
 	benefitsEmployeeFlag string
+	benefitsLimitFlag    int
 )
 
 var benefitsListCmd = &cobra.Command{
@@ -38,6 +39,11 @@ var benefitsListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list benefits: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if benefitsLimitFlag > 0 && len(benefits) > benefitsLimitFlag {
+			benefits = benefits[:benefitsLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -95,6 +101,7 @@ var benefitsEmployeeCmd = &cobra.Command{
 
 func init() {
 	benefitsListCmd.Flags().StringVar(&benefitsCountryFlag, "country", "", "Country code (required)")
+	benefitsListCmd.Flags().IntVar(&benefitsLimitFlag, "limit", 100, "Maximum results")
 	benefitsEmployeeCmd.Flags().StringVar(&benefitsEmployeeFlag, "employee", "", "Employee ID (required)")
 
 	benefitsCmd.AddCommand(benefitsListCmd)

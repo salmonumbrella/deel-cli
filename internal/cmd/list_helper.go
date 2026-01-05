@@ -88,6 +88,6 @@ func NewListCommand[T any](cfg ListConfig[T], getClientFn func() (*api.Client, e
 	}
 
 	cmd.Flags().IntVar(&page, "page", 0, "Page number (0 = first page)")
-	cmd.Flags().IntVar(&pageSize, "limit", 100, "Max results (min 10)")
+	cmd.Flags().IntVar(&pageSize, "limit", 100, "Maximum results")
 	return cmd
 }

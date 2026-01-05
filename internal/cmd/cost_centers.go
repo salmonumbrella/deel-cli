@@ -19,6 +19,7 @@ var costCentersCmd = &cobra.Command{
 }
 
 var costCenterFileFlag string
+var costCentersLimitFlag int
 
 var costCentersListCmd = &cobra.Command{
 	Use:   "list",
@@ -35,6 +36,11 @@ var costCentersListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list cost centers: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if costCentersLimitFlag > 0 && len(centers) > costCentersLimitFlag {
+			centers = centers[:costCentersLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -133,6 +139,9 @@ The JSON file should contain an array of cost centers:
 }
 
 func init() {
+	// List command flags
+	costCentersListCmd.Flags().IntVar(&costCentersLimitFlag, "limit", 100, "Maximum results")
+
 	// Sync command flags
 	costCentersSyncCmd.Flags().StringVar(&costCenterFileFlag, "file", "", "JSON file containing cost centers (required)")
 

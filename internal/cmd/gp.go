@@ -142,6 +142,7 @@ var gpBankAccountsCmd = &cobra.Command{
 
 // Flags for bank-accounts list command
 var gpBankAccountsListWorkerIDFlag string
+var gpBankAccountsLimitFlag int
 
 var gpBankAccountsListCmd = &cobra.Command{
 	Use:   "list",
@@ -165,6 +166,11 @@ var gpBankAccountsListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list bank accounts: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if gpBankAccountsLimitFlag > 0 && len(accounts) > gpBankAccountsLimitFlag {
+			accounts = accounts[:gpBankAccountsLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -511,6 +517,8 @@ var gpRatesCmd = &cobra.Command{
 	Long:  "List and create Global Payroll shift rates.",
 }
 
+var gpRatesLimitFlag int
+
 var gpRatesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List shift rates",
@@ -528,6 +536,11 @@ var gpRatesListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list shift rates: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if gpRatesLimitFlag > 0 && len(rates) > gpRatesLimitFlag {
+			rates = rates[:gpRatesLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -648,6 +661,7 @@ func init() {
 
 	// Bank accounts list command flags
 	gpBankAccountsListCmd.Flags().StringVar(&gpBankAccountsListWorkerIDFlag, "worker-id", "", "Worker ID (required)")
+	gpBankAccountsListCmd.Flags().IntVar(&gpBankAccountsLimitFlag, "limit", 100, "Maximum results")
 
 	// Bank accounts add command flags
 	gpBankAccountsAddCmd.Flags().StringVar(&gpBankAccountAddWorkerIDFlag, "worker-id", "", "Worker ID (required)")
@@ -671,6 +685,9 @@ func init() {
 	gpShiftsCreateCmd.Flags().StringVar(&gpShiftsCreateStartTimeFlag, "start-time", "", "Start time HH:MM (required)")
 	gpShiftsCreateCmd.Flags().StringVar(&gpShiftsCreateEndTimeFlag, "end-time", "", "End time HH:MM (required)")
 	gpShiftsCreateCmd.Flags().IntVar(&gpShiftsCreateBreakMinutesFlag, "break-minutes", 0, "Break minutes (required)")
+
+	// Rates list command flags
+	gpRatesListCmd.Flags().IntVar(&gpRatesLimitFlag, "limit", 100, "Maximum results")
 
 	// Rates create command flags
 	gpRatesCreateCmd.Flags().StringVar(&gpRatesCreateNameFlag, "name", "", "Rate name (required)")

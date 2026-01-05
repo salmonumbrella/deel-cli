@@ -24,6 +24,7 @@ var (
 	webhooksURLFlag         string
 	webhooksEventsFlag      []string
 	webhooksDescriptionFlag string
+	webhooksLimitFlag       int
 )
 
 var webhooksListCmd = &cobra.Command{
@@ -41,6 +42,11 @@ var webhooksListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list webhooks: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if webhooksLimitFlag > 0 && len(webhooks) > webhooksLimitFlag {
+			webhooks = webhooks[:webhooksLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -441,6 +447,9 @@ var webhooksVerifyCmd = &cobra.Command{
 }
 
 func init() {
+	// List command flags
+	webhooksListCmd.Flags().IntVar(&webhooksLimitFlag, "limit", 100, "Maximum results")
+
 	// Create command flags
 	webhooksCreateCmd.Flags().StringVar(&webhooksURLFlag, "url", "", "Webhook URL (required)")
 	webhooksCreateCmd.Flags().StringSliceVar(&webhooksEventsFlag, "events", []string{}, "Event types to subscribe to (required, can be specified multiple times)")

@@ -16,6 +16,7 @@ var bgCheckCmd = &cobra.Command{
 var (
 	bgCheckCountryFlag  string
 	bgCheckContractFlag string
+	bgCheckLimitFlag    int
 )
 
 var bgCheckOptionsCmd = &cobra.Command{
@@ -79,6 +80,11 @@ var bgCheckListCmd = &cobra.Command{
 			return err
 		}
 
+		// Apply client-side limit
+		if bgCheckLimitFlag > 0 && len(checks) > bgCheckLimitFlag {
+			checks = checks[:bgCheckLimitFlag]
+		}
+
 		return f.Output(func() {
 			if len(checks) == 0 {
 				f.PrintText("No background checks found.")
@@ -96,6 +102,7 @@ var bgCheckListCmd = &cobra.Command{
 func init() {
 	bgCheckOptionsCmd.Flags().StringVar(&bgCheckCountryFlag, "country", "", "Country code (required)")
 	bgCheckListCmd.Flags().StringVar(&bgCheckContractFlag, "contract", "", "Contract ID (required)")
+	bgCheckListCmd.Flags().IntVar(&bgCheckLimitFlag, "limit", 100, "Maximum results")
 
 	bgCheckCmd.AddCommand(bgCheckOptionsCmd)
 	bgCheckCmd.AddCommand(bgCheckListCmd)

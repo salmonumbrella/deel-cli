@@ -73,6 +73,8 @@ var orgStructuresCmd = &cobra.Command{
 	},
 }
 
+var orgEntitiesLimitFlag int
+
 var orgEntitiesCmd = &cobra.Command{
 	Use:   "entities",
 	Short: "List legal entities",
@@ -88,6 +90,11 @@ var orgEntitiesCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list entities: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if orgEntitiesLimitFlag > 0 && len(entities) > orgEntitiesLimitFlag {
+			entities = entities[:orgEntitiesLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -114,6 +121,7 @@ var groupsCmd = &cobra.Command{
 var (
 	groupNameFlag        string
 	groupDescriptionFlag string
+	groupsLimitFlag      int
 )
 
 var groupsListCmd = &cobra.Command{
@@ -131,6 +139,11 @@ var groupsListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list groups: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if groupsLimitFlag > 0 && len(groups) > groupsLimitFlag {
+			groups = groups[:groupsLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -362,6 +375,7 @@ var (
 	entityCountryFlag            string
 	entityTypeFlag               string
 	entityRegistrationNumberFlag string
+	legalEntitiesLimitFlag       int
 )
 
 var legalEntitiesListCmd = &cobra.Command{
@@ -380,6 +394,11 @@ var legalEntitiesListCmd = &cobra.Command{
 		if err != nil {
 			f.PrintError("Failed to list legal entities: %v", err)
 			return err
+		}
+
+		// Apply client-side limit
+		if legalEntitiesLimitFlag > 0 && len(entities) > legalEntitiesLimitFlag {
+			entities = entities[:legalEntitiesLimitFlag]
 		}
 
 		return f.Output(func() {
@@ -773,6 +792,7 @@ var lookupsTimeOffTypesCmd = &cobra.Command{
 
 func init() {
 	// Groups command flags
+	groupsListCmd.Flags().IntVar(&groupsLimitFlag, "limit", 100, "Maximum results")
 	groupsCreateCmd.Flags().StringVar(&groupNameFlag, "name", "", "Group name (required)")
 	groupsCreateCmd.Flags().StringVar(&groupDescriptionFlag, "description", "", "Group description (optional)")
 
@@ -788,6 +808,7 @@ func init() {
 	groupsCmd.AddCommand(groupsCloneCmd)
 
 	// Legal entities command flags
+	legalEntitiesListCmd.Flags().IntVar(&legalEntitiesLimitFlag, "limit", 100, "Maximum results")
 	legalEntitiesCreateCmd.Flags().StringVar(&entityNameFlag, "name", "", "Entity name (required)")
 	legalEntitiesCreateCmd.Flags().StringVar(&entityCountryFlag, "country", "", "Country code (required)")
 	legalEntitiesCreateCmd.Flags().StringVar(&entityTypeFlag, "type", "", "Entity type (required)")
@@ -810,6 +831,9 @@ func init() {
 	lookupsCmd.AddCommand(lookupsJobTitlesCmd)
 	lookupsCmd.AddCommand(lookupsSeniorityLevelsCmd)
 	lookupsCmd.AddCommand(lookupsTimeOffTypesCmd)
+
+	// org entities flags
+	orgEntitiesCmd.Flags().IntVar(&orgEntitiesLimitFlag, "limit", 100, "Maximum results")
 
 	// Add all commands to org
 	orgCmd.AddCommand(orgGetCmd)
