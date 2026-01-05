@@ -66,26 +66,41 @@ func (c *Client) CreateAdjustment(ctx context.Context, params CreateAdjustmentPa
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
+	// Helper to track WriteField errors
+	var writeErr error
+	writeField := func(key, value string) {
+		if writeErr != nil {
+			return
+		}
+		writeErr = writer.WriteField(key, value)
+	}
+
 	// Required fields
-	writer.WriteField("contract_id", params.ContractID)
-	writer.WriteField("adjustment_category_id", params.CategoryID)
-	writer.WriteField("amount", fmt.Sprintf("%.2f", params.Amount))
-	writer.WriteField("currency", params.Currency)
-	writer.WriteField("description", params.Description)
-	writer.WriteField("date_of_adjustment", params.Date)
+	writeField("contract_id", params.ContractID)
+	writeField("adjustment_category_id", params.CategoryID)
+	writeField("amount", fmt.Sprintf("%.2f", params.Amount))
+	writeField("currency", params.Currency)
+	writeField("description", params.Description)
+	writeField("date_of_adjustment", params.Date)
 
 	// Optional fields
 	if params.CycleReference != "" {
-		writer.WriteField("cycle_reference", params.CycleReference)
+		writeField("cycle_reference", params.CycleReference)
 	}
 	if params.MoveNextCycle {
-		writer.WriteField("move_next_cycle", "true")
+		writeField("move_next_cycle", "true")
 	}
 
 	// Title field (use description as title)
-	writer.WriteField("title", params.Description)
+	writeField("title", params.Description)
 
-	writer.Close()
+	if writeErr != nil {
+		return nil, fmt.Errorf("failed to build form: %w", writeErr)
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to finalize form: %w", err)
+	}
 
 	// Use doMultipart for retry logic, circuit breaker, and error handling.
 	// Pass bytes.NewReader so the body can be re-read on retries.
