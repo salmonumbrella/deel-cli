@@ -161,10 +161,15 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 		// Handle server errors (5xx)
 		if resp.StatusCode >= 500 {
 			c.recordFailure()
+			// Read response body to get error details
+			errBody, _ := io.ReadAll(resp.Body)
 			if err := resp.Body.Close(); err != nil {
 				slog.Debug("failed to close response body", "error", err)
 			}
-			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
+			if c.debug && len(errBody) > 0 {
+				slog.Info("server error response", "status", resp.StatusCode, "body", string(errBody))
+			}
+			lastErr = fmt.Errorf("server error: %d: %s", resp.StatusCode, string(errBody))
 			continue
 		}
 

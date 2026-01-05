@@ -641,12 +641,14 @@ var adjustmentsListCmd = &cobra.Command{
 
 // Flags for adjustments create command
 var (
-	adjustmentsCreateContractIDFlag  string
-	adjustmentsCreateCategoryIDFlag  string
-	adjustmentsCreateAmountFlag      string
-	adjustmentsCreateCurrencyFlag    string
-	adjustmentsCreateDescriptionFlag string
-	adjustmentsCreateDateFlag        string
+	adjustmentsCreateContractIDFlag     string
+	adjustmentsCreateCategoryIDFlag     string
+	adjustmentsCreateAmountFlag         string
+	adjustmentsCreateCurrencyFlag       string
+	adjustmentsCreateDescriptionFlag    string
+	adjustmentsCreateDateFlag           string
+	adjustmentsCreateCycleReferenceFlag string
+	adjustmentsCreateMoveNextCycleFlag  bool
 )
 
 var adjustmentsCreateCmd = &cobra.Command{
@@ -710,12 +712,14 @@ var adjustmentsCreateCmd = &cobra.Command{
 		}
 
 		params := api.CreateAdjustmentParams{
-			ContractID:  adjustmentsCreateContractIDFlag,
-			CategoryID:  adjustmentsCreateCategoryIDFlag,
-			Amount:      amount,
-			Currency:    adjustmentsCreateCurrencyFlag,
-			Description: adjustmentsCreateDescriptionFlag,
-			Date:        adjustmentsCreateDateFlag,
+			ContractID:     adjustmentsCreateContractIDFlag,
+			CategoryID:     adjustmentsCreateCategoryIDFlag,
+			Amount:         amount,
+			Currency:       adjustmentsCreateCurrencyFlag,
+			Description:    adjustmentsCreateDescriptionFlag,
+			Date:           adjustmentsCreateDateFlag,
+			CycleReference: adjustmentsCreateCycleReferenceFlag,
+			MoveNextCycle:  adjustmentsCreateMoveNextCycleFlag,
 		}
 
 		adjustment, err := client.CreateAdjustment(cmd.Context(), params)
@@ -733,6 +737,15 @@ var adjustmentsCreateCmd = &cobra.Command{
 			f.PrintText("Description: " + adjustment.Description)
 			f.PrintText("Date:        " + adjustment.Date)
 			f.PrintText("Status:      " + adjustment.Status)
+			if adjustment.CycleReference != "" {
+				f.PrintText("Cycle Ref:   " + adjustment.CycleReference)
+			}
+			if adjustment.ActualStartCycleDate != "" {
+				f.PrintText("Cycle Start: " + adjustment.ActualStartCycleDate)
+			}
+			if adjustment.ActualEndCycleDate != "" {
+				f.PrintText("Cycle End:   " + adjustment.ActualEndCycleDate)
+			}
 			f.PrintText("Created:     " + adjustment.CreatedAt)
 		}, adjustment)
 	},
@@ -1238,6 +1251,8 @@ func init() {
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateCurrencyFlag, "currency", "", "Currency code (required)")
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateDescriptionFlag, "description", "", "Description (required)")
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateDateFlag, "date", "", "Date YYYY-MM-DD (required)")
+	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateCycleReferenceFlag, "cycle-reference", "", "Payroll cycle reference (optional)")
+	adjustmentsCreateCmd.Flags().BoolVar(&adjustmentsCreateMoveNextCycleFlag, "move-next-cycle", false, "Move adjustment to next payroll cycle (optional)")
 
 	// Adjustments update command flags
 	adjustmentsUpdateCmd.Flags().StringVar(&adjustmentsUpdateAmountFlag, "amount", "", "Amount (optional)")

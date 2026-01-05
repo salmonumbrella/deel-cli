@@ -13,19 +13,33 @@ type Department struct {
 	Name string `json:"name"`
 }
 
+// Employment represents an employment record for a person
+type Employment struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	ContractStatus string `json:"contract_status"`
+	HiringType     string `json:"hiring_type"` // contractor, eor, gp, direct
+	HiringStatus   string `json:"hiring_status"`
+	JobTitle       string `json:"job_title"`
+	Country        string `json:"country"`
+	IsEnded        bool   `json:"is_ended"`
+}
+
 // Person represents a Deel person/worker
 type Person struct {
-	ID            string `json:"id"`
-	HRISProfileID string `json:"hris_profile_id"`
-	FirstName     string `json:"first_name"`
-	LastName      string `json:"last_name"`
-	Name          string `json:"name"` // Computed: FirstName + LastName
-	Email         string `json:"email"`
-	JobTitle      string `json:"job_title"`
-	DepartmentRaw any    `json:"department"` // API returns string or object
-	Status        string `json:"status"`
-	StartDate     string `json:"start_date"`
-	Country       string `json:"country"`
+	ID            string       `json:"id"`
+	HRISProfileID string       `json:"hris_profile_id"`
+	FirstName     string       `json:"first_name"`
+	LastName      string       `json:"last_name"`
+	Name          string       `json:"name"` // Computed: FirstName + LastName
+	Email         string       `json:"email"`
+	JobTitle      string       `json:"job_title"`
+	DepartmentRaw any          `json:"department"` // API returns string or object
+	Status        string       `json:"status"`
+	StartDate     string       `json:"start_date"`
+	Country       string       `json:"country"`
+	HiringType    string       `json:"hiring_type,omitempty"`
+	Employments   []Employment `json:"employments,omitempty"`
 }
 
 // UnmarshalJSON implements custom unmarshaling to compute the Name field
