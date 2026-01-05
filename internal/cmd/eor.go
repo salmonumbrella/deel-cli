@@ -410,6 +410,129 @@ var eorAmendCmd = &cobra.Command{
 	},
 }
 
+// eorAmendmentsCmd is the parent command for amendment operations
+var eorAmendmentsCmd = &cobra.Command{
+	Use:   "amendments",
+	Short: "Manage EOR contract amendments",
+	Long:  "List, sign, and accept amendments for EOR contracts.",
+}
+
+var eorAmendmentsListCmd = &cobra.Command{
+	Use:   "list <contract-id>",
+	Short: "List amendments for an EOR contract",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "listing amendments")
+		}
+
+		amendments, err := client.ListEORAmendments(cmd.Context(), args[0])
+		if err != nil {
+			return HandleError(f, err, "listing amendments")
+		}
+
+		return f.Output(func() {
+			if len(amendments) == 0 {
+				f.PrintText("No amendments found.")
+				return
+			}
+			table := f.NewTable("ID", "TYPE", "STATUS", "EFFECTIVE DATE", "CREATED")
+			for _, a := range amendments {
+				table.AddRow(a.ID, a.Type, a.Status, a.EffectiveDate, a.CreatedAt)
+			}
+			table.Render()
+		}, amendments)
+	},
+}
+
+var eorAmendmentsSignCmd = &cobra.Command{
+	Use:   "sign <amendment-id>",
+	Short: "Sign an EOR amendment",
+	Long:  "Sign an EOR contract amendment. This is typically done after the amendment has been accepted.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "SIGN",
+			Resource:    "EORAmendment",
+			Description: "Sign EOR amendment",
+			Details: map[string]string{
+				"AmendmentID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "signing amendment")
+		}
+
+		amendment, err := client.SignEORAmendment(cmd.Context(), args[0])
+		if err != nil {
+			return HandleError(f, err, "signing amendment")
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Amendment signed successfully")
+			f.PrintText("ID:             " + amendment.ID)
+			f.PrintText("Contract ID:    " + amendment.ContractID)
+			f.PrintText("Type:           " + amendment.Type)
+			f.PrintText("Status:         " + amendment.Status)
+			f.PrintText("Effective Date: " + amendment.EffectiveDate)
+			if amendment.SignedAt != "" {
+				f.PrintText("Signed At:      " + amendment.SignedAt)
+			}
+		}, amendment)
+	},
+}
+
+var eorAmendmentsAcceptCmd = &cobra.Command{
+	Use:   "accept <amendment-id>",
+	Short: "Accept an EOR amendment",
+	Long:  "Accept an EOR contract amendment. This is typically done before signing.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "ACCEPT",
+			Resource:    "EORAmendment",
+			Description: "Accept EOR amendment",
+			Details: map[string]string{
+				"AmendmentID": args[0],
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "accepting amendment")
+		}
+
+		amendment, err := client.AcceptEORAmendment(cmd.Context(), args[0])
+		if err != nil {
+			return HandleError(f, err, "accepting amendment")
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Amendment accepted successfully")
+			f.PrintText("ID:             " + amendment.ID)
+			f.PrintText("Contract ID:    " + amendment.ContractID)
+			f.PrintText("Type:           " + amendment.Type)
+			f.PrintText("Status:         " + amendment.Status)
+			f.PrintText("Effective Date: " + amendment.EffectiveDate)
+			if amendment.AcceptedAt != "" {
+				f.PrintText("Accepted At:    " + amendment.AcceptedAt)
+			}
+		}, amendment)
+	},
+}
+
 // Flags for terminate command
 var (
 	eorTerminateReasonFlag       string
@@ -776,12 +899,18 @@ func init() {
 	// Add subcommands to bank-accounts
 	bankAccountsCmd.AddCommand(bankAccountsAddCmd)
 
+	// Add subcommands to amendments
+	eorAmendmentsCmd.AddCommand(eorAmendmentsListCmd)
+	eorAmendmentsCmd.AddCommand(eorAmendmentsSignCmd)
+	eorAmendmentsCmd.AddCommand(eorAmendmentsAcceptCmd)
+
 	// Add subcommands to eor
 	eorCmd.AddCommand(eorCreateCmd)
 	eorCmd.AddCommand(eorGetCmd)
 	eorCmd.AddCommand(eorSignCmd)
 	eorCmd.AddCommand(eorCancelCmd)
 	eorCmd.AddCommand(eorAmendCmd)
+	eorCmd.AddCommand(eorAmendmentsCmd)
 	eorCmd.AddCommand(eorTerminateCmd)
 	eorCmd.AddCommand(workersCmd)
 	eorCmd.AddCommand(bankAccountsCmd)
