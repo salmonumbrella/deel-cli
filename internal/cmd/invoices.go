@@ -303,6 +303,7 @@ var invoicesAdjustmentsApproveCmd = &cobra.Command{
 		}
 
 		// Fall back to individual approval
+		var failed []string
 		for _, id := range args {
 			params := api.ReviewInvoiceAdjustmentParams{
 				Status: "approved",
@@ -311,11 +312,15 @@ var invoicesAdjustmentsApproveCmd = &cobra.Command{
 
 			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
 				f.PrintError("Failed to approve %s: %v", id, err)
+				failed = append(failed, id)
 				continue
 			}
 			f.PrintSuccess("Approved: %s", id)
 		}
 
+		if len(failed) > 0 {
+			return fmt.Errorf("failed to approve %d adjustment(s): %v", len(failed), failed)
+		}
 		return nil
 	},
 }
@@ -350,6 +355,7 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 			return HandleError(f, err, "declining adjustment")
 		}
 
+		var failed []string
 		for _, id := range args {
 			params := api.ReviewInvoiceAdjustmentParams{
 				Status: "declined",
@@ -358,11 +364,15 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 
 			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
 				f.PrintError("Failed to decline %s: %v", id, err)
+				failed = append(failed, id)
 				continue
 			}
 			f.PrintSuccess("Declined: %s", id)
 		}
 
+		if len(failed) > 0 {
+			return fmt.Errorf("failed to decline %d adjustment(s): %v", len(failed), failed)
+		}
 		return nil
 	},
 }
