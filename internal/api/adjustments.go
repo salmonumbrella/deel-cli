@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -89,45 +87,17 @@ func (c *Client) CreateAdjustment(ctx context.Context, params CreateAdjustmentPa
 
 	writer.Close()
 
-	// Create request
-	reqURL := c.baseURL + "/rest/v2/adjustments"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, &buf)
+	// Use doMultipart for retry logic, circuit breaker, and error handling.
+	// Pass bytes.NewReader so the body can be re-read on retries.
+	resp, err := c.doMultipart(ctx, http.MethodPost, "/rest/v2/adjustments", bytes.NewReader(buf.Bytes()), writer.FormDataContentType())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Accept", "application/json")
-
-	if c.debug {
-		slog.Info("api request", "method", "POST", "url", reqURL)
-		slog.Info("multipart form fields", "contract_id", params.ContractID, "amount", params.Amount)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if c.debug {
-		slog.Info("api response", "status", resp.StatusCode, "body", string(respBody))
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+		return nil, err
 	}
 
 	var wrapper struct {
 		Data Adjustment `json:"data"`
 	}
-	if err := json.Unmarshal(respBody, &wrapper); err != nil {
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return &wrapper.Data, nil

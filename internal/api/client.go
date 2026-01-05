@@ -337,6 +337,134 @@ func (c *Client) recordSuccess() {
 	c.consecutiveFails = 0
 }
 
+// doMultipart performs an HTTP request with multipart/form-data body,
+// using the same retry logic, circuit breaker, and error handling as do().
+func (c *Client) doMultipart(ctx context.Context, method, path string, body io.Reader, contentType string) (json.RawMessage, error) {
+	// Check circuit breaker
+	if err := c.checkCircuitBreaker(); err != nil {
+		return nil, err
+	}
+
+	url := c.baseURL + path
+
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Check context before each attempt
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		if attempt > 0 {
+			backoff := c.calculateBackoff(attempt)
+			if c.debug {
+				slog.Info("retrying request", "attempt", attempt, "backoff", backoff)
+			}
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+
+		// For retries, we need to be able to re-read the body.
+		// The caller should pass a *bytes.Reader or similar seekable reader.
+		if seeker, ok := body.(io.Seeker); ok && attempt > 0 {
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				return nil, fmt.Errorf("failed to reset body for retry: %w", err)
+			}
+		}
+
+		resp, err := c.doMultipartRequest(ctx, method, url, body, contentType)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		// Handle rate limiting
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retryAfter := c.parseRetryAfter(resp)
+			if c.debug {
+				slog.Info("rate limited", "retry_after", retryAfter)
+			}
+			if err := resp.Body.Close(); err != nil {
+				slog.Debug("failed to close response body", "error", err)
+			}
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(retryAfter):
+			}
+			lastErr = fmt.Errorf("rate limited")
+			continue
+		}
+
+		// Handle server errors (5xx)
+		if resp.StatusCode >= 500 {
+			c.recordFailure()
+			// Read response body to get error details
+			errBody, _ := io.ReadAll(resp.Body)
+			if err := resp.Body.Close(); err != nil {
+				slog.Debug("failed to close response body", "error", err)
+			}
+			if c.debug && len(errBody) > 0 {
+				slog.Info("server error response", "status", resp.StatusCode, "body", string(errBody))
+			}
+			lastErr = fmt.Errorf("server error: %d: %s", resp.StatusCode, string(errBody))
+			continue
+		}
+
+		// Success or client error
+		c.recordSuccess()
+
+		respBody, err := io.ReadAll(resp.Body)
+		closeErr := resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response: %w", err)
+		}
+		if closeErr != nil {
+			slog.Debug("failed to close response body", "error", closeErr)
+		}
+
+		if resp.StatusCode >= 400 {
+			if c.debug {
+				slog.Info("api error response", "status", resp.StatusCode, "body", string(respBody))
+			}
+			return nil, c.parseError(resp.StatusCode, respBody)
+		}
+
+		if c.debug {
+			slog.Info("api response", "status", resp.StatusCode, "content_length", len(respBody))
+		}
+
+		return respBody, nil
+	}
+
+	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+
+// doMultipartRequest creates and executes a single multipart HTTP request.
+func (c *Client) doMultipartRequest(ctx context.Context, method, url string, body io.Reader, contentType string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Accept", "application/json")
+	if c.idempotencyKey != "" && method != http.MethodGet {
+		req.Header.Set("Idempotency-Key", c.idempotencyKey)
+	}
+
+	if c.debug {
+		slog.Info("api request", "method", method, "url", url, "content_type", contentType)
+	}
+
+	return c.httpClient.Do(req)
+}
+
 // APIError represents an API error response.
 //
 //revive:disable-next-line:exported
