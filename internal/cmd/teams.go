@@ -106,7 +106,7 @@ var teamsGetCmd = &cobra.Command{
 }
 
 func init() {
-	teamsListCmd.Flags().IntVar(&teamsLimitFlag, "limit", 50, "Maximum results")
+	teamsListCmd.Flags().IntVar(&teamsLimitFlag, "limit", 100, "Maximum results")
 	teamsListCmd.Flags().StringVar(&teamsCursorFlag, "cursor", "", "Pagination cursor")
 	teamsListCmd.Flags().BoolVar(&teamsAllFlag, "all", false, "Fetch all pages")
 

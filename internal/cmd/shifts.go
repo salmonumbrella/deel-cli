@@ -100,7 +100,7 @@ func init() {
 	shiftsListCmd.Flags().StringVar(&shiftsWorkerFlag, "worker", "", "Filter by worker ID")
 	shiftsListCmd.Flags().StringVar(&shiftsStartFlag, "start", "", "Start date YYYY-MM-DD")
 	shiftsListCmd.Flags().StringVar(&shiftsEndFlag, "end", "", "End date YYYY-MM-DD")
-	shiftsListCmd.Flags().IntVar(&shiftsLimitFlag, "limit", 50, "Maximum results")
+	shiftsListCmd.Flags().IntVar(&shiftsLimitFlag, "limit", 100, "Maximum results")
 
 	shiftsRatesCmd.Flags().StringVar(&shiftsCountryFlag, "country", "", "Country code (required)")
 

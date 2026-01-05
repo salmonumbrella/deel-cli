@@ -539,13 +539,13 @@ var deelInvoicesCmd = &cobra.Command{
 }
 
 func init() {
-	invoicesListCmd.Flags().IntVar(&invoicesLimitFlag, "limit", 50, "Maximum results")
+	invoicesListCmd.Flags().IntVar(&invoicesLimitFlag, "limit", 100, "Maximum results")
 	invoicesListCmd.Flags().StringVar(&invoicesCursorFlag, "cursor", "", "Pagination cursor")
 	invoicesListCmd.Flags().StringVar(&invoicesStatusFlag, "status", "", "Filter by status")
 	invoicesListCmd.Flags().StringVar(&invoicesContractFlag, "contract", "", "Filter by contract ID")
 	invoicesListCmd.Flags().BoolVar(&invoicesAllFlag, "all", false, "Fetch all pages")
 
-	deelInvoicesCmd.Flags().IntVar(&deelInvoicesLimitFlag, "limit", 50, "Maximum results")
+	deelInvoicesCmd.Flags().IntVar(&deelInvoicesLimitFlag, "limit", 100, "Maximum results")
 	deelInvoicesCmd.Flags().StringVar(&deelInvoicesCursorFlag, "cursor", "", "Pagination cursor")
 	deelInvoicesCmd.Flags().StringVar(&deelInvoicesStatusFlag, "status", "", "Filter by status")
 	deelInvoicesCmd.Flags().BoolVar(&deelInvoicesAllFlag, "all", false, "Fetch all pages")

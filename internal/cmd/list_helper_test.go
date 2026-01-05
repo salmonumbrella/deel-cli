@@ -62,7 +62,7 @@ func TestListCommand_HasExpectedFlags(t *testing.T) {
 
 	limitFlag := cmd.Flags().Lookup("limit")
 	require.NotNil(t, limitFlag, "expected --limit flag")
-	assert.Equal(t, "20", limitFlag.DefValue)
+	assert.Equal(t, "100", limitFlag.DefValue)
 }
 
 func TestListCommand_WithLongDescription(t *testing.T) {

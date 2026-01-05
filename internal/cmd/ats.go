@@ -652,7 +652,7 @@ var atsRejectionReasonsListCmd = &cobra.Command{
 func init() {
 	// Offers command flags
 	atsOffersCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
-	atsOffersCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsOffersCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsOffersCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsOffersCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
@@ -660,7 +660,7 @@ func init() {
 	atsJobsListCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
 	atsJobsListCmd.Flags().StringVar(&atsDepartmentIDFlag, "department-id", "", "Filter by department ID")
 	atsJobsListCmd.Flags().StringVar(&atsLocationIDFlag, "location-id", "", "Filter by location ID")
-	atsJobsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsJobsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsJobsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsJobsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
@@ -674,7 +674,7 @@ func init() {
 	// Job postings list command flags
 	atsPostingsListCmd.Flags().StringVar(&atsStatusFlag, "status", "", "Filter by status")
 	atsPostingsListCmd.Flags().StringVar(&atsJobIDFlag, "job-id", "", "Filter by job ID")
-	atsPostingsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsPostingsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsPostingsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsPostingsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
@@ -683,24 +683,24 @@ func init() {
 	atsApplicationsListCmd.Flags().StringVar(&atsJobIDFlag, "job-id", "", "Filter by job ID")
 	atsApplicationsListCmd.Flags().StringVar(&atsCandidateIDFlag, "candidate-id", "", "Filter by candidate ID")
 	atsApplicationsListCmd.Flags().StringVar(&atsStageFlag, "stage", "", "Filter by stage")
-	atsApplicationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsApplicationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsApplicationsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsApplicationsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Candidates list command flags
 	atsCandidatesListCmd.Flags().StringVar(&atsSearchFlag, "search", "", "Search candidates by name or email")
-	atsCandidatesListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsCandidatesListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsCandidatesListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsCandidatesListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Departments list command flags
-	atsDepartmentsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsDepartmentsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsDepartmentsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsDepartmentsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 
 	// Locations list command flags
 	atsLocationsListCmd.Flags().BoolVar(&atsRemoteFlag, "remote", false, "Filter by remote locations")
-	atsLocationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 50, "Maximum results")
+	atsLocationsListCmd.Flags().IntVar(&atsLimitFlag, "limit", 100, "Maximum results")
 	atsLocationsListCmd.Flags().StringVar(&atsCursorFlag, "cursor", "", "Pagination cursor")
 	atsLocationsListCmd.Flags().BoolVar(&atsAllFlag, "all", false, "Fetch all pages")
 

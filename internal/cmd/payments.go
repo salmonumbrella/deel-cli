@@ -253,7 +253,7 @@ var receiptsCmd = &cobra.Command{
 func init() {
 	offCycleListCmd.Flags().StringVar(&offCycleContractFlag, "contract", "", "Filter by contract ID")
 	offCycleListCmd.Flags().StringVar(&offCycleStatusFlag, "status", "", "Filter by status")
-	offCycleListCmd.Flags().IntVar(&offCycleLimitFlag, "limit", 50, "Maximum results")
+	offCycleListCmd.Flags().IntVar(&offCycleLimitFlag, "limit", 100, "Maximum results")
 	offCycleListCmd.Flags().StringVar(&offCycleCursorFlag, "cursor", "", "Pagination cursor")
 	offCycleListCmd.Flags().BoolVar(&offCycleAllFlag, "all", false, "Fetch all pages")
 
@@ -264,7 +264,7 @@ func init() {
 	offCycleCreateCmd.Flags().StringVar(&offCycleCreateDescriptionFlag, "description", "", "Description")
 	offCycleCreateCmd.Flags().StringVar(&offCycleCreateDateFlag, "date", "", "Payment date YYYY-MM-DD (required)")
 
-	receiptsCmd.Flags().IntVar(&receiptsLimitFlag, "limit", 50, "Maximum results")
+	receiptsCmd.Flags().IntVar(&receiptsLimitFlag, "limit", 100, "Maximum results")
 	receiptsCmd.Flags().StringVar(&receiptsCursorFlag, "cursor", "", "Pagination cursor")
 	receiptsCmd.Flags().StringVar(&receiptsContractFlag, "contract", "", "Filter by contract ID")
 	receiptsCmd.Flags().StringVar(&receiptsPaymentFlag, "payment", "", "Filter by payment ID")

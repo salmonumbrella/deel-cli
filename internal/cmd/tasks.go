@@ -390,7 +390,7 @@ var tasksRejectCmd = &cobra.Command{
 func init() {
 	tasksListCmd.Flags().StringVar(&tasksContractIDFlag, "contract-id", "", "Filter by contract ID")
 	tasksListCmd.Flags().StringVar(&tasksStatusFlag, "status", "", "Filter by status")
-	tasksListCmd.Flags().IntVar(&tasksLimitFlag, "limit", 50, "Maximum results")
+	tasksListCmd.Flags().IntVar(&tasksLimitFlag, "limit", 100, "Maximum results")
 	tasksListCmd.Flags().StringVar(&tasksCursorFlag, "cursor", "", "Pagination cursor")
 	tasksListCmd.Flags().BoolVar(&tasksAllFlag, "all", false, "Fetch all pages")
 

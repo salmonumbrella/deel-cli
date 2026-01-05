@@ -473,7 +473,7 @@ var timeOffScheduleCmd = &cobra.Command{
 func init() {
 	timeOffListCmd.Flags().StringVar(&timeOffProfileFlag, "profile", "", "HRIS profile ID")
 	timeOffListCmd.Flags().StringSliceVar(&timeOffStatusFlag, "status", nil, "Filter by status")
-	timeOffListCmd.Flags().IntVar(&timeOffLimitFlag, "limit", 50, "Maximum results")
+	timeOffListCmd.Flags().IntVar(&timeOffLimitFlag, "limit", 100, "Maximum results")
 	timeOffListCmd.Flags().StringVar(&timeOffCursorFlag, "cursor", "", "Pagination cursor")
 	timeOffListCmd.Flags().BoolVar(&timeOffAllFlag, "all", false, "Fetch all pages")
 

@@ -189,7 +189,7 @@ func init() {
 
 	payrollPaymentsCmd.Flags().StringVar(&payrollCycleFlag, "cycle", "", "Payment cycle ID (required)")
 
-	payrollReceiptsCmd.Flags().IntVar(&payrollLimitFlag, "limit", 50, "Maximum results")
+	payrollReceiptsCmd.Flags().IntVar(&payrollLimitFlag, "limit", 100, "Maximum results")
 
 	payrollDownloadCmd.Flags().StringVar(&payrollDownloadWorkerFlag, "worker", "", "Worker ID (required)")
 	payrollDownloadCmd.Flags().StringVar(&payrollDownloadPayslipFlag, "payslip", "", "Payslip ID (required)")

@@ -109,7 +109,7 @@ var onboardingGetCmd = &cobra.Command{
 
 func init() {
 	onboardingListCmd.Flags().StringVar(&onboardingStatusFlag, "status", "", "Filter by status")
-	onboardingListCmd.Flags().IntVar(&onboardingLimitFlag, "limit", 50, "Maximum results")
+	onboardingListCmd.Flags().IntVar(&onboardingLimitFlag, "limit", 100, "Maximum results")
 	onboardingListCmd.Flags().StringVar(&onboardingCursorFlag, "cursor", "", "Pagination cursor")
 	onboardingListCmd.Flags().BoolVar(&onboardingAllFlag, "all", false, "Fetch all pages")
 

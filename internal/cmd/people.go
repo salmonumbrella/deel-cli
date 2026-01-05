@@ -1209,7 +1209,7 @@ var relationsDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	peopleListCmd.Flags().IntVar(&peopleLimitFlag, "limit", 50, "Maximum results")
+	peopleListCmd.Flags().IntVar(&peopleLimitFlag, "limit", 100, "Maximum results")
 	peopleListCmd.Flags().StringVar(&peopleCursorFlag, "cursor", "", "Pagination cursor")
 	peopleListCmd.Flags().BoolVar(&peopleAllFlag, "all", false, "Fetch all pages")
 

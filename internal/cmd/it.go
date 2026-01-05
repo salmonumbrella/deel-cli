@@ -150,11 +150,11 @@ var itPoliciesCmd = &cobra.Command{
 func init() {
 	itAssetsCmd.Flags().StringVar(&itAssetsStatusFlag, "status", "", "Filter by status")
 	itAssetsCmd.Flags().StringVar(&itAssetsTypeFlag, "type", "", "Filter by type")
-	itAssetsCmd.Flags().IntVar(&itAssetsLimitFlag, "limit", 50, "Maximum results")
+	itAssetsCmd.Flags().IntVar(&itAssetsLimitFlag, "limit", 100, "Maximum results")
 	itAssetsCmd.Flags().StringVar(&itAssetsCursorFlag, "cursor", "", "Pagination cursor")
 	itAssetsCmd.Flags().BoolVar(&itAssetsAllFlag, "all", false, "Fetch all pages")
 
-	itOrdersCmd.Flags().IntVar(&itOrdersLimitFlag, "limit", 50, "Maximum results")
+	itOrdersCmd.Flags().IntVar(&itOrdersLimitFlag, "limit", 100, "Maximum results")
 
 	itCmd.AddCommand(itAssetsCmd)
 	itCmd.AddCommand(itOrdersCmd)

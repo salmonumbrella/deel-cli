@@ -671,7 +671,7 @@ func init() {
 	// List command flags
 	timesheetsListCmd.Flags().StringVar(&timesheetsListContractIDFlag, "contract-id", "", "Filter by contract ID")
 	timesheetsListCmd.Flags().StringVar(&timesheetsListStatusFlag, "status", "", "Filter by status (e.g., pending, approved, rejected)")
-	timesheetsListCmd.Flags().IntVar(&timesheetsListLimitFlag, "limit", 50, "Maximum results")
+	timesheetsListCmd.Flags().IntVar(&timesheetsListLimitFlag, "limit", 100, "Maximum results")
 	timesheetsListCmd.Flags().StringVar(&timesheetsListCursorFlag, "cursor", "", "Pagination cursor")
 	timesheetsListCmd.Flags().BoolVar(&timesheetsListAllFlag, "all", false, "Fetch all pages")
 
