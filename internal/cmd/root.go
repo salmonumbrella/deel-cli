@@ -31,7 +31,10 @@ var (
 	colorFlag          string
 	debugFlag          bool
 	queryFlag          string
+	jqFlag             string
+	jsonFlag           bool
 	dryRunFlag         bool
+	dataOnlyFlag       bool
 	idempotencyKeyFlag string
 )
 
@@ -50,6 +53,18 @@ Get started:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if jsonFlag {
+			if outputFlag != "" && outputFlag != "json" {
+				return fmt.Errorf("cannot use --json with --output %q", outputFlag)
+			}
+			outputFlag = "json"
+		}
+		if jqFlag != "" {
+			if queryFlag != "" && queryFlag != jqFlag {
+				return fmt.Errorf("cannot use --jq and --query with different values")
+			}
+			queryFlag = jqFlag
+		}
 		// Validate output format
 		if outputFlag != "" {
 			switch outputFlag {
@@ -73,6 +88,11 @@ Get started:
 			ctx := outfmt.WithQuery(cmd.Context(), queryFlag)
 			cmd.SetContext(ctx)
 		}
+		// Set data-only mode in context
+		if dataOnlyFlag {
+			ctx := outfmt.WithDataOnly(cmd.Context(), true)
+			cmd.SetContext(ctx)
+		}
 		// Set dry-run mode in context
 		if dryRunFlag {
 			ctx := dryrun.WithDryRun(cmd.Context(), true)
@@ -85,10 +105,14 @@ Get started:
 func init() {
 	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Account to use (overrides DEEL_ACCOUNT)")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "Output format: text or json (default: text)")
+	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "Output JSON (alias for --output json)")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "", "Color mode: auto, always, or never (default: auto)")
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug output")
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")
+	rootCmd.PersistentFlags().StringVar(&jqFlag, "jq", "", "JQ filter for JSON output (alias for --query)")
 	rootCmd.PersistentFlags().BoolVar(&dryRunFlag, "dry-run", false, "Preview changes without executing")
+	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data-only", false, "Output only the data/items array for list responses")
+	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data", false, "Alias for --data-only")
 	rootCmd.PersistentFlags().StringVar(&idempotencyKeyFlag, "idempotency-key", "", "Idempotency key for write requests")
 
 	// Add subcommands
@@ -150,6 +174,7 @@ func getFormatter() *outfmt.Formatter {
 
 	f := outfmt.New(os.Stdout, os.Stderr, format, colorMode)
 	f.SetQuery(queryFlag)
+	f.SetDataOnly(dataOnlyFlag)
 	return f
 }
 
@@ -183,30 +208,44 @@ func getClient() (*api.Client, error) {
 		return client, nil
 	}
 
+	var store secrets.Store
+	var storeErr error
+
 	// Get account name
 	account := accountFlag
 	if account == "" {
 		account = os.Getenv(config.EnvAccount)
 	}
 	if account == "" {
-		// Try to list available accounts for a helpful error message
-		hint := "Use --account flag, DEEL_ACCOUNT env, or DEEL_TOKEN for direct auth"
-		if store, err := secrets.OpenDefault(); err == nil {
-			if creds, err := store.List(); err == nil && len(creds) > 0 {
-				names := make([]string, len(creds))
-				for i, c := range creds {
-					names[i] = c.Name
+		var hint string
+		store, storeErr = secrets.OpenDefault()
+		if storeErr == nil {
+			if creds, err := store.List(); err == nil {
+				if len(creds) == 1 {
+					account = creds[0].Name
+				} else if len(creds) > 1 {
+					names := make([]string, len(creds))
+					for i, c := range creds {
+						names[i] = c.Name
+					}
+					hint = fmt.Sprintf("Available accounts: %s. Use --account flag or set DEEL_ACCOUNT env", strings.Join(names, ", "))
 				}
-				hint = fmt.Sprintf("Available accounts: %s. Use --account flag or set DEEL_ACCOUNT env", strings.Join(names, ", "))
 			}
 		}
-		return nil, fmt.Errorf("no account specified. %s", hint)
+		if account == "" {
+			if hint == "" {
+				hint = "Use --account flag, DEEL_ACCOUNT env, or DEEL_TOKEN for direct auth"
+			}
+			return nil, fmt.Errorf("no account specified. %s", hint)
+		}
 	}
 
 	// Load from keychain
-	store, err := secrets.OpenDefault()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open credential store: %w", err)
+	if store == nil {
+		store, storeErr = secrets.OpenDefault()
+	}
+	if storeErr != nil {
+		return nil, fmt.Errorf("failed to open credential store: %w", storeErr)
 	}
 
 	creds, err := store.Get(account)

@@ -17,6 +17,7 @@ type Contract struct {
 	WorkerName         string  `json:"worker_name"`
 	WorkerEmail        string  `json:"worker_email"`
 	Entity             string  `json:"entity"`
+	EntityID           string  `json:"entity_id"`
 	StartDate          string  `json:"start_date"`
 	EndDate            string  `json:"end_date"`
 	Currency           string  `json:"currency"`
@@ -34,10 +35,12 @@ type rawContract struct {
 	EndDate   string `json:"termination_date"`
 	Client    struct {
 		LegalEntity struct {
+			ID   string `json:"id"`
 			Name string `json:"name"`
 		} `json:"legal_entity"`
 	} `json:"client"`
-	Worker struct {
+	LegalEntityID string `json:"legal_entity_id"`
+	Worker        struct {
 		FullName string `json:"full_name"`
 		Email    string `json:"email"`
 		Country  string `json:"country"`
@@ -64,6 +67,11 @@ func (c *Contract) UnmarshalJSON(data []byte) error {
 	c.WorkerName = raw.Worker.FullName
 	c.WorkerEmail = raw.Worker.Email
 	c.Entity = raw.Client.LegalEntity.Name
+	if raw.Client.LegalEntity.ID != "" {
+		c.EntityID = raw.Client.LegalEntity.ID
+	} else {
+		c.EntityID = raw.LegalEntityID
+	}
 	c.Country = raw.Worker.Country
 	c.Currency = raw.CompensationDetails.CurrencyCode
 

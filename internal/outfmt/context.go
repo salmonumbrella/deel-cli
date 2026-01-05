@@ -6,8 +6,9 @@ import "context"
 type contextKey string
 
 const (
-	formatKey contextKey = "output_format"
-	queryKey  contextKey = "query_filter"
+	formatKey   contextKey = "output_format"
+	queryKey    contextKey = "query_filter"
+	dataOnlyKey contextKey = "data_only"
 )
 
 // WithFormat returns a context with the output format set.
@@ -39,4 +40,17 @@ func GetQuery(ctx context.Context) string {
 		return v
 	}
 	return ""
+}
+
+// WithDataOnly returns a context with data-only output enabled.
+func WithDataOnly(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, dataOnlyKey, enabled)
+}
+
+// GetDataOnly returns true if data-only output is enabled in the context.
+func GetDataOnly(ctx context.Context) bool {
+	if v, ok := ctx.Value(dataOnlyKey).(bool); ok {
+		return v
+	}
+	return false
 }

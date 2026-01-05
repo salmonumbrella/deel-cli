@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/muesli/termenv"
@@ -32,6 +33,7 @@ type Formatter struct {
 	colorMode string
 	profile   termenv.Profile
 	query     string
+	dataOnly  bool
 }
 
 // New creates a new Formatter
@@ -49,6 +51,11 @@ func New(out, errOut io.Writer, format Format, colorMode string) *Formatter {
 // SetQuery sets an optional JQ-style query for JSON output.
 func (f *Formatter) SetQuery(query string) {
 	f.query = strings.TrimSpace(query)
+}
+
+// SetDataOnly controls whether JSON output should return only the data/items array when present.
+func (f *Formatter) SetDataOnly(enabled bool) {
+	f.dataOnly = enabled
 }
 
 func (f *Formatter) detectColorProfile() termenv.Profile {
@@ -210,14 +217,20 @@ func padRight(s string, width int) string {
 // Output writes data in the configured format
 func (f *Formatter) Output(textFn func(), jsonData any) error {
 	if f.IsJSON() {
+		data := jsonData
+		if f.dataOnly {
+			if extracted, ok := extractData(jsonData); ok {
+				data = extracted
+			}
+		}
 		if f.query != "" {
-			result, err := filter.Apply(jsonData, f.query)
+			result, err := filter.Apply(data, f.query)
 			if err != nil {
 				return err
 			}
 			return f.PrintJSON(result)
 		}
-		return f.PrintJSON(jsonData)
+		return f.PrintJSON(data)
 	}
 	textFn()
 	return nil
@@ -230,15 +243,55 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 		if query == "" {
 			query = f.query
 		}
+		dataOnly := f.dataOnly
+		if ctx != nil && GetDataOnly(ctx) {
+			dataOnly = true
+		}
+		data := jsonData
+		if dataOnly {
+			if extracted, ok := extractData(jsonData); ok {
+				data = extracted
+			}
+		}
 		if query != "" {
-			result, err := filter.Apply(jsonData, query)
+			result, err := filter.Apply(data, query)
 			if err != nil {
 				return err
 			}
 			return f.PrintJSON(result)
 		}
-		return f.PrintJSON(jsonData)
+		return f.PrintJSON(data)
 	}
 	textFn()
 	return nil
+}
+
+func extractData(data any) (any, bool) {
+	if data == nil {
+		return nil, false
+	}
+	val := reflect.ValueOf(data)
+	for val.Kind() == reflect.Pointer {
+		if val.IsNil() {
+			return nil, false
+		}
+		val = val.Elem()
+	}
+	switch val.Kind() {
+	case reflect.Map:
+		for _, key := range []string{"data", "items"} {
+			mv := val.MapIndex(reflect.ValueOf(key))
+			if mv.IsValid() {
+				return mv.Interface(), true
+			}
+		}
+	case reflect.Struct:
+		for _, name := range []string{"Data", "Items"} {
+			fv := val.FieldByName(name)
+			if fv.IsValid() && fv.CanInterface() {
+				return fv.Interface(), true
+			}
+		}
+	}
+	return data, false
 }

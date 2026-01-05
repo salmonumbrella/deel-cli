@@ -33,3 +33,21 @@ func TestFormatter_OutputWithoutQuery(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "test")
 }
+
+func TestFormatter_OutputDataOnly(t *testing.T) {
+	var buf bytes.Buffer
+	f := New(&buf, &buf, FormatJSON, "auto")
+	ctx := WithDataOnly(context.Background(), true)
+
+	data := map[string]interface{}{
+		"data": []interface{}{
+			map[string]interface{}{"id": "c1"},
+			map[string]interface{}{"id": "c2"},
+		},
+		"page": map[string]interface{}{"next": "cursor"},
+	}
+	err := f.OutputFiltered(ctx, func() {}, data)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "c1")
+	assert.NotContains(t, buf.String(), "page")
+}

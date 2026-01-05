@@ -367,6 +367,7 @@ var (
 var legalEntitiesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all legal entities",
+	Long:  "List legal entities with ID, name, country, type, status, and registration number.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 		client, err := getClient()

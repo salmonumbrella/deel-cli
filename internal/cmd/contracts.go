@@ -17,11 +17,13 @@ var contractsCmd = &cobra.Command{
 }
 
 var (
-	contractsLimitFlag  int
-	contractsCursorFlag string
-	contractsStatusFlag string
-	contractsTypeFlag   string
-	contractsAllFlag    bool
+	contractsLimitFlag    int
+	contractsCursorFlag   string
+	contractsStatusFlag   string
+	contractsTypeFlag     string
+	contractsAllFlag      bool
+	contractsEntityIDFlag string
+	contractsCountryFlag  string
 
 	// Create command flags
 	contractTitleFlag         string
@@ -67,8 +69,10 @@ var (
 )
 
 var contractsListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all contracts",
+	Use:     "list",
+	Short:   "List contracts (default: active)",
+	Long:    "List contracts in your organization. Defaults to active contracts; use --status to query other statuses and --entity-id or --country to filter.",
+	Example: "  deel contracts list --query '.data[].id' -o json\n  deel contracts list --entity-id le-123 --all\n  deel contracts list --country TW --all",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
@@ -102,6 +106,55 @@ var contractsListCmd = &cobra.Command{
 			cursor = next
 		}
 
+		if contractsEntityIDFlag != "" {
+			filtered := make([]api.Contract, 0, len(allContracts))
+			hasEntityIDs := false
+			for _, c := range allContracts {
+				if c.EntityID == "" {
+					continue
+				}
+				hasEntityIDs = true
+				if c.EntityID == contractsEntityIDFlag {
+					filtered = append(filtered, c)
+				}
+			}
+			if hasEntityIDs {
+				allContracts = filtered
+			} else {
+				entities, err := client.ListLegalEntities(cmd.Context())
+				if err != nil {
+					return HandleError(f, err, "resolving legal entity")
+				}
+				var entityNameFilter string
+				for _, e := range entities {
+					if e.ID == contractsEntityIDFlag {
+						entityNameFilter = e.Name
+						break
+					}
+				}
+				if entityNameFilter == "" {
+					return fmt.Errorf("legal entity %s not found", contractsEntityIDFlag)
+				}
+				filtered = filtered[:0]
+				for _, c := range allContracts {
+					if c.Entity == entityNameFilter {
+						filtered = append(filtered, c)
+					}
+				}
+				allContracts = filtered
+			}
+		}
+
+		if contractsCountryFlag != "" {
+			filtered := make([]api.Contract, 0, len(allContracts))
+			for _, c := range allContracts {
+				if strings.EqualFold(c.Country, contractsCountryFlag) {
+					filtered = append(filtered, c)
+				}
+			}
+			allContracts = filtered
+		}
+
 		response := api.ContractsListResponse{
 			Data: allContracts,
 		}
@@ -112,9 +165,13 @@ var contractsListCmd = &cobra.Command{
 				f.PrintText("No contracts found.")
 				return
 			}
-			table := f.NewTable("ID", "TITLE", "WORKER", "ENTITY", "TYPE", "STATUS")
+			table := f.NewTable("ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS")
 			for _, c := range allContracts {
-				table.AddRow(c.ID, c.Title, c.WorkerName, c.Entity, c.Type, c.Status)
+				entityID := c.EntityID
+				if entityID == "" {
+					entityID = "-"
+				}
+				table.AddRow(c.ID, c.Title, c.WorkerName, c.Entity, entityID, c.Type, c.Status)
 			}
 			table.Render()
 			if !contractsAllFlag && next != "" {
@@ -149,6 +206,9 @@ var contractsGetCmd = &cobra.Command{
 			f.PrintText("Worker:       " + contract.WorkerName)
 			f.PrintText("Email:        " + contract.WorkerEmail)
 			f.PrintText("Entity:       " + contract.Entity)
+			if contract.EntityID != "" {
+				f.PrintText("Entity ID:    " + contract.EntityID)
+			}
 			f.PrintText("Country:      " + contract.Country)
 			f.PrintText(fmt.Sprintf("Compensation: %.2f %s", contract.CompensationAmount, contract.Currency))
 			f.PrintText("Start Date:   " + contract.StartDate)
@@ -592,11 +652,13 @@ var contractsTemplatesCmd = &cobra.Command{
 
 func init() {
 	// List command flags
-	contractsListCmd.Flags().IntVar(&contractsLimitFlag, "limit", 50, "Maximum results")
+	contractsListCmd.Flags().IntVar(&contractsLimitFlag, "limit", 100, "Maximum results per page")
 	contractsListCmd.Flags().StringVar(&contractsCursorFlag, "cursor", "", "Pagination cursor")
-	contractsListCmd.Flags().StringVar(&contractsStatusFlag, "status", "", "Filter by status")
+	contractsListCmd.Flags().StringVar(&contractsStatusFlag, "status", "active", "Filter by status (default: active)")
 	contractsListCmd.Flags().StringVar(&contractsTypeFlag, "type", "", "Filter by type")
 	contractsListCmd.Flags().BoolVar(&contractsAllFlag, "all", false, "Fetch all pages")
+	contractsListCmd.Flags().StringVar(&contractsEntityIDFlag, "entity-id", "", "Filter by legal entity ID (client-side)")
+	contractsListCmd.Flags().StringVar(&contractsCountryFlag, "country", "", "Filter by worker country code (client-side)")
 
 	// Create command flags
 	contractsCreateCmd.Flags().StringVar(&contractTitleFlag, "title", "", "Contract title (required)")

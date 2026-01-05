@@ -66,6 +66,16 @@ Choose one of two methods:
 deel auth login
 ```
 
+## Machine-Friendly Output
+
+For AI agents or scripting, use the JSON and filter flags:
+
+```bash
+deel contracts list --json --data-only
+deel contracts list --json --jq '.data[] | .id'
+deel people list --json --data-only --jq '.[] | {id, name, email}'
+```
+
 **Terminal:**
 ```bash
 deel auth add my-account

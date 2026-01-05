@@ -12,7 +12,17 @@ import (
 func TestListContracts(t *testing.T) {
 	response := map[string]any{
 		"data": []map[string]any{
-			{"id": "c1", "title": "Contract 1", "status": "active"},
+			{
+				"id":     "c1",
+				"title":  "Contract 1",
+				"status": "active",
+				"client": map[string]any{
+					"legal_entity": map[string]any{
+						"id":   "le-1",
+						"name": "Taiwan Entity",
+					},
+				},
+			},
 			{"id": "c2", "title": "Contract 2", "status": "pending"},
 		},
 		"page": map[string]any{"next": "cursor123", "total": 2},
@@ -26,6 +36,8 @@ func TestListContracts(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Data, 2)
 	assert.Equal(t, "c1", result.Data[0].ID)
+	assert.Equal(t, "le-1", result.Data[0].EntityID)
+	assert.Equal(t, "Taiwan Entity", result.Data[0].Entity)
 	assert.Equal(t, "cursor123", result.Page.Next)
 }
 
