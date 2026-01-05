@@ -53,6 +53,39 @@ func mockServerWithBody(t *testing.T, method, path string, validateBody func(t *
 	}))
 }
 
+// mockServerWithMultipart creates a test server that validates multipart/form-data bodies
+func mockServerWithMultipart(t *testing.T, method, path string, validateForm func(t *testing.T, fields map[string]string), statusCode int, response any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, method, r.Method)
+		assert.Equal(t, path, r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		contentType := r.Header.Get("Content-Type")
+		assert.Contains(t, contentType, "multipart/form-data")
+
+		if validateForm != nil {
+			err := r.ParseMultipartForm(10 << 20) // 10MB max
+			require.NoError(t, err)
+
+			fields := make(map[string]string)
+			for key, values := range r.MultipartForm.Value {
+				if len(values) > 0 {
+					fields[key] = values[0]
+				}
+			}
+			validateForm(t, fields)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		if response != nil {
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
+		}
+	}))
+}
+
 // mockServerWithQuery creates a test server that validates query parameters.
 func mockServerWithQuery(t *testing.T, path string, validateQuery func(t *testing.T, query map[string]string), response any) *httptest.Server {
 	t.Helper()

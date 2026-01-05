@@ -10,13 +10,14 @@ import (
 )
 
 func TestCreateAdjustment(t *testing.T) {
-	server := mockServerWithBody(t, "POST", "/rest/v2/adjustments", func(t *testing.T, body map[string]any) {
-		assert.Equal(t, "c1", body["contract_id"])
-		assert.Equal(t, "cat1", body["category_id"])
-		assert.Equal(t, 1000.0, body["amount"])
-		assert.Equal(t, "USD", body["currency"])
-		assert.Equal(t, "Performance bonus", body["description"])
-		assert.Equal(t, "2024-01-15", body["date"])
+	server := mockServerWithMultipart(t, "POST", "/rest/v2/adjustments", func(t *testing.T, fields map[string]string) {
+		assert.Equal(t, "c1", fields["contract_id"])
+		assert.Equal(t, "cat1", fields["adjustment_category_id"])
+		assert.Equal(t, "1000.00", fields["amount"])
+		assert.Equal(t, "USD", fields["currency"])
+		assert.Equal(t, "Performance bonus", fields["description"])
+		assert.Equal(t, "2024-01-15", fields["date_of_adjustment"])
+		assert.Equal(t, "Performance bonus", fields["title"])
 	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "adj1",
