@@ -347,8 +347,10 @@ var tasksDeleteCmd = &cobra.Command{
 }
 
 // Flags for approve/reject commands
-var tasksApproveContractIDFlag string
-var tasksRejectContractIDFlag string
+var (
+	tasksApproveContractIDFlag string
+	tasksRejectContractIDFlag  string
+)
 
 var tasksApproveCmd = &cobra.Command{
 	Use:   "approve <task-id>",

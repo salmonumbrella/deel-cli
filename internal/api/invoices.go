@@ -127,21 +127,21 @@ type ListAllInvoiceAdjustmentsParams struct {
 
 // AllInvoiceAdjustment represents an invoice adjustment from the list-all endpoint
 type AllInvoiceAdjustment struct {
-	ID                    string      `json:"id"`
-	Type                  string      `json:"type"`
-	Amount                FlexFloat64 `json:"amount"`
-	Currency              string      `json:"currency"`
-	Description           string      `json:"description"`
-	Status                string      `json:"status"`
-	DateSubmitted         string      `json:"date_submitted"`
-	ContractID            string      `json:"contract_id"`
-	CreatedAt             string      `json:"created_at"`
-	Title                 string      `json:"title,omitempty"`
-	AdjustmentCategoryID  string      `json:"adjustment_category_id,omitempty"`
-	DateOfAdjustment      string      `json:"date_of_adjustment,omitempty"`
-	File                  *string     `json:"file,omitempty"`
-	ActualStartCycleDate  string      `json:"actual_start_cycle_date,omitempty"`
-	ActualEndCycleDate    string      `json:"actual_end_cycle_date,omitempty"`
+	ID                   string      `json:"id"`
+	Type                 string      `json:"type"`
+	Amount               FlexFloat64 `json:"amount"`
+	Currency             string      `json:"currency"`
+	Description          string      `json:"description"`
+	Status               string      `json:"status"`
+	DateSubmitted        string      `json:"date_submitted"`
+	ContractID           string      `json:"contract_id"`
+	CreatedAt            string      `json:"created_at"`
+	Title                string      `json:"title,omitempty"`
+	AdjustmentCategoryID string      `json:"adjustment_category_id,omitempty"`
+	DateOfAdjustment     string      `json:"date_of_adjustment,omitempty"`
+	File                 *string     `json:"file,omitempty"`
+	ActualStartCycleDate string      `json:"actual_start_cycle_date,omitempty"`
+	ActualEndCycleDate   string      `json:"actual_end_cycle_date,omitempty"`
 }
 
 // ListAllInvoiceAdjustments returns all invoice adjustments across all invoices
