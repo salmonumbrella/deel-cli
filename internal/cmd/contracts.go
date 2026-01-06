@@ -375,7 +375,13 @@ var contractsCreateCmd = &cobra.Command{
 		f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
 		f.PrintText("\nNext steps:")
 		f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
-		f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID)
+		f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+		if contractManagerFlag != "" {
+			f.PrintText("")
+			f.PrintText("NOTE: Manager assignment during contract creation is not supported by Deel API.")
+			f.PrintText("After the worker signs and appears in the People directory, assign their manager:")
+			f.PrintText("  deel people assign-manager --email " + contractWorkerEmailFlag + " --manager " + contractManagerFlag)
+		}
 		return nil
 	},
 }

@@ -105,3 +105,68 @@ func TestDeleteWorkerRelation(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+func TestSetWorkerManager(t *testing.T) {
+	server := mockServerWithBody(t, "PUT", "/rest/v2/hris/worker_relations/profile/profile-123/parent", func(t *testing.T, body map[string]any) {
+		assert.Equal(t, "manager-456", body["manager_id"])
+		assert.Equal(t, "2024-01-15", body["start_date"])
+	}, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"id":            "relation-new",
+			"profile_id":    "profile-123",
+			"manager_id":    "manager-456",
+			"relation_type": "direct_report",
+			"start_date":    "2024-01-15",
+			"status":        "active",
+			"created_at":    "2024-01-15T14:30:00Z",
+		},
+	})
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.SetWorkerManager(context.Background(), "profile-123", SetWorkerManagerParams{
+		ManagerID: "manager-456",
+		StartDate: "2024-01-15",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "relation-new", result.ID)
+	assert.Equal(t, "profile-123", result.ProfileID)
+	assert.Equal(t, "manager-456", result.ManagerID)
+	assert.Equal(t, "direct_report", result.RelationType)
+	assert.Equal(t, "2024-01-15", result.StartDate)
+	assert.Equal(t, "active", result.Status)
+}
+
+func TestSetWorkerManagerWithoutStartDate(t *testing.T) {
+	server := mockServerWithBody(t, "PUT", "/rest/v2/hris/worker_relations/profile/profile-123/parent", func(t *testing.T, body map[string]any) {
+		assert.Equal(t, "manager-456", body["manager_id"])
+		// Verify start_date is NOT present in the request body (omitempty behavior)
+		_, hasStartDate := body["start_date"]
+		assert.False(t, hasStartDate, "start_date should not be present in request body when empty")
+	}, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"id":            "relation-new",
+			"profile_id":    "profile-123",
+			"manager_id":    "manager-456",
+			"relation_type": "direct_report",
+			"start_date":    "2024-01-06", // API may return a default date
+			"status":        "active",
+			"created_at":    "2024-01-06T10:00:00Z",
+		},
+	})
+	defer server.Close()
+
+	client := testClient(server)
+	result, err := client.SetWorkerManager(context.Background(), "profile-123", SetWorkerManagerParams{
+		ManagerID: "manager-456",
+		// StartDate intentionally omitted to test omitempty behavior
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "relation-new", result.ID)
+	assert.Equal(t, "profile-123", result.ProfileID)
+	assert.Equal(t, "manager-456", result.ManagerID)
+	assert.Equal(t, "direct_report", result.RelationType)
+	assert.Equal(t, "active", result.Status)
+}

@@ -70,3 +70,31 @@ func (c *Client) DeleteWorkerRelation(ctx context.Context, relationID string) er
 	_, err := c.Delete(ctx, path)
 	return err
 }
+
+// SetWorkerManagerParams contains parameters for setting a worker's manager
+type SetWorkerManagerParams struct {
+	ManagerID string `json:"manager_id"`
+	StartDate string `json:"start_date,omitempty"`
+}
+
+// SetWorkerManager assigns a manager to a worker using the HRIS parent relation endpoint.
+// This is the recommended endpoint per Deel support (Khizar) for assigning managers.
+// PUT /rest/v2/hris/worker_relations/profile/{hrisProfileOid}/parent
+func (c *Client) SetWorkerManager(ctx context.Context, hrisProfileID string, params SetWorkerManagerParams) (*WorkerRelation, error) {
+	path := fmt.Sprintf("/rest/v2/hris/worker_relations/profile/%s/parent", escapePath(hrisProfileID))
+
+	resp, err := c.Put(ctx, path, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data WorkerRelation `json:"data"`
+	}
+
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, err
+	}
+
+	return &wrapper.Data, nil
+}

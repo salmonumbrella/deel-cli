@@ -62,6 +62,12 @@ func suggestionsForNotFound(operation string) []string {
 			"The resource may have been deleted",
 		}
 	}
+	if strings.Contains(op, "searching worker") {
+		return []string{
+			"The worker may not have signed their contract yet",
+			"Workers only appear in the People directory after they complete signing",
+		}
+	}
 	return []string{
 		"This endpoint may not be available for your account type",
 		"Check your API token has the required scopes",

@@ -902,8 +902,8 @@ var adjustmentsDeleteCmd = &cobra.Command{
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
 			Operation:   "DELETE",
-			Resource:    "WorkerRelation",
-			Description: "Delete worker relation",
+			Resource:    "Adjustment",
+			Description: "Delete adjustment",
 			Details: map[string]string{
 				"ID": args[0],
 			},
@@ -1052,6 +1052,111 @@ var managersCreateCmd = &cobra.Command{
 			f.PrintText("Status:     " + manager.Status)
 			f.PrintText("Created:    " + manager.CreatedAt)
 		}, manager)
+	},
+}
+
+// Flags for assign-manager command
+var (
+	assignManagerEmailFlag     string
+	assignManagerManagerIDFlag string
+	assignManagerStartDateFlag string
+)
+
+var assignManagerCmd = &cobra.Command{
+	Use:   "assign-manager",
+	Short: "Assign a manager to a worker by email",
+	Long: `Assign a manager to a worker using their email address.
+This is a convenience command that looks up the worker's profile ID by email
+and creates a worker relation using the worker-relations API.
+
+NOTE: The worker must have signed their contract and appear in the People directory
+before you can assign a manager. This typically happens after:
+  1. Contract is created and signed by client
+  2. Worker is invited
+  3. Worker signs the contract
+
+Examples:
+  deel people assign-manager --email worker@example.com --manager fd470477-d950-47dd-93eb-d31830d6caca
+  deel people assign-manager --email worker@example.com --manager fd470477-... --start-date 2026-01-20`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if assignManagerEmailFlag == "" {
+			f.PrintError("--email flag is required")
+			return fmt.Errorf("--email flag is required")
+		}
+		if assignManagerManagerIDFlag == "" {
+			f.PrintError("--manager flag is required")
+			return fmt.Errorf("--manager flag is required")
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		// Look up the worker by email
+		person, err := client.SearchPeopleByEmail(cmd.Context(), assignManagerEmailFlag)
+		if err != nil {
+			return HandleError(f, err, "searching worker by email")
+		}
+
+		if person.HRISProfileID == "" {
+			f.PrintError("Worker found but has no profile ID")
+			return fmt.Errorf("worker has no profile ID")
+		}
+
+		// Use start date from flag or person's start date
+		startDate := assignManagerStartDateFlag
+		if startDate == "" {
+			startDate = person.StartDate
+		}
+		// StartDate is required, so if still empty, error out
+		if startDate == "" {
+			f.PrintError("--start-date is required (worker has no start date on file)")
+			return fmt.Errorf("--start-date is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "ASSIGN",
+			Resource:    "WorkerRelation",
+			Description: "Assign manager to worker",
+			Details: map[string]string{
+				"WorkerEmail": assignManagerEmailFlag,
+				"WorkerName":  person.Name,
+				"ProfileID":   person.HRISProfileID,
+				"ManagerID":   assignManagerManagerIDFlag,
+				"StartDate":   startDate,
+			},
+		}); ok {
+			return err
+		}
+
+		// Use the HRIS parent relation endpoint (recommended by Deel support)
+		params := api.SetWorkerManagerParams{
+			ManagerID: assignManagerManagerIDFlag,
+			StartDate: startDate,
+		}
+
+		relation, err := client.SetWorkerManager(cmd.Context(), person.HRISProfileID, params)
+		if err != nil {
+			return HandleError(f, err, "assigning manager")
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Manager assigned successfully")
+			f.PrintText("Worker:      " + person.Name + " (" + assignManagerEmailFlag + ")")
+			f.PrintText("Profile ID:  " + person.HRISProfileID)
+			f.PrintText("Manager ID:  " + assignManagerManagerIDFlag)
+			if relation != nil {
+				if relation.StartDate != "" {
+					f.PrintText("Start Date:  " + relation.StartDate)
+				}
+				if relation.Status != "" {
+					f.PrintText("Status:      " + relation.Status)
+				}
+			}
+		}, relation)
 	},
 }
 
@@ -1271,6 +1376,11 @@ func init() {
 	relationsCreateCmd.Flags().StringVar(&relationsCreateRelationTypeFlag, "relation-type", "", "Relation type (required)")
 	relationsCreateCmd.Flags().StringVar(&relationsCreateStartDateFlag, "start-date", "", "Start date YYYY-MM-DD (required)")
 
+	// Assign-manager command flags
+	assignManagerCmd.Flags().StringVar(&assignManagerEmailFlag, "email", "", "Worker email address (required)")
+	assignManagerCmd.Flags().StringVar(&assignManagerManagerIDFlag, "manager", "", "Manager ID (required)")
+	assignManagerCmd.Flags().StringVar(&assignManagerStartDateFlag, "start-date", "", "Start date YYYY-MM-DD (default: worker's start date)")
+
 	// Add subcommands to adjustments
 	adjustmentsCmd.AddCommand(adjustmentsListCmd)
 	adjustmentsCmd.AddCommand(adjustmentsGetCmd)
@@ -1301,4 +1411,5 @@ func init() {
 	peopleCmd.AddCommand(adjustmentsCmd)
 	peopleCmd.AddCommand(managersCmd)
 	peopleCmd.AddCommand(relationsCmd)
+	peopleCmd.AddCommand(assignManagerCmd)
 }

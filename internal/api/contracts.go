@@ -334,10 +334,8 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		req.SpecialClause = params.SpecialClause
 	}
 
-	// Add manager at top level (not nested under client or workplace_information)
-	if params.ManagerID != "" {
-		req.Manager = &entityRef{ID: params.ManagerID}
-	}
+	// NOTE: Manager assignment via contract creation API does NOT work (Deel bug).
+	// Use the worker relations endpoint after the worker signs instead.
 
 	// Add client structure if legal entity or group specified
 	if params.LegalEntityID != "" || params.GroupID != "" {
