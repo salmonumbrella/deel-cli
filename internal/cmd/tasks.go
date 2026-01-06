@@ -34,6 +34,12 @@ var tasksListCmd = &cobra.Command{
 	Short: "List tasks",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if tasksContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			f.PrintError("Failed to get client: %v", err)
@@ -149,6 +155,7 @@ var tasksCreateCmd = &cobra.Command{
 
 // Flags for update command
 var (
+	tasksUpdateContractIDFlag  string
 	tasksUpdateTitleFlag       string
 	tasksUpdateDescriptionFlag string
 	tasksUpdateAmountFlag      float64
@@ -161,6 +168,11 @@ var tasksUpdateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
+		if tasksUpdateContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
+
 		amountSet := cmd.Flags().Changed("amount")
 		if tasksUpdateTitleFlag == "" && tasksUpdateDescriptionFlag == "" && !amountSet {
 			f.PrintError("At least one of --title, --description, or --amount is required")
@@ -172,7 +184,8 @@ var tasksUpdateCmd = &cobra.Command{
 		}
 
 		details := map[string]string{
-			"ID": args[0],
+			"ContractID": tasksUpdateContractIDFlag,
+			"ID":         args[0],
 		}
 		if tasksUpdateTitleFlag != "" {
 			details["Title"] = tasksUpdateTitleFlag
@@ -205,7 +218,7 @@ var tasksUpdateCmd = &cobra.Command{
 			Amount:      tasksUpdateAmountFlag,
 		}
 
-		task, err := client.UpdateTask(cmd.Context(), args[0], params)
+		task, err := client.UpdateTask(cmd.Context(), tasksUpdateContractIDFlag, args[0], params)
 		if err != nil {
 			f.PrintError("Failed to update task: %v", err)
 			return err
@@ -223,8 +236,9 @@ var tasksUpdateCmd = &cobra.Command{
 
 // Flags for review-many command
 var (
-	tasksReviewManyStatusFlag string
-	tasksReviewManyIDsFlag    []string
+	tasksReviewManyContractIDFlag string
+	tasksReviewManyStatusFlag     string
+	tasksReviewManyIDsFlag        []string
 )
 
 var tasksReviewManyCmd = &cobra.Command{
@@ -232,6 +246,11 @@ var tasksReviewManyCmd = &cobra.Command{
 	Short: "Approve or reject multiple tasks",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+
+		if tasksReviewManyContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
 
 		status := strings.ToLower(tasksReviewManyStatusFlag)
 		switch status {
@@ -254,8 +273,9 @@ var tasksReviewManyCmd = &cobra.Command{
 			Resource:    "Task",
 			Description: "Review multiple tasks",
 			Details: map[string]string{
-				"Status": status,
-				"IDs":    strings.Join(tasksReviewManyIDsFlag, ","),
+				"ContractID": tasksReviewManyContractIDFlag,
+				"Status":     status,
+				"IDs":        strings.Join(tasksReviewManyIDsFlag, ","),
 			},
 		}); ok {
 			return err
@@ -267,7 +287,7 @@ var tasksReviewManyCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.ReviewMultipleTasks(cmd.Context(), tasksReviewManyIDsFlag, status); err != nil {
+		if err := client.ReviewMultipleTasks(cmd.Context(), tasksReviewManyContractIDFlag, tasksReviewManyIDsFlag, status); err != nil {
 			f.PrintError("Failed to review tasks: %v", err)
 			return err
 		}
@@ -277,6 +297,9 @@ var tasksReviewManyCmd = &cobra.Command{
 	},
 }
 
+// Flags for delete command
+var tasksDeleteContractIDFlag string
+
 var tasksDeleteCmd = &cobra.Command{
 	Use:   "delete <task-id>",
 	Short: "Delete a task",
@@ -284,12 +307,18 @@ var tasksDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
+		if tasksDeleteContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
+
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
 			Operation:   "DELETE",
 			Resource:    "Task",
 			Description: "Delete task",
 			Details: map[string]string{
-				"ID": args[0],
+				"ContractID": tasksDeleteContractIDFlag,
+				"ID":         args[0],
 			},
 		}); ok {
 			return err
@@ -307,7 +336,7 @@ var tasksDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteTask(cmd.Context(), args[0]); err != nil {
+		if err := client.DeleteTask(cmd.Context(), tasksDeleteContractIDFlag, args[0]); err != nil {
 			f.PrintError("Failed to delete task: %v", err)
 			return err
 		}
@@ -317,6 +346,10 @@ var tasksDeleteCmd = &cobra.Command{
 	},
 }
 
+// Flags for approve/reject commands
+var tasksApproveContractIDFlag string
+var tasksRejectContractIDFlag string
+
 var tasksApproveCmd = &cobra.Command{
 	Use:   "approve <task-id>",
 	Short: "Approve a task",
@@ -324,13 +357,19 @@ var tasksApproveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
+		if tasksApproveContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
+
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
 			Operation:   "REVIEW",
 			Resource:    "Task",
 			Description: "Approve task",
 			Details: map[string]string{
-				"ID":     args[0],
-				"Status": "approved",
+				"ContractID": tasksApproveContractIDFlag,
+				"ID":         args[0],
+				"Status":     "approved",
 			},
 		}); ok {
 			return err
@@ -342,7 +381,7 @@ var tasksApproveCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.ReviewTask(cmd.Context(), args[0], "approved"); err != nil {
+		if err := client.ReviewTask(cmd.Context(), tasksApproveContractIDFlag, args[0], "approved"); err != nil {
 			f.PrintError("Failed to approve task: %v", err)
 			return err
 		}
@@ -359,13 +398,19 @@ var tasksRejectCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
+		if tasksRejectContractIDFlag == "" {
+			f.PrintError("--contract-id is required")
+			return nil
+		}
+
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
 			Operation:   "REVIEW",
 			Resource:    "Task",
 			Description: "Reject task",
 			Details: map[string]string{
-				"ID":     args[0],
-				"Status": "rejected",
+				"ContractID": tasksRejectContractIDFlag,
+				"ID":         args[0],
+				"Status":     "rejected",
 			},
 		}); ok {
 			return err
@@ -377,7 +422,7 @@ var tasksRejectCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.ReviewTask(cmd.Context(), args[0], "rejected"); err != nil {
+		if err := client.ReviewTask(cmd.Context(), tasksRejectContractIDFlag, args[0], "rejected"); err != nil {
 			f.PrintError("Failed to reject task: %v", err)
 			return err
 		}
@@ -388,25 +433,39 @@ var tasksRejectCmd = &cobra.Command{
 }
 
 func init() {
-	tasksListCmd.Flags().StringVar(&tasksContractIDFlag, "contract-id", "", "Filter by contract ID")
+	// List command flags
+	tasksListCmd.Flags().StringVar(&tasksContractIDFlag, "contract-id", "", "Contract ID (required)")
 	tasksListCmd.Flags().StringVar(&tasksStatusFlag, "status", "", "Filter by status")
 	tasksListCmd.Flags().IntVar(&tasksLimitFlag, "limit", 100, "Maximum results")
 	tasksListCmd.Flags().StringVar(&tasksCursorFlag, "cursor", "", "Pagination cursor")
 	tasksListCmd.Flags().BoolVar(&tasksAllFlag, "all", false, "Fetch all pages")
 
+	// Create command flags
 	tasksCreateCmd.Flags().StringVar(&tasksContractIDFlag, "contract-id", "", "Contract ID (required)")
 	tasksCreateCmd.Flags().StringVar(&tasksTitleFlag, "title", "", "Task title (required)")
 	tasksCreateCmd.Flags().StringVar(&tasksDescriptionFlag, "description", "", "Task description")
 	tasksCreateCmd.Flags().Float64Var(&tasksAmountFlag, "amount", 0, "Task amount (required)")
 
+	// Update command flags
+	tasksUpdateCmd.Flags().StringVar(&tasksUpdateContractIDFlag, "contract-id", "", "Contract ID (required)")
 	tasksUpdateCmd.Flags().StringVar(&tasksUpdateTitleFlag, "title", "", "Task title")
 	tasksUpdateCmd.Flags().StringVar(&tasksUpdateDescriptionFlag, "description", "", "Task description")
 	tasksUpdateCmd.Flags().Float64Var(&tasksUpdateAmountFlag, "amount", 0, "Task amount")
 
+	// Review-many command flags
+	tasksReviewManyCmd.Flags().StringVar(&tasksReviewManyContractIDFlag, "contract-id", "", "Contract ID (required)")
 	tasksReviewManyCmd.Flags().StringVar(&tasksReviewManyStatusFlag, "status", "", "approve or reject")
 	tasksReviewManyCmd.Flags().StringSliceVar(&tasksReviewManyIDsFlag, "ids", nil, "Task IDs (comma-separated or repeat)")
 
+	// Delete command flags
+	tasksDeleteCmd.Flags().StringVar(&tasksDeleteContractIDFlag, "contract-id", "", "Contract ID (required)")
 	tasksDeleteCmd.Flags().BoolVar(&tasksForceFlag, "force", false, "Confirm deletion")
+
+	// Approve command flags
+	tasksApproveCmd.Flags().StringVar(&tasksApproveContractIDFlag, "contract-id", "", "Contract ID (required)")
+
+	// Reject command flags
+	tasksRejectCmd.Flags().StringVar(&tasksRejectContractIDFlag, "contract-id", "", "Contract ID (required)")
 
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
