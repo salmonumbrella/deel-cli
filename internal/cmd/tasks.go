@@ -37,7 +37,7 @@ var tasksListCmd = &cobra.Command{
 
 		if tasksContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		client, err := getClient()
@@ -103,15 +103,15 @@ var tasksCreateCmd = &cobra.Command{
 
 		if tasksContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 		if tasksTitleFlag == "" {
 			f.PrintError("--title is required")
-			return nil
+			return fmt.Errorf("title is required")
 		}
 		if tasksAmountFlag <= 0 {
 			f.PrintError("--amount is required and must be positive")
-			return nil
+			return fmt.Errorf("amount is required and must be positive")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -170,17 +170,17 @@ var tasksUpdateCmd = &cobra.Command{
 
 		if tasksUpdateContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		amountSet := cmd.Flags().Changed("amount")
 		if tasksUpdateTitleFlag == "" && tasksUpdateDescriptionFlag == "" && !amountSet {
 			f.PrintError("At least one of --title, --description, or --amount is required")
-			return nil
+			return fmt.Errorf("at least one of --title, --description, or --amount is required")
 		}
 		if amountSet && tasksUpdateAmountFlag <= 0 {
 			f.PrintError("--amount must be positive")
-			return nil
+			return fmt.Errorf("amount must be positive")
 		}
 
 		details := map[string]string{
@@ -249,7 +249,7 @@ var tasksReviewManyCmd = &cobra.Command{
 
 		if tasksReviewManyContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		status := strings.ToLower(tasksReviewManyStatusFlag)
@@ -260,12 +260,12 @@ var tasksReviewManyCmd = &cobra.Command{
 			status = "rejected"
 		default:
 			f.PrintError("--status must be approve or reject")
-			return nil
+			return fmt.Errorf("status must be approve or reject")
 		}
 
 		if len(tasksReviewManyIDsFlag) == 0 {
 			f.PrintError("--ids is required")
-			return nil
+			return fmt.Errorf("ids is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -309,7 +309,7 @@ var tasksDeleteCmd = &cobra.Command{
 
 		if tasksDeleteContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -359,7 +359,7 @@ var tasksApproveCmd = &cobra.Command{
 
 		if tasksApproveContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -400,7 +400,7 @@ var tasksRejectCmd = &cobra.Command{
 
 		if tasksRejectContractIDFlag == "" {
 			f.PrintError("--contract-id is required")
-			return nil
+			return fmt.Errorf("contract-id is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
