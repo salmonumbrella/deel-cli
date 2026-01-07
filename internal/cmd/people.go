@@ -484,6 +484,58 @@ var peopleUpdateCmd = &cobra.Command{
 	},
 }
 
+// Flags for set-department command
+var setDepartmentIDFlag string
+
+var setDepartmentCmd = &cobra.Command{
+	Use:   "set-department <id>",
+	Short: "Set person's department",
+	Long:  "Set the department for a person. Requires --department-id. Use 'deel org departments list' to see available departments.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if setDepartmentIDFlag == "" {
+			f.PrintError("--department-id flag is required")
+			return fmt.Errorf("--department-id flag is required")
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "UPDATE",
+			Resource:    "PersonDepartment",
+			Description: "Set person's department",
+			Details: map[string]string{
+				"PersonID":     args[0],
+				"DepartmentID": setDepartmentIDFlag,
+			},
+		}); ok || err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		dept, err := client.UpdatePersonDepartment(cmd.Context(), args[0], api.UpdatePersonDepartmentParams{
+			DepartmentID: setDepartmentIDFlag,
+		})
+		if err != nil {
+			f.PrintError("Failed to set department: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Department updated successfully")
+			if dept != nil {
+				f.PrintText("Department ID:   " + dept.ID)
+				f.PrintText("Department Name: " + dept.Name)
+			}
+		}, dept)
+	},
+}
+
 // Flags for working location update command
 var (
 	peopleLocationCountryFlag    string
@@ -1337,6 +1389,9 @@ func init() {
 	peopleUpdateCmd.Flags().StringVar(&peopleUpdatePhoneFlag, "phone", "", "Phone number (optional)")
 	peopleUpdateCmd.Flags().StringVar(&peopleUpdateNationalityFlag, "nationality", "", "Nationality (optional)")
 
+	// Set-department command flags
+	setDepartmentCmd.Flags().StringVar(&setDepartmentIDFlag, "department-id", "", "Department ID (required)")
+
 	// Working location command flags
 	peopleLocationCmd.Flags().StringVar(&peopleLocationCountryFlag, "country", "", "Country code (required)")
 	peopleLocationCmd.Flags().StringVar(&peopleLocationStateFlag, "state", "", "State (optional)")
@@ -1407,6 +1462,7 @@ func init() {
 	peopleCmd.AddCommand(peopleCreateCmd)
 	peopleCmd.AddCommand(peopleUpdateCmd)
 	peopleCmd.AddCommand(peopleLocationCmd)
+	peopleCmd.AddCommand(setDepartmentCmd)
 	peopleCmd.AddCommand(customFieldsCmd)
 	peopleCmd.AddCommand(adjustmentsCmd)
 	peopleCmd.AddCommand(managersCmd)

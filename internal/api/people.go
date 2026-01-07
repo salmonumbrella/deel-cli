@@ -219,3 +219,57 @@ func (c *Client) GetCustomField(ctx context.Context, fieldID string) (*CustomFie
 	}
 	return &wrapper.Data, nil
 }
+
+// DepartmentsListResponse is the response from list departments
+type DepartmentsListResponse struct {
+	Data []Department `json:"data"`
+	Page struct {
+		Next  string `json:"next"`
+		Total int    `json:"total"`
+	} `json:"page"`
+}
+
+// ListDepartments returns a list of departments in the organization
+func (c *Client) ListDepartments(ctx context.Context) (*DepartmentsListResponse, error) {
+	resp, err := c.Get(ctx, "/rest/v2/departments")
+	if err != nil {
+		return nil, err
+	}
+
+	var result DepartmentsListResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &result, nil
+}
+
+// UpdatePersonDepartmentParams contains parameters for updating a person's department
+type UpdatePersonDepartmentParams struct {
+	DepartmentID string `json:"department_id"`
+}
+
+// UpdatePersonDepartment updates the department for a person
+// PUT /rest/v2/people/{id}/department
+func (c *Client) UpdatePersonDepartment(ctx context.Context, personID string, params UpdatePersonDepartmentParams) (*Department, error) {
+	path := fmt.Sprintf("/rest/v2/people/%s/department", escapePath(personID))
+
+	// Wrap params in data object as required by Deel API
+	requestBody := struct {
+		Data UpdatePersonDepartmentParams `json:"data"`
+	}{
+		Data: params,
+	}
+
+	resp, err := c.Put(ctx, path, requestBody)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data Department `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &wrapper.Data, nil
+}

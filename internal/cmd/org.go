@@ -790,6 +790,44 @@ var lookupsTimeOffTypesCmd = &cobra.Command{
 	},
 }
 
+// Departments command
+var departmentsCmd = &cobra.Command{
+	Use:   "departments",
+	Short: "Manage departments",
+	Long:  "List departments in your organization.",
+}
+
+var departmentsListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all departments",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		client, err := getClient()
+		if err != nil {
+			f.PrintError("Failed to get client: %v", err)
+			return err
+		}
+
+		resp, err := client.ListDepartments(cmd.Context())
+		if err != nil {
+			f.PrintError("Failed to list departments: %v", err)
+			return err
+		}
+
+		return f.Output(func() {
+			if len(resp.Data) == 0 {
+				f.PrintText("No departments found.")
+				return
+			}
+			table := f.NewTable("ID", "NAME")
+			for _, d := range resp.Data {
+				table.AddRow(d.ID, d.Name)
+			}
+			table.Render()
+		}, resp.Data)
+	},
+}
+
 func init() {
 	// Groups command flags
 	groupsListCmd.Flags().IntVar(&groupsLimitFlag, "limit", 100, "Maximum results")
@@ -835,6 +873,9 @@ func init() {
 	// org entities flags
 	orgEntitiesCmd.Flags().IntVar(&orgEntitiesLimitFlag, "limit", 100, "Maximum results")
 
+	// Add departments subcommands
+	departmentsCmd.AddCommand(departmentsListCmd)
+
 	// Add all commands to org
 	orgCmd.AddCommand(orgGetCmd)
 	orgCmd.AddCommand(orgStructuresCmd)
@@ -842,4 +883,5 @@ func init() {
 	orgCmd.AddCommand(groupsCmd)
 	orgCmd.AddCommand(legalEntitiesCmd)
 	orgCmd.AddCommand(lookupsCmd)
+	orgCmd.AddCommand(departmentsCmd)
 }
