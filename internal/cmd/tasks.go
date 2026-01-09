@@ -164,14 +164,14 @@ var (
 var tasksUpdateCmd = &cobra.Command{
 	Use:   "update <task-id>",
 	Short: "Update a task",
-	Args:  cobra.ExactArgs(1),
+	Long: `Update a task's title, description, or amount.
+
+If --contract-id is not provided, the CLI will search across all active
+task-based contracts to find the task (this may take a few seconds).`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
-
-		if tasksUpdateContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
-		}
+		taskID := args[0]
 
 		amountSet := cmd.Flags().Changed("amount")
 		if tasksUpdateTitleFlag == "" && tasksUpdateDescriptionFlag == "" && !amountSet {
@@ -183,9 +183,28 @@ var tasksUpdateCmd = &cobra.Command{
 			return fmt.Errorf("amount must be positive")
 		}
 
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		contractID := tasksUpdateContractIDFlag
+		if contractID == "" {
+			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
+			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
+			if err != nil {
+				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
+				f.PrintText("\nTo find the contract ID:")
+				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
+				return fmt.Errorf("task not found: %w", err)
+			}
+			contractID = foundContractID
+			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
+		}
+
 		details := map[string]string{
-			"ContractID": tasksUpdateContractIDFlag,
-			"ID":         args[0],
+			"ContractID": contractID,
+			"ID":         taskID,
 		}
 		if tasksUpdateTitleFlag != "" {
 			details["Title"] = tasksUpdateTitleFlag
@@ -206,22 +225,15 @@ var tasksUpdateCmd = &cobra.Command{
 			return err
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
 		params := api.UpdateTaskParams{
 			Title:       tasksUpdateTitleFlag,
 			Description: tasksUpdateDescriptionFlag,
 			Amount:      tasksUpdateAmountFlag,
 		}
 
-		task, err := client.UpdateTask(cmd.Context(), tasksUpdateContractIDFlag, args[0], params)
+		task, err := client.UpdateTask(cmd.Context(), contractID, taskID, params)
 		if err != nil {
-			f.PrintError("Failed to update task: %v", err)
-			return err
+			return HandleError(f, err, "updating task")
 		}
 
 		return f.Output(func() {
@@ -303,13 +315,32 @@ var tasksDeleteContractIDFlag string
 var tasksDeleteCmd = &cobra.Command{
 	Use:   "delete <task-id>",
 	Short: "Delete a task",
-	Args:  cobra.ExactArgs(1),
+	Long: `Delete a task.
+
+If --contract-id is not provided, the CLI will search across all active
+task-based contracts to find the task (this may take a few seconds).`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		taskID := args[0]
 
-		if tasksDeleteContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		contractID := tasksDeleteContractIDFlag
+		if contractID == "" {
+			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
+			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
+			if err != nil {
+				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
+				f.PrintText("\nTo find the contract ID:")
+				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
+				return fmt.Errorf("task not found: %w", err)
+			}
+			contractID = foundContractID
+			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -317,28 +348,21 @@ var tasksDeleteCmd = &cobra.Command{
 			Resource:    "Task",
 			Description: "Delete task",
 			Details: map[string]string{
-				"ContractID": tasksDeleteContractIDFlag,
-				"ID":         args[0],
+				"ContractID": contractID,
+				"ID":         taskID,
 			},
 		}); ok {
 			return err
 		}
 
 		if !tasksForceFlag {
-			f.PrintText(fmt.Sprintf("Are you sure you want to delete task %s?", args[0]))
+			f.PrintText(fmt.Sprintf("Are you sure you want to delete task %s?", taskID))
 			f.PrintText("Use --force to confirm.")
 			return nil
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
-		if err := client.DeleteTask(cmd.Context(), tasksDeleteContractIDFlag, args[0]); err != nil {
-			f.PrintError("Failed to delete task: %v", err)
-			return err
+		if err := client.DeleteTask(cmd.Context(), contractID, taskID); err != nil {
+			return HandleError(f, err, "deleting task")
 		}
 
 		f.PrintSuccess("Task deleted successfully.")
@@ -355,13 +379,32 @@ var (
 var tasksApproveCmd = &cobra.Command{
 	Use:   "approve <task-id>",
 	Short: "Approve a task",
-	Args:  cobra.ExactArgs(1),
+	Long: `Approve a task for payment.
+
+If --contract-id is not provided, the CLI will search across all active
+task-based contracts to find the task (this may take a few seconds).`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		taskID := args[0]
 
-		if tasksApproveContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		contractID := tasksApproveContractIDFlag
+		if contractID == "" {
+			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
+			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
+			if err != nil {
+				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
+				f.PrintText("\nTo find the contract ID:")
+				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
+				return fmt.Errorf("task not found: %w", err)
+			}
+			contractID = foundContractID
+			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -369,23 +412,16 @@ var tasksApproveCmd = &cobra.Command{
 			Resource:    "Task",
 			Description: "Approve task",
 			Details: map[string]string{
-				"ContractID": tasksApproveContractIDFlag,
-				"ID":         args[0],
+				"ContractID": contractID,
+				"ID":         taskID,
 				"Status":     "approved",
 			},
 		}); ok {
 			return err
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
-		if err := client.ReviewTask(cmd.Context(), tasksApproveContractIDFlag, args[0], "approved"); err != nil {
-			f.PrintError("Failed to approve task: %v", err)
-			return err
+		if err := client.ReviewTask(cmd.Context(), contractID, taskID, "approved"); err != nil {
+			return HandleError(f, err, "approving task")
 		}
 
 		f.PrintSuccess("Task approved successfully.")
@@ -396,13 +432,32 @@ var tasksApproveCmd = &cobra.Command{
 var tasksRejectCmd = &cobra.Command{
 	Use:   "reject <task-id>",
 	Short: "Reject a task",
-	Args:  cobra.ExactArgs(1),
+	Long: `Reject a task.
+
+If --contract-id is not provided, the CLI will search across all active
+task-based contracts to find the task (this may take a few seconds).`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
+		taskID := args[0]
 
-		if tasksRejectContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		contractID := tasksRejectContractIDFlag
+		if contractID == "" {
+			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
+			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
+			if err != nil {
+				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
+				f.PrintText("\nTo find the contract ID:")
+				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
+				return fmt.Errorf("task not found: %w", err)
+			}
+			contractID = foundContractID
+			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -410,23 +465,16 @@ var tasksRejectCmd = &cobra.Command{
 			Resource:    "Task",
 			Description: "Reject task",
 			Details: map[string]string{
-				"ContractID": tasksRejectContractIDFlag,
-				"ID":         args[0],
+				"ContractID": contractID,
+				"ID":         taskID,
 				"Status":     "rejected",
 			},
 		}); ok {
 			return err
 		}
 
-		client, err := getClient()
-		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
-		}
-
-		if err := client.ReviewTask(cmd.Context(), tasksRejectContractIDFlag, args[0], "rejected"); err != nil {
-			f.PrintError("Failed to reject task: %v", err)
-			return err
+		if err := client.ReviewTask(cmd.Context(), contractID, taskID, "rejected"); err != nil {
+			return HandleError(f, err, "rejecting task")
 		}
 
 		f.PrintSuccess("Task rejected successfully.")

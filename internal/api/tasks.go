@@ -252,3 +252,52 @@ func (c *Client) ReviewMultipleTasks(ctx context.Context, contractID string, tas
 	_, err := c.Post(ctx, path, reqBody)
 	return err
 }
+
+// FindTaskContract searches for a task across all task-based contracts and returns the contract ID
+// This is useful when you have a task ID but don't know which contract it belongs to
+func (c *Client) FindTaskContract(ctx context.Context, taskID string) (string, *Task, error) {
+	// Get all active task-based contracts (payg_tasks, pay_as_you_go_time_based, etc.)
+	taskTypes := []string{"payg_tasks", "pay_as_you_go_time_based", "ongoing_time_based"}
+
+	for _, contractType := range taskTypes {
+		// List contracts of this type
+		cursor := ""
+		for {
+			resp, err := c.ListContracts(ctx, ContractsListParams{
+				Limit:  100,
+				Cursor: cursor,
+				Type:   contractType,
+				Status: "in_progress",
+			})
+			if err != nil {
+				// Skip contract types that error (e.g., no access)
+				break
+			}
+
+			// Search tasks in each contract
+			for _, contract := range resp.Data {
+				tasksResp, err := c.ListTasks(ctx, TasksListParams{
+					ContractID: contract.ID,
+					Limit:      100,
+				})
+				if err != nil {
+					continue // Skip contracts we can't access tasks for
+				}
+
+				for _, task := range tasksResp.Data {
+					if task.ID == taskID {
+						task.ContractID = contract.ID // Ensure contract ID is set
+						return contract.ID, &task, nil
+					}
+				}
+			}
+
+			if resp.Page.Next == "" {
+				break
+			}
+			cursor = resp.Page.Next
+		}
+	}
+
+	return "", nil, fmt.Errorf("task %s not found in any active task-based contract", taskID)
+}
