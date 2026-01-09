@@ -159,6 +159,36 @@ type ContractAmendment struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// CreateContractAmendmentParams are parameters for creating a contractor amendment
+type CreateContractAmendmentParams struct {
+	ScopeOfWork    string `json:"scope_of_work,omitempty"`
+	PaymentDueType string `json:"payment_due_type,omitempty"` // REGULAR, etc.
+}
+
+// CreateContractAmendment creates a new amendment for a contractor contract
+// Note: Amendment requires signatures from both employer and contractor before taking effect
+func (c *Client) CreateContractAmendment(ctx context.Context, contractID string, params CreateContractAmendmentParams) (*ContractAmendment, error) {
+	path := fmt.Sprintf("/rest/v2/contracts/%s/amendments", escapePath(contractID))
+
+	// Wrap in data object as required by Deel API
+	reqBody := struct {
+		Data CreateContractAmendmentParams `json:"data"`
+	}{Data: params}
+
+	resp, err := c.Post(ctx, path, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Data ContractAmendment `json:"data"`
+	}
+	if err := json.Unmarshal(resp, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &wrapper.Data, nil
+}
+
 // ListContractAmendments returns amendments for a contract
 func (c *Client) ListContractAmendments(ctx context.Context, contractID string) ([]ContractAmendment, error) {
 	path := fmt.Sprintf("/rest/v2/contracts/%s/amendments", escapePath(contractID))

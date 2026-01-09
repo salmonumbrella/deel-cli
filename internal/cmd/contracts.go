@@ -66,6 +66,9 @@ var (
 	inviteEmailFlag   string
 	inviteLocaleFlag  string
 	inviteMessageFlag string
+
+	// Amend command flags
+	amendScopeFlag string
 )
 
 var contractsListCmd = &cobra.Command{
@@ -247,6 +250,64 @@ var contractsAmendmentsCmd = &cobra.Command{
 			}
 			table.Render()
 		}, amendments)
+	},
+}
+
+var contractsAmendCmd = &cobra.Command{
+	Use:   "amend <contract-id>",
+	Short: "Create a contract amendment",
+	Long: `Create an amendment to modify a contractor contract.
+
+Currently supports amending the scope of work. The amendment will require
+signatures from both the employer and contractor before taking effect.
+
+Examples:
+  # Amend scope of work
+  deel contracts amend abc123 --scope "New scope of work description"`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+
+		if amendScopeFlag == "" {
+			return HandleError(f, fmt.Errorf("--scope is required"), "validating input")
+		}
+
+		params := api.CreateContractAmendmentParams{
+			ScopeOfWork:    amendScopeFlag,
+			PaymentDueType: "REGULAR",
+		}
+
+		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
+			Operation:   "CREATE",
+			Resource:    "Amendment",
+			Description: "Create contract amendment",
+			Details: map[string]string{
+				"ContractID":  args[0],
+				"ScopeOfWork": amendScopeFlag,
+			},
+		}); ok {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		amendment, err := client.CreateContractAmendment(cmd.Context(), args[0], params)
+		if err != nil {
+			return HandleError(f, err, "creating amendment")
+		}
+
+		return f.Output(func() {
+			f.PrintSuccess("Amendment created successfully")
+			f.PrintText("Amendment ID: " + amendment.ID)
+			f.PrintText("Status: " + amendment.Status)
+			f.PrintText("")
+			f.PrintText("Next steps:")
+			f.PrintText("  1. Sign the amendment in Deel UI (both employer and contractor)")
+			f.PrintText("  2. Check status: deel contracts amendments " + args[0])
+		}, amendment)
 	},
 }
 
@@ -708,10 +769,14 @@ func init() {
 	contractsTerminateCmd.Flags().StringVar(&terminateTypeFlag, "type", "TERMINATION", "Termination type: RESIGNATION or TERMINATION")
 	contractsTerminateCmd.Flags().StringVar(&terminateRehireFlag, "rehire", "", "Eligible for rehire: YES, NO, or DONT_KNOW")
 
+	// Amend command flags
+	contractsAmendCmd.Flags().StringVar(&amendScopeFlag, "scope", "", "New scope of work (required)")
+
 	// Add all commands
 	contractsCmd.AddCommand(contractsListCmd)
 	contractsCmd.AddCommand(contractsGetCmd)
 	contractsCmd.AddCommand(contractsAmendmentsCmd)
+	contractsCmd.AddCommand(contractsAmendCmd)
 	contractsCmd.AddCommand(contractsPaymentDatesCmd)
 	contractsCmd.AddCommand(contractsCreateCmd)
 	contractsCmd.AddCommand(contractsSignCmd)
