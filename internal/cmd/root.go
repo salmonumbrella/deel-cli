@@ -49,7 +49,12 @@ Manage your workforce, contracts, time off, payroll, and more from the terminal.
 Get started:
   deel auth login     # Authenticate via browser
   deel people list    # List your workforce
-  deel contracts list # View contracts`,
+  deel contracts list # View contracts
+
+JSON output:
+  --json              # Output as JSON object with data array and pagination
+  --json --items      # Output just the data array (for piping to jq)
+  --json --jq '.data[].name'  # Apply JQ filter to JSON output`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -111,8 +116,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")
 	rootCmd.PersistentFlags().StringVar(&jqFlag, "jq", "", "JQ filter for JSON output (alias for --query)")
 	rootCmd.PersistentFlags().BoolVar(&dryRunFlag, "dry-run", false, "Preview changes without executing")
-	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data-only", false, "Output only the data/items array for list responses")
+	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data-only", false, "Output only the data array for list responses (use with --json)")
 	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data", false, "Alias for --data-only")
+	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "items", false, "Alias for --data-only")
 	rootCmd.PersistentFlags().StringVar(&idempotencyKeyFlag, "idempotency-key", "", "Idempotency key for write requests")
 
 	// Add subcommands
