@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -34,13 +33,11 @@ func (c *Client) ListGroups(ctx context.Context) ([]Group, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Group `json:"data"`
+	groups, err := decodeData[[]Group](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *groups, nil
 }
 
 // GetGroup returns a single group by ID
@@ -51,13 +48,7 @@ func (c *Client) GetGroup(ctx context.Context, id string) (*Group, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Group `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Group](resp)
 }
 
 // CreateGroup creates a new group
@@ -67,13 +58,7 @@ func (c *Client) CreateGroup(ctx context.Context, params CreateGroupParams) (*Gr
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Group `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Group](resp)
 }
 
 // UpdateGroup updates an existing group
@@ -84,13 +69,7 @@ func (c *Client) UpdateGroup(ctx context.Context, id string, params UpdateGroupP
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Group `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Group](resp)
 }
 
 // DeleteGroup deletes a group
@@ -108,11 +87,5 @@ func (c *Client) CloneGroup(ctx context.Context, id string) (*Group, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Group `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Group](resp)
 }

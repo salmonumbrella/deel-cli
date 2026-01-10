@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,13 +23,7 @@ type Invoice struct {
 }
 
 // InvoicesListResponse is the response from list invoices
-type InvoicesListResponse struct {
-	Data []Invoice `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type InvoicesListResponse = ListResponse[Invoice]
 
 // InvoicesListParams are params for listing invoices
 type InvoicesListParams struct {
@@ -66,11 +59,7 @@ func (c *Client) ListInvoices(ctx context.Context, params InvoicesListParams) (*
 		return nil, err
 	}
 
-	var result InvoicesListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Invoice](resp)
 }
 
 // GetInvoice returns a single invoice
@@ -81,13 +70,7 @@ func (c *Client) GetInvoice(ctx context.Context, invoiceID string) (*Invoice, er
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Invoice `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Invoice](resp)
 }
 
 // InvoiceAdjustment represents an invoice adjustment
@@ -109,13 +92,11 @@ func (c *Client) ListInvoiceAdjustments(ctx context.Context, invoiceID string) (
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []InvoiceAdjustment `json:"data"`
+	adjustments, err := decodeData[[]InvoiceAdjustment](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *adjustments, nil
 }
 
 // ListAllInvoiceAdjustmentsParams are params for listing all invoice adjustments
@@ -167,13 +148,11 @@ func (c *Client) ListAllInvoiceAdjustments(ctx context.Context, params ListAllIn
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []AllInvoiceAdjustment `json:"data"`
+	adjustments, err := decodeData[[]AllInvoiceAdjustment](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *adjustments, nil
 }
 
 // GetInvoiceAdjustment returns a single invoice adjustment by ID
@@ -184,13 +163,7 @@ func (c *Client) GetInvoiceAdjustment(ctx context.Context, adjustmentID string) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data AllInvoiceAdjustment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[AllInvoiceAdjustment](resp)
 }
 
 // CreateInvoiceAdjustmentParams are params for creating an adjustment
@@ -210,11 +183,7 @@ type ReviewInvoiceAdjustmentParams struct {
 func (c *Client) ReviewInvoiceAdjustment(ctx context.Context, adjustmentID string, params ReviewInvoiceAdjustmentParams) error {
 	path := fmt.Sprintf("/rest/v2/invoice-adjustments/%s/reviews", escapePath(adjustmentID))
 
-	body := map[string]any{
-		"data": params,
-	}
-
-	_, err := c.Post(ctx, path, body)
+	_, err := c.Post(ctx, path, wrapData(params))
 	return err
 }
 
@@ -252,13 +221,7 @@ func (c *Client) CreateInvoiceAdjustment(ctx context.Context, invoiceID string, 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data InvoiceAdjustment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[InvoiceAdjustment](resp)
 }
 
 // GetInvoicePDF returns the PDF bytes for an invoice
@@ -311,13 +274,7 @@ type DeelInvoice struct {
 }
 
 // DeelInvoicesListResponse is the response from list Deel invoices
-type DeelInvoicesListResponse struct {
-	Data []DeelInvoice `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type DeelInvoicesListResponse = ListResponse[DeelInvoice]
 
 // DeelInvoicesListParams are params for listing Deel invoices
 type DeelInvoicesListParams struct {
@@ -349,9 +306,5 @@ func (c *Client) ListDeelInvoices(ctx context.Context, params DeelInvoicesListPa
 		return nil, err
 	}
 
-	var result DeelInvoicesListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[DeelInvoice](resp)
 }

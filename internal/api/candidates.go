@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -32,13 +31,7 @@ func (c *Client) AddCandidate(ctx context.Context, params AddCandidateParams) (*
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Candidate `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Candidate](resp)
 }
 
 // UpdateCandidateParams are params for updating a candidate
@@ -58,11 +51,5 @@ func (c *Client) UpdateCandidate(ctx context.Context, id string, params UpdateCa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Candidate `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Candidate](resp)
 }

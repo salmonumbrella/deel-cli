@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -36,13 +35,7 @@ func (c *Client) GetOffboardingTracker(ctx context.Context, trackerID string) (*
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Offboarding `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Offboarding](resp)
 }
 
 // GetTerminationDetails returns termination details by ID
@@ -53,11 +46,5 @@ func (c *Client) GetTerminationDetails(ctx context.Context, id string) (*Termina
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TerminationDetails `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TerminationDetails](resp)
 }

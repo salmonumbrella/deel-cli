@@ -1,10 +1,6 @@
 package api
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-)
+import "context"
 
 // CostCenter represents a cost center
 type CostCenter struct {
@@ -23,13 +19,11 @@ func (c *Client) ListCostCenters(ctx context.Context) ([]CostCenter, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []CostCenter `json:"data"`
+	centers, err := decodeData[[]CostCenter](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *centers, nil
 }
 
 // CostCenterInput represents input for creating/updating a cost center
@@ -51,11 +45,9 @@ func (c *Client) SyncCostCenters(ctx context.Context, params SyncCostCentersPara
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []CostCenter `json:"data"`
+	centers, err := decodeData[[]CostCenter](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *centers, nil
 }

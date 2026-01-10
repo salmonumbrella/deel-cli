@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -23,13 +22,11 @@ func (c *Client) GetEORWorkerPayslips(ctx context.Context, workerID string) ([]P
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Payslip `json:"data"`
+	payslips, err := decodeData[[]Payslip](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *payslips, nil
 }
 
 // GetGPWorkerPayslips returns payslips for a Global Payroll worker
@@ -40,13 +37,11 @@ func (c *Client) GetGPWorkerPayslips(ctx context.Context, workerID string) ([]Pa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Payslip `json:"data"`
+	payslips, err := decodeData[[]Payslip](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *payslips, nil
 }
 
 // PayslipDownload represents a payslip download URL response
@@ -62,13 +57,11 @@ func (c *Client) GetGPPayslipDownloadURL(ctx context.Context, workerID, payslipI
 		return "", err
 	}
 
-	var wrapper struct {
-		Data PayslipDownload `json:"data"`
+	data, err := decodeData[PayslipDownload](resp)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data.URL, nil
+	return data.URL, nil
 }
 
 // PaymentBreakdown represents a payment breakdown
@@ -88,13 +81,7 @@ func (c *Client) GetPaymentBreakdown(ctx context.Context, cycleID string) (*Paym
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data PaymentBreakdown `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[PaymentBreakdown](resp)
 }
 
 // PaymentReceipt represents a payment receipt
@@ -122,11 +109,9 @@ func (c *Client) ListPaymentReceipts(ctx context.Context, limit int) ([]PaymentR
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []PaymentReceipt `json:"data"`
+	receipts, err := decodeData[[]PaymentReceipt](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *receipts, nil
 }

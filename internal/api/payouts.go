@@ -1,10 +1,6 @@
 package api
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-)
+import "context"
 
 // WithdrawFundsParams are params for withdrawing funds
 type WithdrawFundsParams struct {
@@ -30,13 +26,7 @@ func (c *Client) WithdrawFunds(ctx context.Context, params WithdrawFundsParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Withdrawal `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Withdrawal](resp)
 }
 
 // AutoWithdrawalSettings represents auto-withdrawal configuration
@@ -54,13 +44,7 @@ func (c *Client) GetAutoWithdrawal(ctx context.Context) (*AutoWithdrawalSettings
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data AutoWithdrawalSettings `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[AutoWithdrawalSettings](resp)
 }
 
 // SetAutoWithdrawalParams are params for updating auto-withdrawal settings
@@ -78,13 +62,7 @@ func (c *Client) SetAutoWithdrawal(ctx context.Context, params SetAutoWithdrawal
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data AutoWithdrawalSettings `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[AutoWithdrawalSettings](resp)
 }
 
 // ContractorBalance represents a contractor's balance
@@ -104,11 +82,9 @@ func (c *Client) ListContractorBalances(ctx context.Context) ([]ContractorBalanc
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ContractorBalance `json:"data"`
+	balances, err := decodeData[[]ContractorBalance](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *balances, nil
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -73,13 +72,7 @@ func (c *Client) ApproveRejectTimeOff(ctx context.Context, params ApproveRejectP
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TimeOffApproval `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TimeOffApproval](resp)
 }
 
 // ValidateTimeOffRequest validates a time off request before creation
@@ -89,13 +82,7 @@ func (c *Client) ValidateTimeOffRequest(ctx context.Context, params ValidateTime
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TimeOffValidation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TimeOffValidation](resp)
 }
 
 // GetWorkSchedule retrieves the work schedule for a profile
@@ -106,13 +93,7 @@ func (c *Client) GetWorkSchedule(ctx context.Context, profileID string) (*WorkSc
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data WorkSchedule `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[WorkSchedule](resp)
 }
 
 // GetEntitlements retrieves time off entitlements for a profile
@@ -123,13 +104,11 @@ func (c *Client) GetEntitlements(ctx context.Context, profileID string) ([]Entit
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Entitlement `json:"data"`
+	entitlements, err := decodeData[[]Entitlement](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *entitlements, nil
 }
 
 // SyncExternalTimeOff syncs time off from an external system

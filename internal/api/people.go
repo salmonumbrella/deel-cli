@@ -83,13 +83,7 @@ func (p *Person) Department() string {
 }
 
 // PeopleListResponse is the response from list people
-type PeopleListResponse struct {
-	Data []Person `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type PeopleListResponse = ListResponse[Person]
 
 // PeopleListParams are params for listing people
 type PeopleListParams struct {
@@ -117,11 +111,7 @@ func (c *Client) ListPeople(ctx context.Context, params PeopleListParams) (*Peop
 		return nil, err
 	}
 
-	var result PeopleListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Person](resp)
 }
 
 // GetPerson returns a single person by HRIS profile ID
@@ -132,13 +122,7 @@ func (c *Client) GetPerson(ctx context.Context, hrisProfileID string) (*Person, 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Person `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Person](resp)
 }
 
 // GetPersonPersonal returns personal info including numeric worker_id
@@ -150,13 +134,11 @@ func (c *Client) GetPersonPersonal(ctx context.Context, hrisProfileID string) (j
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data json.RawMessage `json:"data"`
+	data, err := decodeData[json.RawMessage](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *data, nil
 }
 
 // SearchPeopleByEmail finds a person by email
@@ -170,13 +152,7 @@ func (c *Client) SearchPeopleByEmail(ctx context.Context, email string) (*Person
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Person `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Person](resp)
 }
 
 // CustomField represents a custom field
@@ -194,13 +170,11 @@ func (c *Client) ListCustomFields(ctx context.Context) ([]CustomField, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []CustomField `json:"data"`
+	fields, err := decodeData[[]CustomField](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *fields, nil
 }
 
 // GetCustomField returns a specific custom field
@@ -211,23 +185,11 @@ func (c *Client) GetCustomField(ctx context.Context, fieldID string) (*CustomFie
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data CustomField `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[CustomField](resp)
 }
 
 // DepartmentsListResponse is the response from list departments
-type DepartmentsListResponse struct {
-	Data []Department `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type DepartmentsListResponse = ListResponse[Department]
 
 // ListDepartments returns a list of departments in the organization
 func (c *Client) ListDepartments(ctx context.Context) (*DepartmentsListResponse, error) {
@@ -236,11 +198,7 @@ func (c *Client) ListDepartments(ctx context.Context) (*DepartmentsListResponse,
 		return nil, err
 	}
 
-	var result DepartmentsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Department](resp)
 }
 
 // UpdatePersonDepartmentParams contains parameters for updating a person's department
@@ -253,23 +211,10 @@ type UpdatePersonDepartmentParams struct {
 func (c *Client) UpdatePersonDepartment(ctx context.Context, personID string, params UpdatePersonDepartmentParams) (*Department, error) {
 	path := fmt.Sprintf("/rest/v2/people/%s/department", escapePath(personID))
 
-	// Wrap params in data object as required by Deel API
-	requestBody := struct {
-		Data UpdatePersonDepartmentParams `json:"data"`
-	}{
-		Data: params,
-	}
-
-	resp, err := c.Put(ctx, path, requestBody)
+	resp, err := c.Put(ctx, path, wrapData(params))
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Department `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Department](resp)
 }

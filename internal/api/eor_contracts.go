@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -72,13 +71,7 @@ func (c *Client) CreateEORContract(ctx context.Context, params CreateEORContract
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORContract](resp)
 }
 
 // GetEORContract returns a single EOR contract by ID
@@ -89,13 +82,7 @@ func (c *Client) GetEORContract(ctx context.Context, id string) (*EORContract, e
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORContract](resp)
 }
 
 // UpdateEORContract updates an existing EOR contract
@@ -106,13 +93,7 @@ func (c *Client) UpdateEORContract(ctx context.Context, id string, params Update
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORContract](resp)
 }
 
 // CancelEORContract cancels an EOR contract
@@ -123,13 +104,7 @@ func (c *Client) CancelEORContract(ctx context.Context, id string, params Cancel
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORContract](resp)
 }
 
 // SignEORContract signs an EOR contract
@@ -140,11 +115,5 @@ func (c *Client) SignEORContract(ctx context.Context, id string) (*EORContract, 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORContract](resp)
 }

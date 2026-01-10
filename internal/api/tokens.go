@@ -1,10 +1,6 @@
 package api
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-)
+import "context"
 
 // WorkerAccessToken represents a worker access token
 type WorkerAccessToken struct {
@@ -28,11 +24,5 @@ func (c *Client) CreateWorkerAccessToken(ctx context.Context, params CreateWorke
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data WorkerAccessToken `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[WorkerAccessToken](resp)
 }

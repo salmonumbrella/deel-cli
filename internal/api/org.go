@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -23,13 +22,7 @@ func (c *Client) GetOrganization(ctx context.Context) (*Organization, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Organization `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Organization](resp)
 }
 
 // OrgStructure represents an org structure node
@@ -48,13 +41,11 @@ func (c *Client) GetOrgStructures(ctx context.Context) ([]OrgStructure, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []OrgStructure `json:"data"`
+	structures, err := decodeData[[]OrgStructure](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *structures, nil
 }
 
 // LegalEntity represents a legal entity
@@ -74,13 +65,11 @@ func (c *Client) ListLegalEntities(ctx context.Context) ([]LegalEntity, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []LegalEntity `json:"data"`
+	entities, err := decodeData[[]LegalEntity](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *entities, nil
 }
 
 // CreateLegalEntityParams are params for creating a legal entity
@@ -98,13 +87,7 @@ func (c *Client) CreateLegalEntity(ctx context.Context, params CreateLegalEntity
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data LegalEntity `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[LegalEntity](resp)
 }
 
 // UpdateLegalEntityParams are params for updating a legal entity
@@ -122,13 +105,7 @@ func (c *Client) UpdateLegalEntity(ctx context.Context, id string, params Update
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data LegalEntity `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[LegalEntity](resp)
 }
 
 // DeleteLegalEntity deletes a legal entity
@@ -160,11 +137,5 @@ func (c *Client) GetPayrollSettings(ctx context.Context, id string) (*PayrollSet
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data PayrollSettings `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[PayrollSettings](resp)
 }

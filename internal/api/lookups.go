@@ -72,13 +72,11 @@ func (c *Client) ListCurrencies(ctx context.Context) ([]Currency, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Currency `json:"data"`
+	currencies, err := decodeData[[]Currency](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *currencies, nil
 }
 
 // ListCountries returns all available countries
@@ -88,13 +86,11 @@ func (c *Client) ListCountries(ctx context.Context) ([]Country, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Country `json:"data"`
+	countries, err := decodeData[[]Country](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *countries, nil
 }
 
 // ListJobTitles returns all available job titles
@@ -104,13 +100,11 @@ func (c *Client) ListJobTitles(ctx context.Context) ([]JobTitle, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []JobTitle `json:"data"`
+	titles, err := decodeData[[]JobTitle](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *titles, nil
 }
 
 // ListSeniorityLevels returns all available seniority levels
@@ -120,13 +114,11 @@ func (c *Client) ListSeniorityLevels(ctx context.Context) ([]SeniorityLevel, err
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []SeniorityLevel `json:"data"`
+	levels, err := decodeData[[]SeniorityLevel](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *levels, nil
 }
 
 // ListTimeOffTypes returns all available time off types
@@ -136,11 +128,9 @@ func (c *Client) ListTimeOffTypes(ctx context.Context) ([]TimeOffType, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []TimeOffType `json:"data"`
+	types, err := decodeData[[]TimeOffType](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *types, nil
 }

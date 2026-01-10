@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -29,12 +28,7 @@ type TimeOffListParams struct {
 }
 
 // TimeOffListResponse is the response from list time off
-type TimeOffListResponse struct {
-	Data []TimeOffRequest `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type TimeOffListResponse = ListResponse[TimeOffRequest]
 
 // ListTimeOffRequests returns time off requests
 func (c *Client) ListTimeOffRequests(ctx context.Context, params TimeOffListParams) (*TimeOffListResponse, error) {
@@ -62,11 +56,7 @@ func (c *Client) ListTimeOffRequests(ctx context.Context, params TimeOffListPara
 		return nil, err
 	}
 
-	var result TimeOffListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[TimeOffRequest](resp)
 }
 
 // TimeOffPolicy represents a time off policy
@@ -84,13 +74,11 @@ func (c *Client) ListTimeOffPolicies(ctx context.Context) ([]TimeOffPolicy, erro
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []TimeOffPolicy `json:"data"`
+	policies, err := decodeData[[]TimeOffPolicy](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *policies, nil
 }
 
 // CreateTimeOffParams are the parameters for creating a time off request.
@@ -109,13 +97,7 @@ func (c *Client) CreateTimeOffRequest(ctx context.Context, params CreateTimeOffP
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TimeOffRequest `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TimeOffRequest](resp)
 }
 
 // CancelTimeOffRequest cancels a time off request

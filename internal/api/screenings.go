@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -27,13 +26,7 @@ func (c *Client) CreateVeriffSession(ctx context.Context, params CreateVeriffSes
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data VeriffSession `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[VeriffSession](resp)
 }
 
 // KYCDetails represents KYC verification details for a worker
@@ -58,13 +51,7 @@ func (c *Client) GetKYCDetails(ctx context.Context, workerID string) (*KYCDetail
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data KYCDetails `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[KYCDetails](resp)
 }
 
 // AMLData represents anti-money laundering screening data
@@ -91,13 +78,7 @@ func (c *Client) GetAMLData(ctx context.Context) (*AMLData, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data AMLData `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[AMLData](resp)
 }
 
 // SubmitExternalKYCParams are params for submitting external KYC verification
@@ -125,13 +106,7 @@ func (c *Client) SubmitExternalKYC(ctx context.Context, params SubmitExternalKYC
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ExternalKYCSubmission `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ExternalKYCSubmission](resp)
 }
 
 // CreateManualVerificationParams are params for creating a manual verification
@@ -160,11 +135,5 @@ func (c *Client) CreateManualVerification(ctx context.Context, params CreateManu
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ManualVerification `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ManualVerification](resp)
 }

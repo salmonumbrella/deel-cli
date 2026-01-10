@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -25,13 +24,11 @@ func (c *Client) ListMilestones(ctx context.Context, contractID string) ([]Miles
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Milestone `json:"data"`
+	milestones, err := decodeData[[]Milestone](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *milestones, nil
 }
 
 // GetMilestone returns a single milestone
@@ -42,13 +39,7 @@ func (c *Client) GetMilestone(ctx context.Context, contractID, milestoneID strin
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Milestone `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Milestone](resp)
 }
 
 // CreateMilestoneParams are params for creating a milestone
@@ -67,13 +58,7 @@ func (c *Client) CreateMilestone(ctx context.Context, params CreateMilestonePara
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Milestone `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Milestone](resp)
 }
 
 // DeleteMilestone deletes a milestone

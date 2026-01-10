@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -94,13 +93,7 @@ func (c *Client) CreateEORWorker(ctx context.Context, params CreateEORWorkerPara
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORWorker `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORWorker](resp)
 }
 
 // UpdateEORWorker updates an existing EOR worker
@@ -111,13 +104,7 @@ func (c *Client) UpdateEORWorker(ctx context.Context, id string, params UpdateEO
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORWorker `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORWorker](resp)
 }
 
 // GetEORWorkerBenefits returns all benefits for an EOR worker
@@ -128,13 +115,11 @@ func (c *Client) GetEORWorkerBenefits(ctx context.Context, workerID string) ([]E
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []EORWorkerBenefit `json:"data"`
+	benefits, err := decodeData[[]EORWorkerBenefit](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *benefits, nil
 }
 
 // GetEORWorkerTaxDocuments returns all tax documents for an EOR worker
@@ -145,13 +130,11 @@ func (c *Client) GetEORWorkerTaxDocuments(ctx context.Context, workerID string) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []EORTaxDocument `json:"data"`
+	docs, err := decodeData[[]EORTaxDocument](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *docs, nil
 }
 
 // AddEORWorkerBankAccount adds a bank account to an EOR worker
@@ -162,11 +145,5 @@ func (c *Client) AddEORWorkerBankAccount(ctx context.Context, workerID string, p
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORBankAccount `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORBankAccount](resp)
 }

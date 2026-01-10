@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -92,13 +91,7 @@ func (c *Client) CreateGPContract(ctx context.Context, params CreateGPContractPa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPContract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPContract](resp)
 }
 
 // UpdateGPWorker updates a Global Payroll worker's information
@@ -109,13 +102,7 @@ func (c *Client) UpdateGPWorker(ctx context.Context, workerID string, params Upd
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPWorker `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPWorker](resp)
 }
 
 // UpdateGPCompensation updates a Global Payroll worker's compensation
@@ -126,11 +113,5 @@ func (c *Client) UpdateGPCompensation(ctx context.Context, workerID string, para
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPCompensation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPCompensation](resp)
 }

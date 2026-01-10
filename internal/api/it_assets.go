@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -20,12 +19,7 @@ type ITAsset struct {
 }
 
 // ITAssetsListResponse is the response from list IT assets
-type ITAssetsListResponse struct {
-	Data []ITAsset `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ITAssetsListResponse = ListResponse[ITAsset]
 
 // ITAssetsListParams are params for listing IT assets
 type ITAssetsListParams struct {
@@ -61,11 +55,7 @@ func (c *Client) ListITAssets(ctx context.Context, params ITAssetsListParams) (*
 		return nil, err
 	}
 
-	var result ITAssetsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ITAsset](resp)
 }
 
 // ITOrder represents an IT equipment order
@@ -97,13 +87,11 @@ func (c *Client) ListITOrders(ctx context.Context, limit int) ([]ITOrder, error)
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ITOrder `json:"data"`
+	orders, err := decodeData[[]ITOrder](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *orders, nil
 }
 
 // HardwarePolicy represents an IT hardware policy
@@ -123,11 +111,9 @@ func (c *Client) ListHardwarePolicies(ctx context.Context) ([]HardwarePolicy, er
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []HardwarePolicy `json:"data"`
+	policies, err := decodeData[[]HardwarePolicy](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *policies, nil
 }

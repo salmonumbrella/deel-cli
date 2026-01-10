@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -75,13 +74,11 @@ func (c *Client) ListG2NReports(ctx context.Context, params ListG2NReportsParams
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []G2NReport `json:"data"`
+	reports, err := decodeData[[]G2NReport](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *reports, nil
 }
 
 // DownloadG2NReport retrieves a download URL for a specific gross-to-net report
@@ -92,13 +89,7 @@ func (c *Client) DownloadG2NReport(ctx context.Context, reportID string) (*G2NRe
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data G2NReportDownload `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[G2NReportDownload](resp)
 }
 
 // RequestGPTermination creates a termination request for a Global Payroll worker
@@ -108,11 +99,5 @@ func (c *Client) RequestGPTermination(ctx context.Context, params RequestGPTermi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPTerminationRequest `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPTerminationRequest](resp)
 }

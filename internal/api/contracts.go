@@ -85,13 +85,7 @@ func (c *Contract) UnmarshalJSON(data []byte) error {
 }
 
 // ContractsListResponse is the response from list contracts
-type ContractsListResponse struct {
-	Data []Contract `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type ContractsListResponse = ListResponse[Contract]
 
 // ContractsListParams are params for listing contracts
 type ContractsListParams struct {
@@ -127,11 +121,7 @@ func (c *Client) ListContracts(ctx context.Context, params ContractsListParams) 
 		return nil, err
 	}
 
-	var result ContractsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Contract](resp)
 }
 
 // GetContract returns a single contract
@@ -142,13 +132,7 @@ func (c *Client) GetContract(ctx context.Context, contractID string) (*Contract,
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Contract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Contract](resp)
 }
 
 // ContractAmendment represents a contract amendment
@@ -170,23 +154,12 @@ type CreateContractAmendmentParams struct {
 func (c *Client) CreateContractAmendment(ctx context.Context, contractID string, params CreateContractAmendmentParams) (*ContractAmendment, error) {
 	path := fmt.Sprintf("/rest/v2/contracts/%s/amendments", escapePath(contractID))
 
-	// Wrap in data object as required by Deel API
-	reqBody := struct {
-		Data CreateContractAmendmentParams `json:"data"`
-	}{Data: params}
-
-	resp, err := c.Post(ctx, path, reqBody)
+	resp, err := c.Post(ctx, path, wrapData(params))
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ContractAmendment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ContractAmendment](resp)
 }
 
 // ListContractAmendments returns amendments for a contract
@@ -197,13 +170,11 @@ func (c *Client) ListContractAmendments(ctx context.Context, contractID string) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ContractAmendment `json:"data"`
+	amendments, err := decodeData[[]ContractAmendment](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *amendments, nil
 }
 
 // PaymentDate represents a contract payment date
@@ -221,13 +192,11 @@ func (c *Client) GetContractPaymentDates(ctx context.Context, contractID string)
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []PaymentDate `json:"data"`
+	payments, err := decodeData[[]PaymentDate](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *payments, nil
 }
 
 // CreateContractParams are params for creating a contract
@@ -394,23 +363,14 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		}
 	}
 
-	// Wrap request in data object as required by Deel API
-	reqWrapper := struct {
-		Data createContractRequest `json:"data"`
-	}{Data: req}
+	reqWrapper := wrapData(req)
 
 	resp, err := c.Post(ctx, "/rest/v2/contracts", reqWrapper)
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Contract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Contract](resp)
 }
 
 // SignContract signs a contract (as the client/employer)
@@ -418,24 +378,15 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 func (c *Client) SignContract(ctx context.Context, contractID string, signerName string) (*Contract, error) {
 	path := fmt.Sprintf("/rest/v2/contracts/%s/signatures", escapePath(contractID))
 	// Request body with client_signature containing signer's full name
-	reqBody := struct {
-		Data struct {
-			ClientSignature string `json:"client_signature"`
-		} `json:"data"`
-	}{}
-	reqBody.Data.ClientSignature = signerName
+	reqBody := wrapData(struct {
+		ClientSignature string `json:"client_signature"`
+	}{ClientSignature: signerName})
 	resp, err := c.Post(ctx, path, reqBody)
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Contract `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Contract](resp)
 }
 
 // TerminateContractParams are params for terminating a contractor contract
@@ -477,14 +428,12 @@ func (c *Client) ListTerminationReasons(ctx context.Context) ([]TerminationReaso
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []TerminationReason `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	reasons, err := decodeData[[]TerminationReason](resp)
+	if err != nil {
+		return nil, err
 	}
 
-	return wrapper.Data, nil
+	return *reasons, nil
 }
 
 // GetContractPDF returns the download URL for a contract PDF
@@ -495,15 +444,13 @@ func (c *Client) GetContractPDF(ctx context.Context, contractID string) (string,
 		return "", err
 	}
 
-	var wrapper struct {
-		Data struct {
-			URL string `json:"url"`
-		} `json:"data"`
+	data, err := decodeData[struct {
+		URL string `json:"url"`
+	}](resp)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data.URL, nil
+	return data.URL, nil
 }
 
 // InviteWorkerParams contains parameters for inviting a worker
@@ -516,10 +463,7 @@ type InviteWorkerParams struct {
 // InviteWorker sends an invitation email to the worker
 func (c *Client) InviteWorker(ctx context.Context, contractID string, params InviteWorkerParams) error {
 	path := fmt.Sprintf("/rest/v2/contracts/%s/invitations", escapePath(contractID))
-	reqBody := struct {
-		Data InviteWorkerParams `json:"data"`
-	}{Data: params}
-	_, err := c.Post(ctx, path, reqBody)
+	_, err := c.Post(ctx, path, wrapData(params))
 	return err
 }
 
@@ -531,15 +475,13 @@ func (c *Client) GetInviteLink(ctx context.Context, contractID string) (string, 
 		return "", err
 	}
 
-	var wrapper struct {
-		Data struct {
-			URL string `json:"url"`
-		} `json:"data"`
+	data, err := decodeData[struct {
+		URL string `json:"url"`
+	}](resp)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data.URL, nil
+	return data.URL, nil
 }
 
 // RemoveInvite removes a pending invitation
@@ -564,11 +506,9 @@ func (c *Client) ListContractTemplates(ctx context.Context) ([]ContractTemplate,
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ContractTemplate `json:"data"`
+	templates, err := decodeData[[]ContractTemplate](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *templates, nil
 }

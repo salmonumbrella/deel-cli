@@ -1,10 +1,6 @@
 package api
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-)
+import "context"
 
 // Manager represents a Deel manager/admin user
 type Manager struct {
@@ -46,13 +42,11 @@ func (c *Client) ListManagers(ctx context.Context) ([]Manager, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Manager `json:"data"`
+	managers, err := decodeData[[]Manager](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *managers, nil
 }
 
 // CreateManager creates a new manager
@@ -62,13 +56,7 @@ func (c *Client) CreateManager(ctx context.Context, params CreateManagerParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Manager `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Manager](resp)
 }
 
 // CreateManagerMagicLink creates a magic link for manager authentication
@@ -78,11 +66,5 @@ func (c *Client) CreateManagerMagicLink(ctx context.Context, params CreateMagicL
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ManagerMagicLink `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ManagerMagicLink](resp)
 }

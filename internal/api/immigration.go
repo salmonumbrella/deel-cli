@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -27,13 +26,7 @@ func (c *Client) GetImmigrationCaseDetails(ctx context.Context, caseID string) (
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ImmigrationCase `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ImmigrationCase](resp)
 }
 
 // ImmigrationDoc represents an immigration document
@@ -54,13 +47,11 @@ func (c *Client) ListImmigrationDocs(ctx context.Context, caseID string) ([]Immi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ImmigrationDoc `json:"data"`
+	docs, err := decodeData[[]ImmigrationDoc](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *docs, nil
 }
 
 // VisaType represents a visa type
@@ -81,13 +72,11 @@ func (c *Client) ListVisaTypes(ctx context.Context, country string) ([]VisaType,
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []VisaType `json:"data"`
+	types, err := decodeData[[]VisaType](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *types, nil
 }
 
 // VisaRequirement represents a visa requirement check
@@ -106,13 +95,7 @@ func (c *Client) CheckVisaRequirement(ctx context.Context, fromCountry, toCountr
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data VisaRequirement `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[VisaRequirement](resp)
 }
 
 // CreateImmigrationCaseParams are params for creating an immigration case
@@ -130,13 +113,7 @@ func (c *Client) CreateImmigrationCase(ctx context.Context, params CreateImmigra
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ImmigrationCase `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ImmigrationCase](resp)
 }
 
 // UploadImmigrationDocumentParams are params for uploading an immigration document
@@ -154,11 +131,5 @@ func (c *Client) UploadImmigrationDocument(ctx context.Context, caseID string, p
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ImmigrationDoc `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ImmigrationDoc](resp)
 }

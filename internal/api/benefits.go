@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -27,13 +26,11 @@ func (c *Client) ListBenefitsByCountry(ctx context.Context, countryCode string) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Benefit `json:"data"`
+	benefits, err := decodeData[[]Benefit](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *benefits, nil
 }
 
 // EmployeeBenefit represents a benefit assigned to an employee
@@ -57,11 +54,9 @@ func (c *Client) GetEmployeeBenefits(ctx context.Context, employeeID string) ([]
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []EmployeeBenefit `json:"data"`
+	benefits, err := decodeData[[]EmployeeBenefit](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *benefits, nil
 }

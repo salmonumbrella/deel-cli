@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -35,15 +34,12 @@ func (c *Client) ListWorkerRelations(ctx context.Context, profileID string) ([]W
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []WorkerRelation `json:"data"`
-	}
-
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
+	relations, err := decodeData[[]WorkerRelation](resp)
+	if err != nil {
 		return nil, err
 	}
 
-	return wrapper.Data, nil
+	return *relations, nil
 }
 
 // CreateWorkerRelation creates a new worker relation
@@ -53,15 +49,7 @@ func (c *Client) CreateWorkerRelation(ctx context.Context, params CreateWorkerRe
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data WorkerRelation `json:"data"`
-	}
-
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, err
-	}
-
-	return &wrapper.Data, nil
+	return decodeData[WorkerRelation](resp)
 }
 
 // DeleteWorkerRelation deletes a worker relation by ID
@@ -88,13 +76,5 @@ func (c *Client) SetWorkerManager(ctx context.Context, hrisProfileID string, par
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data WorkerRelation `json:"data"`
-	}
-
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, err
-	}
-
-	return &wrapper.Data, nil
+	return decodeData[WorkerRelation](resp)
 }

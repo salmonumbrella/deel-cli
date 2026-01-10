@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -25,13 +24,11 @@ func (c *Client) ListHourlyPresets(ctx context.Context) ([]HourlyPreset, error) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []HourlyPreset `json:"data"`
+	presets, err := decodeData[[]HourlyPreset](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *presets, nil
 }
 
 // CreateHourlyPresetParams are params for creating an hourly preset
@@ -51,13 +48,7 @@ func (c *Client) CreateHourlyPreset(ctx context.Context, params CreateHourlyPres
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data HourlyPreset `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[HourlyPreset](resp)
 }
 
 // UpdateHourlyPresetParams are params for updating an hourly preset
@@ -78,13 +69,7 @@ func (c *Client) UpdateHourlyPreset(ctx context.Context, presetID string, params
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data HourlyPreset `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[HourlyPreset](resp)
 }
 
 // DeleteHourlyPreset deletes an hourly preset

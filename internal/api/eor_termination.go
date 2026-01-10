@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -44,50 +43,24 @@ type EORTerminationParams struct {
 	SeveranceType      string         `json:"severance_type,omitempty"` // DAYS, WEEKS, MONTHS, CASH
 }
 
-// eorResignationRequest wraps params in data object as required by API
-type eorResignationRequest struct {
-	Data EORResignationParams `json:"data"`
-}
-
-// eorTerminationRequest wraps params in data object as required by API
-type eorTerminationRequest struct {
-	Data EORTerminationParams `json:"data"`
-}
-
 // RequestEORResignation creates a resignation request for an EOR contract (employee-initiated)
 func (c *Client) RequestEORResignation(ctx context.Context, contractOID string, params EORResignationParams) (*EORTermination, error) {
 	path := fmt.Sprintf("/rest/v2/eor/%s/terminations/", escapePath(contractOID))
-	req := eorResignationRequest{Data: params}
-	resp, err := c.Post(ctx, path, req)
+	resp, err := c.Post(ctx, path, wrapData(params))
 	if err != nil {
 		return nil, err
 	}
-
-	var wrapper struct {
-		Data EORTermination `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORTermination](resp)
 }
 
 // RequestEORTermination creates a termination request for an EOR contract (employer-initiated)
 func (c *Client) RequestEORTermination(ctx context.Context, contractOID string, params EORTerminationParams) (*EORTermination, error) {
 	path := fmt.Sprintf("/rest/v2/eor/%s/terminations/", escapePath(contractOID))
-	req := eorTerminationRequest{Data: params}
-	resp, err := c.Post(ctx, path, req)
+	resp, err := c.Post(ctx, path, wrapData(params))
 	if err != nil {
 		return nil, err
 	}
-
-	var wrapper struct {
-		Data EORTermination `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORTermination](resp)
 }
 
 // GetEORTermination retrieves the termination details for an EOR contract
@@ -98,11 +71,5 @@ func (c *Client) GetEORTermination(ctx context.Context, contractOID string) (*EO
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORTermination `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORTermination](resp)
 }

@@ -65,12 +65,7 @@ type TasksListParams struct {
 }
 
 // TasksListResponse is the response from list tasks
-type TasksListResponse struct {
-	Data []Task `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type TasksListResponse = ListResponse[Task]
 
 // ListTasks returns tasks for a contract
 // ContractID is required - tasks are nested under contracts in the API
@@ -101,11 +96,7 @@ func (c *Client) ListTasks(ctx context.Context, params TasksListParams) (*TasksL
 		return nil, err
 	}
 
-	var result TasksListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Task](resp)
 }
 
 // CreateTaskParams are params for creating a task
@@ -140,30 +131,19 @@ func (c *Client) CreateTask(ctx context.Context, params CreateTaskParams) (*Task
 		dateSubmitted = time.Now().Format("2006-01-02")
 	}
 
-	// Wrap request in data object as required by Deel API
-	reqBody := struct {
-		Data createTaskRequest `json:"data"`
-	}{
-		Data: createTaskRequest{
-			Title:         params.Title,
-			Description:   params.Description,
-			Amount:        fmt.Sprintf("%.2f", params.Amount), // API requires string
-			DateSubmitted: dateSubmitted,
-		},
-	}
+	reqBody := wrapData(createTaskRequest{
+		Title:         params.Title,
+		Description:   params.Description,
+		Amount:        fmt.Sprintf("%.2f", params.Amount), // API requires string
+		DateSubmitted: dateSubmitted,
+	})
 
 	resp, err := c.Post(ctx, path, reqBody)
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Task `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Task](resp)
 }
 
 // UpdateTaskParams are params for updating a task
@@ -181,23 +161,14 @@ func (c *Client) UpdateTask(ctx context.Context, contractID, taskID string, para
 	}
 	path := fmt.Sprintf("/rest/v2/contracts/%s/tasks/%s", escapePath(contractID), escapePath(taskID))
 
-	// Wrap request in data object as required by Deel API
-	reqBody := struct {
-		Data UpdateTaskParams `json:"data"`
-	}{Data: params}
+	reqBody := wrapData(params)
 
 	resp, err := c.Patch(ctx, path, reqBody)
 	if err != nil {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Task `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Task](resp)
 }
 
 // DeleteTask deletes a task
@@ -219,14 +190,9 @@ func (c *Client) ReviewTask(ctx context.Context, contractID, taskID string, stat
 	}
 	path := fmt.Sprintf("/rest/v2/contracts/%s/tasks/%s/reviews", escapePath(contractID), escapePath(taskID))
 
-	// Wrap request in data object as required by Deel API
-	reqBody := struct {
-		Data struct {
-			Status string `json:"status"`
-		} `json:"data"`
-	}{}
-	reqBody.Data.Status = status
-
+	reqBody := wrapData(struct {
+		Status string `json:"status"`
+	}{Status: status})
 	_, err := c.Post(ctx, path, reqBody)
 	return err
 }
@@ -239,15 +205,13 @@ func (c *Client) ReviewMultipleTasks(ctx context.Context, contractID string, tas
 	}
 	path := fmt.Sprintf("/rest/v2/contracts/%s/tasks/many/reviews", escapePath(contractID))
 
-	// Wrap request in data object as required by Deel API
-	reqBody := struct {
-		Data struct {
-			TaskIDs []string `json:"task_ids"`
-			Status  string   `json:"status"`
-		} `json:"data"`
-	}{}
-	reqBody.Data.TaskIDs = taskIDs
-	reqBody.Data.Status = status
+	reqBody := wrapData(struct {
+		TaskIDs []string `json:"task_ids"`
+		Status  string   `json:"status"`
+	}{
+		TaskIDs: taskIDs,
+		Status:  status,
+	})
 
 	_, err := c.Post(ctx, path, reqBody)
 	return err

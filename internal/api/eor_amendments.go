@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -36,13 +35,7 @@ func (c *Client) CreateEORAmendment(ctx context.Context, contractID string, para
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORAmendment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORAmendment](resp)
 }
 
 // ListEORAmendments returns all amendments for an EOR contract
@@ -53,13 +46,11 @@ func (c *Client) ListEORAmendments(ctx context.Context, contractID string) ([]EO
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []EORAmendment `json:"data"`
+	amendments, err := decodeData[[]EORAmendment](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *amendments, nil
 }
 
 // AcceptEORAmendment accepts an EOR amendment
@@ -70,13 +61,7 @@ func (c *Client) AcceptEORAmendment(ctx context.Context, amendmentID string) (*E
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORAmendment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORAmendment](resp)
 }
 
 // SignEORAmendment signs an EOR amendment
@@ -87,11 +72,5 @@ func (c *Client) SignEORAmendment(ctx context.Context, amendmentID string) (*EOR
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data EORAmendment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[EORAmendment](resp)
 }

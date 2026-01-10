@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -48,13 +47,7 @@ func (c *Client) CreateGPShift(ctx context.Context, params CreateGPShiftParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPShift `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPShift](resp)
 }
 
 // UpdateGPShift updates an existing Global Payroll shift
@@ -65,13 +58,7 @@ func (c *Client) UpdateGPShift(ctx context.Context, shiftID string, params Updat
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPShift `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPShift](resp)
 }
 
 // DeleteGPShift deletes a Global Payroll shift by external ID

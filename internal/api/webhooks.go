@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -24,13 +23,11 @@ func (c *Client) ListWebhooks(ctx context.Context) ([]Webhook, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Webhook `json:"data"`
+	webhooks, err := decodeData[[]Webhook](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *webhooks, nil
 }
 
 // GetWebhook returns a single webhook by ID
@@ -41,13 +38,7 @@ func (c *Client) GetWebhook(ctx context.Context, id string) (*Webhook, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Webhook `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Webhook](resp)
 }
 
 // CreateWebhookParams are params for creating a webhook
@@ -64,13 +55,7 @@ func (c *Client) CreateWebhook(ctx context.Context, params CreateWebhookParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Webhook `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Webhook](resp)
 }
 
 // UpdateWebhookParams are params for updating a webhook
@@ -89,13 +74,7 @@ func (c *Client) UpdateWebhook(ctx context.Context, id string, params UpdateWebh
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Webhook `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Webhook](resp)
 }
 
 // DeleteWebhook deletes a webhook
@@ -118,11 +97,9 @@ func (c *Client) ListWebhookEventTypes(ctx context.Context) ([]WebhookEventType,
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []WebhookEventType `json:"data"`
+	types, err := decodeData[[]WebhookEventType](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *types, nil
 }

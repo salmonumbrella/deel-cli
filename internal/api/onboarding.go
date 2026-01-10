@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -21,12 +20,7 @@ type OnboardingEmployee struct {
 }
 
 // OnboardingListResponse is the response from list onboarding
-type OnboardingListResponse struct {
-	Data []OnboardingEmployee `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type OnboardingListResponse = ListResponse[OnboardingEmployee]
 
 // OnboardingListParams are params for listing onboarding
 type OnboardingListParams struct {
@@ -58,11 +52,7 @@ func (c *Client) ListOnboardingEmployees(ctx context.Context, params OnboardingL
 		return nil, err
 	}
 
-	var result OnboardingListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[OnboardingEmployee](resp)
 }
 
 // OnboardingDetails represents detailed onboarding info
@@ -86,11 +76,5 @@ func (c *Client) GetOnboardingDetails(ctx context.Context, hrisProfileID string)
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data OnboardingDetails `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[OnboardingDetails](resp)
 }

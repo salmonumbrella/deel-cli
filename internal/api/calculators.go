@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -30,13 +29,7 @@ func (c *Client) CalculateCost(ctx context.Context, params CalculateCostParams) 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data CostCalculation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[CostCalculation](resp)
 }
 
 // TakeHomeCalculation represents a take-home calculation result
@@ -62,13 +55,7 @@ func (c *Client) CalculateTakeHome(ctx context.Context, params CalculateTakeHome
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TakeHomeCalculation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TakeHomeCalculation](resp)
 }
 
 // SalaryHistogram represents salary data for a role
@@ -91,11 +78,5 @@ func (c *Client) GetSalaryHistogram(ctx context.Context, role, country string) (
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data SalaryHistogram `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[SalaryHistogram](resp)
 }

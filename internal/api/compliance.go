@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -26,13 +25,11 @@ func (c *Client) ListComplianceDocs(ctx context.Context, contractID string) ([]C
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ComplianceDoc `json:"data"`
+	docs, err := decodeData[[]ComplianceDoc](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *docs, nil
 }
 
 // ComplianceTemplate represents a document template
@@ -52,13 +49,11 @@ func (c *Client) ListComplianceTemplates(ctx context.Context, country string) ([
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ComplianceTemplate `json:"data"`
+	templates, err := decodeData[[]ComplianceTemplate](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *templates, nil
 }
 
 // ComplianceValidation represents a validation result
@@ -77,11 +72,5 @@ func (c *Client) GetComplianceValidations(ctx context.Context, contractID string
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ComplianceValidation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ComplianceValidation](resp)
 }

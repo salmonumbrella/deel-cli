@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -46,8 +45,8 @@ type CreateAdjustmentParams struct {
 	Date           string  `json:"date"`
 	CycleReference string  `json:"cycle_reference,omitempty"`
 	MoveNextCycle  bool    `json:"move_next_cycle,omitempty"`
-	Vendor         string  `json:"vendor,omitempty"`         // Vendor name (defaults to "Company" if empty)
-	Country        string  `json:"country,omitempty"`        // ISO 3166-1 alpha-2 country code (defaults to "CA" if empty)
+	Vendor         string  `json:"vendor,omitempty"`  // Vendor name (defaults to "Company" if empty)
+	Country        string  `json:"country,omitempty"` // ISO 3166-1 alpha-2 country code (defaults to "CA" if empty)
 }
 
 // UpdateAdjustmentParams are parameters for updating an adjustment
@@ -140,13 +139,7 @@ func (c *Client) CreateAdjustment(ctx context.Context, params CreateAdjustmentPa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Adjustment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Adjustment](resp)
 }
 
 // GetAdjustment returns a single adjustment
@@ -157,13 +150,7 @@ func (c *Client) GetAdjustment(ctx context.Context, id string) (*Adjustment, err
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Adjustment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Adjustment](resp)
 }
 
 // UpdateAdjustment updates an existing adjustment
@@ -174,13 +161,7 @@ func (c *Client) UpdateAdjustment(ctx context.Context, id string, params UpdateA
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Adjustment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Adjustment](resp)
 }
 
 // DeleteAdjustment deletes an adjustment
@@ -210,13 +191,11 @@ func (c *Client) ListAdjustments(ctx context.Context, params ListAdjustmentsPara
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Adjustment `json:"data"`
+	adjustments, err := decodeData[[]Adjustment](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *adjustments, nil
 }
 
 // ListAdjustmentCategories returns all available adjustment categories
@@ -226,11 +205,9 @@ func (c *Client) ListAdjustmentCategories(ctx context.Context) ([]AdjustmentCate
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []AdjustmentCategory `json:"data"`
+	categories, err := decodeData[[]AdjustmentCategory](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *categories, nil
 }

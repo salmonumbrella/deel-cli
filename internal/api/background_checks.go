@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -26,13 +25,11 @@ func (c *Client) ListBackgroundCheckOptions(ctx context.Context, country string)
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []BackgroundCheckOption `json:"data"`
+	options, err := decodeData[[]BackgroundCheckOption](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *options, nil
 }
 
 // BackgroundCheck represents a background check
@@ -56,11 +53,9 @@ func (c *Client) ListBackgroundChecksByContract(ctx context.Context, contractID 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []BackgroundCheck `json:"data"`
+	checks, err := decodeData[[]BackgroundCheck](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *checks, nil
 }

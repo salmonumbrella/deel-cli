@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -77,13 +76,7 @@ func (c *Client) CreatePerson(ctx context.Context, params CreatePersonParams) (*
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data PersonResponse `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[PersonResponse](resp)
 }
 
 // UpdatePersonalInfo updates personal information for a person
@@ -94,13 +87,7 @@ func (c *Client) UpdatePersonalInfo(ctx context.Context, id string, info Persona
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data PersonalInfo `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[PersonalInfo](resp)
 }
 
 // UpdateWorkingLocation updates the working location for a person
@@ -111,13 +98,7 @@ func (c *Client) UpdateWorkingLocation(ctx context.Context, id string, location 
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data WorkingLocation `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[WorkingLocation](resp)
 }
 
 // CreateDirectEmployee creates a new direct employee
@@ -127,11 +108,5 @@ func (c *Client) CreateDirectEmployee(ctx context.Context, params CreateDirectEm
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data PersonResponse `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[PersonResponse](resp)
 }

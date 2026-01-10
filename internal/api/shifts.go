@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -53,13 +52,11 @@ func (c *Client) ListShifts(ctx context.Context, params ShiftsListParams) ([]Shi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []Shift `json:"data"`
+	shifts, err := decodeData[[]Shift](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *shifts, nil
 }
 
 // ShiftRate represents shift rates
@@ -80,11 +77,9 @@ func (c *Client) ListShiftRates(ctx context.Context, country string) ([]ShiftRat
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []ShiftRate `json:"data"`
+	rates, err := decodeData[[]ShiftRate](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *rates, nil
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -22,12 +21,7 @@ type OffCyclePayment struct {
 }
 
 // OffCyclePaymentsListResponse is the response from list off-cycle payments
-type OffCyclePaymentsListResponse struct {
-	Data []OffCyclePayment `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type OffCyclePaymentsListResponse = ListResponse[OffCyclePayment]
 
 // OffCyclePaymentsListParams are params for listing off-cycle payments
 type OffCyclePaymentsListParams struct {
@@ -63,11 +57,7 @@ func (c *Client) ListOffCyclePayments(ctx context.Context, params OffCyclePaymen
 		return nil, err
 	}
 
-	var result OffCyclePaymentsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[OffCyclePayment](resp)
 }
 
 // CreateOffCyclePaymentParams are params for creating an off-cycle payment
@@ -87,13 +77,7 @@ func (c *Client) CreateOffCyclePayment(ctx context.Context, params CreateOffCycl
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data OffCyclePayment `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[OffCyclePayment](resp)
 }
 
 // IndividualPaymentBreakdown represents a detailed breakdown of a single payment
@@ -121,13 +105,7 @@ func (c *Client) GetIndividualPaymentBreakdown(ctx context.Context, paymentID st
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data IndividualPaymentBreakdown `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[IndividualPaymentBreakdown](resp)
 }
 
 // DetailedPaymentReceipt represents a detailed payment receipt
@@ -144,13 +122,7 @@ type DetailedPaymentReceipt struct {
 }
 
 // DetailedPaymentReceiptsListResponse is the response from list detailed payment receipts
-type DetailedPaymentReceiptsListResponse struct {
-	Data []DetailedPaymentReceipt `json:"data"`
-	Page struct {
-		Next  string `json:"next"`
-		Total int    `json:"total"`
-	} `json:"page"`
-}
+type DetailedPaymentReceiptsListResponse = ListResponse[DetailedPaymentReceipt]
 
 // DetailedPaymentReceiptsListParams are params for listing detailed payment receipts
 type DetailedPaymentReceiptsListParams struct {
@@ -186,11 +158,7 @@ func (c *Client) ListDetailedPaymentReceipts(ctx context.Context, params Detaile
 		return nil, err
 	}
 
-	var result DetailedPaymentReceiptsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[DetailedPaymentReceipt](resp)
 }
 
 // DetailedPaymentsReport represents a detailed payments report
@@ -247,11 +215,5 @@ func (c *Client) GetDetailedPaymentsReport(ctx context.Context, params DetailedP
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data DetailedPaymentsReport `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[DetailedPaymentsReport](resp)
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -59,13 +58,7 @@ func (c *Client) AddGPBankAccount(ctx context.Context, params AddGPBankAccountPa
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPBankAccount `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPBankAccount](resp)
 }
 
 // ListGPBankAccounts retrieves all bank accounts for a specific worker
@@ -76,13 +69,11 @@ func (c *Client) ListGPBankAccounts(ctx context.Context, workerID string) ([]GPB
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []GPBankAccount `json:"data"`
+	accounts, err := decodeData[[]GPBankAccount](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *accounts, nil
 }
 
 // UpdateGPBankAccount updates a Global Payroll worker's bank account
@@ -93,13 +84,7 @@ func (c *Client) UpdateGPBankAccount(ctx context.Context, accountID string, para
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPBankAccount `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPBankAccount](resp)
 }
 
 // GetGPBankGuide retrieves banking requirements and validation rules for a specific country
@@ -110,11 +95,5 @@ func (c *Client) GetGPBankGuide(ctx context.Context, country string) (*GPBankGui
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPBankGuide `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPBankGuide](resp)
 }

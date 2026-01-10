@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -165,60 +164,25 @@ type ATSOffersListParams struct {
 }
 
 // ATSOffersListResponse is the response from list offers
-type ATSOffersListResponse struct {
-	Data []ATSOffer `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSOffersListResponse = ListResponse[ATSOffer]
 
 // ATSJobsListResponse is the response from list jobs
-type ATSJobsListResponse struct {
-	Data []ATSJob `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSJobsListResponse = ListResponse[ATSJob]
 
 // ATSJobPostingsListResponse is the response from list job postings
-type ATSJobPostingsListResponse struct {
-	Data []ATSJobPosting `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSJobPostingsListResponse = ListResponse[ATSJobPosting]
 
 // ATSApplicationsListResponse is the response from list applications
-type ATSApplicationsListResponse struct {
-	Data []ATSApplication `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSApplicationsListResponse = ListResponse[ATSApplication]
 
 // ATSCandidatesListResponse is the response from list candidates
-type ATSCandidatesListResponse struct {
-	Data []ATSCandidate `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSCandidatesListResponse = ListResponse[ATSCandidate]
 
 // ATSDepartmentsListResponse is the response from list departments
-type ATSDepartmentsListResponse struct {
-	Data []ATSDepartment `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSDepartmentsListResponse = ListResponse[ATSDepartment]
 
 // ATSLocationsListResponse is the response from list locations
-type ATSLocationsListResponse struct {
-	Data []ATSLocation `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type ATSLocationsListResponse = ListResponse[ATSLocation]
 
 // ListATSOffers returns ATS offers
 func (c *Client) ListATSOffers(ctx context.Context, params ATSOffersListParams) (*ATSOffersListResponse, error) {
@@ -243,11 +207,7 @@ func (c *Client) ListATSOffers(ctx context.Context, params ATSOffersListParams) 
 		return nil, err
 	}
 
-	var result ATSOffersListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSOffer](resp)
 }
 
 // ListATSJobs returns ATS jobs
@@ -279,11 +239,7 @@ func (c *Client) ListATSJobs(ctx context.Context, params ATSJobsListParams) (*AT
 		return nil, err
 	}
 
-	var result ATSJobsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSJob](resp)
 }
 
 // CreateATSJob creates a new ATS job
@@ -293,13 +249,7 @@ func (c *Client) CreateATSJob(ctx context.Context, params CreateATSJobParams) (*
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ATSJob `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ATSJob](resp)
 }
 
 // ListATSJobPostings returns ATS job postings
@@ -328,11 +278,7 @@ func (c *Client) ListATSJobPostings(ctx context.Context, params ATSJobPostingsLi
 		return nil, err
 	}
 
-	var result ATSJobPostingsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSJobPosting](resp)
 }
 
 // GetATSJobPosting returns a single job posting by ID
@@ -343,13 +289,7 @@ func (c *Client) GetATSJobPosting(ctx context.Context, id string) (*ATSJobPostin
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data ATSJobPosting `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[ATSJobPosting](resp)
 }
 
 // ListATSApplications returns ATS applications
@@ -384,11 +324,7 @@ func (c *Client) ListATSApplications(ctx context.Context, params ATSApplications
 		return nil, err
 	}
 
-	var result ATSApplicationsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSApplication](resp)
 }
 
 // ListATSCandidates returns ATS candidates
@@ -414,11 +350,7 @@ func (c *Client) ListATSCandidates(ctx context.Context, params ATSCandidatesList
 		return nil, err
 	}
 
-	var result ATSCandidatesListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSCandidate](resp)
 }
 
 // ListATSDepartments returns ATS departments
@@ -441,11 +373,7 @@ func (c *Client) ListATSDepartments(ctx context.Context, params ATSDepartmentsLi
 		return nil, err
 	}
 
-	var result ATSDepartmentsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSDepartment](resp)
 }
 
 // ListATSLocations returns ATS locations
@@ -471,11 +399,7 @@ func (c *Client) ListATSLocations(ctx context.Context, params ATSLocationsListPa
 		return nil, err
 	}
 
-	var result ATSLocationsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[ATSLocation](resp)
 }
 
 // ListRejectionReasons returns rejection reasons
@@ -485,11 +409,9 @@ func (c *Client) ListRejectionReasons(ctx context.Context) ([]RejectionReason, e
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []RejectionReason `json:"data"`
+	reasons, err := decodeData[[]RejectionReason](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *reasons, nil
 }

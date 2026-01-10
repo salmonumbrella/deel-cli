@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -37,12 +36,7 @@ type TimesheetsListParams struct {
 }
 
 // TimesheetsListResponse is the response from list timesheets
-type TimesheetsListResponse struct {
-	Data []Timesheet `json:"data"`
-	Page struct {
-		Next string `json:"next"`
-	} `json:"page"`
-}
+type TimesheetsListResponse = ListResponse[Timesheet]
 
 // CreateTimesheetEntryParams are parameters for creating a timesheet entry
 type CreateTimesheetEntryParams struct {
@@ -90,11 +84,7 @@ func (c *Client) ListTimesheets(ctx context.Context, params TimesheetsListParams
 		return nil, err
 	}
 
-	var result TimesheetsListResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &result, nil
+	return decodeList[Timesheet](resp)
 }
 
 // GetTimesheet returns a single timesheet
@@ -105,13 +95,7 @@ func (c *Client) GetTimesheet(ctx context.Context, id string) (*Timesheet, error
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Timesheet `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Timesheet](resp)
 }
 
 // CreateTimesheetEntry creates a new timesheet entry
@@ -121,13 +105,7 @@ func (c *Client) CreateTimesheetEntry(ctx context.Context, params CreateTimeshee
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TimesheetEntry `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TimesheetEntry](resp)
 }
 
 // UpdateTimesheetEntry updates an existing timesheet entry
@@ -138,13 +116,7 @@ func (c *Client) UpdateTimesheetEntry(ctx context.Context, id string, params Upd
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data TimesheetEntry `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[TimesheetEntry](resp)
 }
 
 // DeleteTimesheetEntry deletes a timesheet entry
@@ -162,11 +134,5 @@ func (c *Client) ReviewTimesheet(ctx context.Context, id string, params ReviewTi
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data Timesheet `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[Timesheet](resp)
 }

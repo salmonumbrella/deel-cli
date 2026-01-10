@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
@@ -43,13 +42,7 @@ func (c *Client) CreateGPShiftRate(ctx context.Context, params GPCreateShiftRate
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPShiftRate `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPShiftRate](resp)
 }
 
 // ListGPShiftRates retrieves all shift rates for Global Payroll workers
@@ -59,13 +52,11 @@ func (c *Client) ListGPShiftRates(ctx context.Context) ([]GPShiftRate, error) {
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data []GPShiftRate `json:"data"`
+	rates, err := decodeData[[]GPShiftRate](resp)
+	if err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return wrapper.Data, nil
+	return *rates, nil
 }
 
 // UpdateGPShiftRate updates an existing shift rate
@@ -76,13 +67,7 @@ func (c *Client) UpdateGPShiftRate(ctx context.Context, rateID string, params GP
 		return nil, err
 	}
 
-	var wrapper struct {
-		Data GPShiftRate `json:"data"`
-	}
-	if err := json.Unmarshal(resp, &wrapper); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &wrapper.Data, nil
+	return decodeData[GPShiftRate](resp)
 }
 
 // DeleteGPShiftRate deletes a shift rate by external ID
