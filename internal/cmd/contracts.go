@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -77,36 +78,31 @@ var contractsListCmd = &cobra.Command{
 	Long:    "List contracts in your organization. Defaults to active contracts; use --status to query other statuses and --entity-id or --country to filter.",
 	Example: "  deel contracts list --query '.data[].id' -o json\n  deel contracts list --entity-id le-123 --all\n  deel contracts list --country TW --all",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-
-		client, err := getClient()
+		client, f, err := initClient("initializing client")
 		if err != nil {
-			return HandleError(f, err, "initializing client")
+			return err
 		}
 
-		cursor := contractsCursorFlag
-		var allContracts []api.Contract
-		var next string
-
-		for {
-			resp, err := client.ListContracts(cmd.Context(), api.ContractsListParams{
-				Limit:  contractsLimitFlag,
+		allContracts, _, hasMore, err := collectCursorItems(cmd.Context(), contractsAllFlag, contractsCursorFlag, contractsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Contract], error) {
+			resp, err := client.ListContracts(ctx, api.ContractsListParams{
+				Limit:  limit,
 				Cursor: cursor,
 				Status: contractsStatusFlag,
 				Type:   contractsTypeFlag,
 			})
 			if err != nil {
-				return HandleError(f, err, "listing contracts")
+				return CursorListResult[api.Contract]{}, err
 			}
-			allContracts = append(allContracts, resp.Data...)
-			next = resp.Page.Next
-			if !contractsAllFlag || next == "" {
-				if !contractsAllFlag {
-					allContracts = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.Contract]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing contracts")
 		}
 
 		if contractsEntityIDFlag != "" {
@@ -163,24 +159,12 @@ var contractsListCmd = &cobra.Command{
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allContracts) == 0 {
-				f.PrintText("No contracts found.")
-				return
+		return outputList(cmd, f, allContracts, hasMore, "No contracts found.", []string{"ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS"}, func(c api.Contract) []string {
+			entityID := c.EntityID
+			if entityID == "" {
+				entityID = "-"
 			}
-			table := f.NewTable("ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS")
-			for _, c := range allContracts {
-				entityID := c.EntityID
-				if entityID == "" {
-					entityID = "-"
-				}
-				table.AddRow(c.ID, c.Title, c.WorkerName, c.Entity, entityID, c.Type, c.Status)
-			}
-			table.Render()
-			if !contractsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+			return []string{c.ID, c.Title, c.WorkerName, c.Entity, entityID, c.Type, c.Status}
 		}, response)
 	},
 }
@@ -201,7 +185,7 @@ var contractsGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:           " + contract.ID)
 			f.PrintText("Title:        " + contract.Title)
 			f.PrintText("Type:         " + contract.Type)
@@ -239,7 +223,7 @@ var contractsAmendmentsCmd = &cobra.Command{
 			return HandleError(f, err, "listing contract amendments")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(amendments) == 0 {
 				f.PrintText("No amendments found.")
 				return
@@ -299,7 +283,7 @@ Examples:
 			return HandleError(f, err, "creating amendment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Amendment created successfully")
 			f.PrintText("Amendment ID: " + amendment.ID)
 			f.PrintText("Status: " + amendment.Status)
@@ -327,7 +311,7 @@ var contractsPaymentDatesCmd = &cobra.Command{
 			return HandleError(f, err, "getting payment dates")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(dates) == 0 {
 				f.PrintText("No payment dates found.")
 				return
@@ -593,7 +577,7 @@ var contractsTerminationReasonsCmd = &cobra.Command{
 			return HandleError(f, err, "listing termination reasons")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Available termination reasons:")
 			for _, reason := range reasons {
 				if reason.Description != "" {
@@ -624,7 +608,7 @@ var contractsPDFCmd = &cobra.Command{
 			return HandleError(f, err, "getting contract PDF")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("PDF Download URL:")
 			f.PrintText(url)
 		}, map[string]string{"url": url})
@@ -681,7 +665,7 @@ var contractsInviteLinkCmd = &cobra.Command{
 			return HandleError(f, err, "getting invite link")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Invite Link:")
 			f.PrintText(url)
 		}, map[string]string{"url": url})
@@ -703,7 +687,7 @@ var contractsTemplatesCmd = &cobra.Command{
 			return HandleError(f, err, "listing contract templates")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(templates) == 0 {
 				f.PrintText("No templates found.")
 				return

@@ -30,14 +30,12 @@ var authLoginCmd = &cobra.Command{
 
 		store, err := secrets.OpenDefault()
 		if err != nil {
-			f.PrintError("Failed to open credential store: %v", err)
-			return err
+			return HandleError(f, err, "open credential store")
 		}
 
 		server, err := auth.NewSetupServer(store)
 		if err != nil {
-			f.PrintError("Failed to start auth server: %v", err)
-			return err
+			return HandleError(f, err, "start auth server")
 		}
 
 		f.PrintText("Opening browser for authentication...")
@@ -82,8 +80,7 @@ var authAddCmd = &cobra.Command{
 			// Secure input (no echo)
 			tokenBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 			if err != nil {
-				f.PrintError("Failed to read token: %v", err)
-				return err
+				return HandleError(f, err, "read token")
 			}
 			token = auth.SanitizeToken(string(tokenBytes))
 			f.PrintText("") // New line after hidden input
@@ -92,8 +89,7 @@ var authAddCmd = &cobra.Command{
 			reader := bufio.NewReader(os.Stdin)
 			line, err := reader.ReadString('\n')
 			if err != nil {
-				f.PrintError("Failed to read token: %v", err)
-				return err
+				return HandleError(f, err, "read token")
 			}
 			token = auth.SanitizeToken(line)
 		}
@@ -105,8 +101,7 @@ var authAddCmd = &cobra.Command{
 
 		store, err := secrets.OpenDefault()
 		if err != nil {
-			f.PrintError("Failed to open credential store: %v", err)
-			return err
+			return HandleError(f, err, "open credential store")
 		}
 
 		// Validate token against API before saving
@@ -123,8 +118,7 @@ var authAddCmd = &cobra.Command{
 			Token: token,
 		})
 		if err != nil {
-			f.PrintError("Failed to save credentials: %v", err)
-			return err
+			return HandleError(f, err, "save credentials")
 		}
 
 		f.PrintSuccess("Credentials saved for account %q", accountName)
@@ -140,14 +134,12 @@ var authListCmd = &cobra.Command{
 
 		store, err := secrets.OpenDefault()
 		if err != nil {
-			f.PrintError("Failed to open credential store: %v", err)
-			return err
+			return HandleError(f, err, "open credential store")
 		}
 
 		creds, err := store.List()
 		if err != nil {
-			f.PrintError("Failed to list credentials: %v", err)
-			return err
+			return HandleError(f, err, "list credentials")
 		}
 
 		if len(creds) == 0 {
@@ -158,7 +150,7 @@ var authListCmd = &cobra.Command{
 			return nil
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			table := f.NewTable("NAME", "CREATED")
 			for _, c := range creds {
 				created := "unknown"
@@ -187,13 +179,11 @@ var authRemoveCmd = &cobra.Command{
 
 		store, err := secrets.OpenDefault()
 		if err != nil {
-			f.PrintError("Failed to open credential store: %v", err)
-			return err
+			return HandleError(f, err, "open credential store")
 		}
 
 		if err := store.Delete(accountName); err != nil {
-			f.PrintError("Failed to remove account: %v", err)
-			return err
+			return HandleError(f, err, "remove account")
 		}
 
 		f.PrintSuccess("Removed account %q", accountName)
@@ -210,8 +200,7 @@ var authTestCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		f.PrintText("Testing connection...")
@@ -237,14 +226,12 @@ var authManageCmd = &cobra.Command{
 
 		store, err := secrets.OpenDefault()
 		if err != nil {
-			f.PrintError("Failed to open credential store: %v", err)
-			return err
+			return HandleError(f, err, "open credential store")
 		}
 
 		server, err := auth.NewSetupServerWithMode(store, auth.ModeManage)
 		if err != nil {
-			f.PrintError("Failed to start server: %v", err)
-			return err
+			return HandleError(f, err, "start server")
 		}
 
 		f.PrintText("Opening account manager in browser...")

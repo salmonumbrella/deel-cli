@@ -1,4 +1,3 @@
-// internal/cmd/list_helper_test.go
 package cmd
 
 import (
@@ -16,73 +15,71 @@ type testItem struct {
 	Name string
 }
 
-func TestListCommand_TextOutput(t *testing.T) {
-	cfg := ListConfig[testItem]{
+func TestCollectCursorItems_SinglePage(t *testing.T) {
+	ctx := context.Background()
+	items, page, hasMore, err := collectCursorItems(ctx, false, "", 100, func(ctx context.Context, cursor string, limit int) (CursorListResult[testItem], error) {
+		return CursorListResult[testItem]{
+			Items: []testItem{{ID: "1", Name: "One"}},
+			Page: CursorPage{
+				Next: "next-token",
+			},
+		}, nil
+	})
+	require.NoError(t, err)
+	assert.Len(t, items, 1)
+	assert.Equal(t, "next-token", page.Next)
+	assert.True(t, hasMore)
+}
+
+func TestCollectCursorItems_AllPages(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	items, page, hasMore, err := collectCursorItems(ctx, true, "", 100, func(ctx context.Context, cursor string, limit int) (CursorListResult[testItem], error) {
+		calls++
+		if calls == 1 {
+			return CursorListResult[testItem]{
+				Items: []testItem{{ID: "1", Name: "One"}},
+				Page: CursorPage{
+					Next: "page-2",
+				},
+			}, nil
+		}
+		return CursorListResult[testItem]{
+			Items: []testItem{{ID: "2", Name: "Two"}},
+			Page: CursorPage{
+				Next: "",
+			},
+		}, nil
+	})
+	require.NoError(t, err)
+	assert.Len(t, items, 2)
+	assert.Equal(t, "", page.Next)
+	assert.False(t, hasMore)
+}
+
+func TestNewCursorListCommand_Flags(t *testing.T) {
+	cmd := NewCursorListCommand(CursorListConfig[testItem]{
 		Use:          "list",
 		Short:        "List items",
+		Operation:    "listing items",
+		DefaultLimit: 50,
+		SupportsAll:  true,
 		Headers:      []string{"ID", "NAME"},
 		RowFunc:      func(item testItem) []string { return []string{item.ID, item.Name} },
 		EmptyMessage: "No items found",
-		Fetch: func(ctx context.Context, client *api.Client, page, pageSize int) (ListResult[testItem], error) {
-			return ListResult[testItem]{
-				Items:   []testItem{{ID: "1", Name: "Test"}},
-				HasMore: false,
-			}, nil
+		Fetch: func(ctx context.Context, client *api.Client, cursor string, limit int) (CursorListResult[testItem], error) {
+			return CursorListResult[testItem]{}, nil
 		},
-	}
-
-	cmd := NewListCommand(cfg, func() (*api.Client, error) {
-		return api.NewClient("test-token"), nil
 	})
 
 	require.NotNil(t, cmd)
-	assert.Equal(t, "list", cmd.Use)
-}
-
-func TestListCommand_HasExpectedFlags(t *testing.T) {
-	cfg := ListConfig[testItem]{
-		Use:          "list",
-		Short:        "List items",
-		Headers:      []string{"ID", "NAME"},
-		RowFunc:      func(item testItem) []string { return []string{item.ID, item.Name} },
-		EmptyMessage: "No items found",
-		Fetch: func(ctx context.Context, client *api.Client, page, pageSize int) (ListResult[testItem], error) {
-			return ListResult[testItem]{}, nil
-		},
-	}
-
-	cmd := NewListCommand(cfg, func() (*api.Client, error) {
-		return api.NewClient("test-token"), nil
-	})
-
-	// Verify pagination flags exist
-	pageFlag := cmd.Flags().Lookup("page")
-	require.NotNil(t, pageFlag, "expected --page flag")
-	assert.Equal(t, "0", pageFlag.DefValue)
-
 	limitFlag := cmd.Flags().Lookup("limit")
-	require.NotNil(t, limitFlag, "expected --limit flag")
-	assert.Equal(t, "100", limitFlag.DefValue)
-}
+	require.NotNil(t, limitFlag)
+	assert.Equal(t, "50", limitFlag.DefValue)
 
-func TestListCommand_WithLongDescription(t *testing.T) {
-	cfg := ListConfig[testItem]{
-		Use:          "list",
-		Short:        "List items",
-		Long:         "This is a longer description for the list command.",
-		Example:      "  deel items list --limit 10",
-		Headers:      []string{"ID", "NAME"},
-		RowFunc:      func(item testItem) []string { return []string{item.ID, item.Name} },
-		EmptyMessage: "No items found",
-		Fetch: func(ctx context.Context, client *api.Client, page, pageSize int) (ListResult[testItem], error) {
-			return ListResult[testItem]{}, nil
-		},
-	}
+	cursorFlag := cmd.Flags().Lookup("cursor")
+	require.NotNil(t, cursorFlag)
 
-	cmd := NewListCommand(cfg, func() (*api.Client, error) {
-		return api.NewClient("test-token"), nil
-	})
-
-	assert.Equal(t, "This is a longer description for the list command.", cmd.Long)
-	assert.Equal(t, "  deel items list --limit 10", cmd.Example)
+	allFlag := cmd.Flags().Lookup("all")
+	require.NotNil(t, allFlag)
 }

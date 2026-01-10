@@ -37,17 +37,15 @@ var immigrationCasesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		caseDetails, err := client.GetImmigrationCaseDetails(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get case: %v", err)
-			return err
+			return HandleError(f, err, "get case")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + caseDetails.ID)
 			f.PrintText("Case Number: " + caseDetails.CaseNumber)
 			f.PrintText("Worker:      " + caseDetails.WorkerName)
@@ -75,17 +73,15 @@ var immigrationDocsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		docs, err := client.ListImmigrationDocs(cmd.Context(), immigrationCaseFlag)
 		if err != nil {
-			f.PrintError("Failed to list documents: %v", err)
-			return err
+			return HandleError(f, err, "list documents")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(docs) == 0 {
 				f.PrintText("No documents found.")
 				return
@@ -112,17 +108,15 @@ var immigrationVisaTypesCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		types, err := client.ListVisaTypes(cmd.Context(), immigrationCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to list visa types: %v", err)
-			return err
+			return HandleError(f, err, "list visa types")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(types) == 0 {
 				f.PrintText("No visa types found.")
 				return
@@ -149,17 +143,15 @@ var immigrationCheckCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		req, err := client.CheckVisaRequirement(cmd.Context(), immigrationFromFlag, immigrationToFlag)
 		if err != nil {
-			f.PrintError("Failed to check: %v", err)
-			return err
+			return HandleError(f, err, "check")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			required := "No"
 			if req.Required {
 				required = "Yes"
@@ -205,8 +197,7 @@ var immigrationCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		caseDetails, err := client.CreateImmigrationCase(cmd.Context(), api.CreateImmigrationCaseParams{
@@ -216,11 +207,10 @@ var immigrationCreateCmd = &cobra.Command{
 			StartDate:  immigrationStartFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create immigration case: %v", err)
-			return err
+			return HandleError(f, err, "create immigration case")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Immigration case created successfully")
 			f.PrintText("ID:          " + caseDetails.ID)
 			f.PrintText("Case Number: " + caseDetails.CaseNumber)
@@ -265,8 +255,7 @@ var immigrationUploadCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		doc, err := client.UploadImmigrationDocument(cmd.Context(), immigrationCaseFlag, api.UploadImmigrationDocumentParams{
@@ -275,11 +264,10 @@ var immigrationUploadCmd = &cobra.Command{
 			DocumentURL: immigrationDocURLFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to upload document: %v", err)
-			return err
+			return HandleError(f, err, "upload document")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Document uploaded successfully")
 			f.PrintText("ID:       " + doc.ID)
 			f.PrintText("Name:     " + doc.Name)

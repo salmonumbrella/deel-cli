@@ -26,7 +26,7 @@ var offboardingGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting offboarding")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:             " + record.ID)
 			f.PrintText("Contract ID:    " + record.ContractID)
 			f.PrintText("Worker:         " + record.WorkerName)
@@ -54,7 +54,7 @@ var terminationsGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting termination")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:             " + termination.ID)
 			f.PrintText("Contract ID:    " + termination.ContractID)
 			f.PrintText("Reason:         " + termination.Reason)

@@ -31,14 +31,12 @@ var benefitsListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		benefits, err := client.ListBenefitsByCountry(cmd.Context(), benefitsCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to list benefits: %v", err)
-			return err
+			return HandleError(f, err, "list benefits")
 		}
 
 		// Apply client-side limit
@@ -46,7 +44,7 @@ var benefitsListCmd = &cobra.Command{
 			benefits = benefits[:benefitsLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(benefits) == 0 {
 				f.PrintText("No benefits found.")
 				return
@@ -74,17 +72,15 @@ var benefitsEmployeeCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		benefits, err := client.GetEmployeeBenefits(cmd.Context(), benefitsEmployeeFlag)
 		if err != nil {
-			f.PrintError("Failed to get benefits: %v", err)
-			return err
+			return HandleError(f, err, "get benefits")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(benefits) == 0 {
 				f.PrintText("No benefits found.")
 				return

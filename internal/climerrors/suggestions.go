@@ -9,7 +9,7 @@ var suggestionsByCategory = map[Category][]string{
 	},
 	CategoryForbidden: {
 		"Your API token doesn't have permission for this action",
-		"Check scopes with: deel auth status",
+		"Check scopes with: deel auth test",
 		"You may need to generate a new token with additional scopes",
 	},
 	CategoryNotFound: {

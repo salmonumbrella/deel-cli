@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -24,53 +25,35 @@ var teamsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all teams",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing teams")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := teamsCursorFlag
-		var allTeams []api.Team
-		var next string
-
-		for {
-			resp, err := client.ListTeams(cmd.Context(), teamsLimitFlag, cursor)
+		teams, _, hasMore, err := collectCursorItems(cmd.Context(), teamsAllFlag, teamsCursorFlag, teamsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Team], error) {
+			resp, err := client.ListTeams(ctx, limit, cursor)
 			if err != nil {
-				f.PrintError("Failed to list teams: %v", err)
-				return err
+				return CursorListResult[api.Team]{}, err
 			}
-			allTeams = append(allTeams, resp.Data...)
-			next = resp.Page.Next
-			if !teamsAllFlag || next == "" {
-				if !teamsAllFlag {
-					allTeams = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.Team]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing teams")
 		}
 
 		response := api.TeamsListResponse{
-			Data: allTeams,
+			Data: teams,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allTeams) == 0 {
-				f.PrintText("No teams found.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "MANAGER", "MEMBERS")
-			for _, t := range allTeams {
-				table.AddRow(t.ID, t.Name, t.ManagerName, fmt.Sprintf("%d", t.MemberCount))
-			}
-			table.Render()
-			if !teamsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, teams, hasMore, "No teams found.", []string{"ID", "NAME", "MANAGER", "MEMBERS"}, func(t api.Team) []string {
+			return []string{t.ID, t.Name, t.ManagerName, fmt.Sprintf("%d", t.MemberCount)}
 		}, response)
 	},
 }
@@ -83,17 +66,15 @@ var teamsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		team, err := client.GetTeam(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get team: %v", err)
-			return err
+			return HandleError(f, err, "get team")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + team.ID)
 			f.PrintText("Name:        " + team.Name)
 			f.PrintText("Manager:     " + team.ManagerName)

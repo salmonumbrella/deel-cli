@@ -32,20 +32,18 @@ var payrollPayslipsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		if payrollGPFlag {
 			payslips, err := client.GetGPWorkerPayslips(cmd.Context(), payrollWorkerFlag)
 			if err != nil {
-				f.PrintError("Failed to get payslips: %v", err)
-				return err
+				return HandleError(f, err, "get payslips")
 			}
 			if len(payslips) == 0 {
 				f.PrintWarning("Hint: No GP payslips found. If this is an EOR employee, try without --gp flag.")
 			}
-			return f.Output(func() {
+			return f.OutputFiltered(cmd.Context(), func() {
 				if len(payslips) == 0 {
 					f.PrintText("No payslips found.")
 					return
@@ -61,13 +59,12 @@ var payrollPayslipsCmd = &cobra.Command{
 
 		payslips, err := client.GetEORWorkerPayslips(cmd.Context(), payrollWorkerFlag)
 		if err != nil {
-			f.PrintError("Failed to get payslips: %v", err)
-			return err
+			return HandleError(f, err, "get payslips")
 		}
 		if len(payslips) == 0 {
 			f.PrintWarning("Hint: No EOR payslips found. If this is a Global Payroll employee, try with --gp flag.")
 		}
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(payslips) == 0 {
 				f.PrintText("No payslips found.")
 				return
@@ -95,17 +92,15 @@ var payrollPaymentsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		breakdown, err := client.GetPaymentBreakdown(cmd.Context(), payrollCycleFlag)
 		if err != nil {
-			f.PrintError("Failed to get breakdown: %v", err)
-			return err
+			return HandleError(f, err, "get breakdown")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Cycle:   " + breakdown.CycleID)
 			f.PrintText(fmt.Sprintf("Total:   %.2f %s", breakdown.TotalAmount, breakdown.Currency))
 			f.PrintText(fmt.Sprintf("Workers: %d", breakdown.Workers))
@@ -121,17 +116,15 @@ var payrollReceiptsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		receipts, err := client.ListPaymentReceipts(cmd.Context(), payrollLimitFlag)
 		if err != nil {
-			f.PrintError("Failed to list receipts: %v", err)
-			return err
+			return HandleError(f, err, "list receipts")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(receipts) == 0 {
 				f.PrintText("No receipts found.")
 				return
@@ -167,17 +160,15 @@ var payrollDownloadCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		url, err := client.GetGPPayslipDownloadURL(cmd.Context(), payrollDownloadWorkerFlag, payrollDownloadPayslipFlag)
 		if err != nil {
-			f.PrintError("Failed to get download URL: %v", err)
-			return err
+			return HandleError(f, err, "get download URL")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText(url)
 		}, map[string]string{"url": url})
 	},

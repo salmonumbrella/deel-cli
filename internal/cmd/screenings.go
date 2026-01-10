@@ -54,8 +54,7 @@ var screeningsVeriffCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		session, err := client.CreateVeriffSession(cmd.Context(), api.CreateVeriffSessionParams{
@@ -63,11 +62,10 @@ var screeningsVeriffCmd = &cobra.Command{
 			Callback: screeningCallbackFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create Veriff session: %v", err)
-			return err
+			return HandleError(f, err, "create Veriff session")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Veriff session created successfully")
 			f.PrintText("ID:       " + session.ID)
 			f.PrintText("URL:      " + session.URL)
@@ -85,17 +83,15 @@ var screeningsKYCCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		kyc, err := client.GetKYCDetails(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get KYC details: %v", err)
-			return err
+			return HandleError(f, err, "get KYC details")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Worker ID:  " + kyc.WorkerID)
 			f.PrintText("Status:     " + kyc.Status)
 			if kyc.VerifiedAt != "" {
@@ -125,17 +121,15 @@ var screeningsAMLCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		aml, err := client.GetAMLData(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to get AML data: %v", err)
-			return err
+			return HandleError(f, err, "get AML data")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText(fmt.Sprintf("Total Matches: %d", aml.Summary.TotalMatches))
 			f.PrintText("Highest Risk:  " + aml.Summary.HighestRisk)
 			f.PrintText("")
@@ -185,8 +179,7 @@ var screeningsExternalKYCCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		submission, err := client.SubmitExternalKYC(cmd.Context(), api.SubmitExternalKYCParams{
@@ -198,11 +191,10 @@ var screeningsExternalKYCCmd = &cobra.Command{
 			ExpirationDate: screeningExpiryFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to submit external KYC: %v", err)
-			return err
+			return HandleError(f, err, "submit external KYC")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("External KYC submitted successfully")
 			f.PrintText("ID:         " + submission.ID)
 			f.PrintText("Worker ID:  " + submission.WorkerID)
@@ -239,8 +231,7 @@ var screeningsManualVerifyCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		verification, err := client.CreateManualVerification(cmd.Context(), api.CreateManualVerificationParams{
@@ -250,11 +241,10 @@ var screeningsManualVerifyCmd = &cobra.Command{
 			DocumentURLs: screeningDocURLsFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create manual verification: %v", err)
-			return err
+			return HandleError(f, err, "create manual verification")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Manual verification created successfully")
 			f.PrintText("ID:          " + verification.ID)
 			f.PrintText("Worker ID:   " + verification.WorkerID)

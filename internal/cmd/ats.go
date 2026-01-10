@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -39,58 +40,40 @@ var atsOffersCmd = &cobra.Command{
 	Use:   "offers",
 	Short: "List ATS offers",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing ats offers")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := atsCursorFlag
-		var allOffers []api.ATSOffer
-		var next string
-
-		for {
-			resp, err := client.ListATSOffers(cmd.Context(), api.ATSOffersListParams{
+		offers, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSOffer], error) {
+			resp, err := client.ListATSOffers(ctx, api.ATSOffersListParams{
 				Status: atsStatusFlag,
-				Limit:  atsLimitFlag,
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list offers: %v", err)
-				return err
+				return CursorListResult[api.ATSOffer]{}, err
 			}
-			allOffers = append(allOffers, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allOffers = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSOffer]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats offers")
 		}
 
 		response := api.ATSOffersListResponse{
-			Data: allOffers,
+			Data: offers,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allOffers) == 0 {
-				f.PrintText("No offers found.")
-				return
-			}
-			table := f.NewTable("ID", "CANDIDATE", "POSITION", "SALARY", "STATUS")
-			for _, o := range allOffers {
-				salary := fmt.Sprintf("%.2f %s", o.Salary, o.Currency)
-				table.AddRow(o.ID, o.Candidate, o.Position, salary, o.Status)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, offers, hasMore, "No offers found.", []string{"ID", "CANDIDATE", "POSITION", "SALARY", "STATUS"}, func(o api.ATSOffer) []string {
+			salary := fmt.Sprintf("%.2f %s", o.Salary, o.Currency)
+			return []string{o.ID, o.Candidate, o.Position, salary, o.Status}
 		}, response)
 	},
 }
@@ -105,59 +88,41 @@ var atsJobsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List ATS jobs",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing ats jobs")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := atsCursorFlag
-		var allJobs []api.ATSJob
-		var next string
-
-		for {
-			resp, err := client.ListATSJobs(cmd.Context(), api.ATSJobsListParams{
+		jobs, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJob], error) {
+			resp, err := client.ListATSJobs(ctx, api.ATSJobsListParams{
 				Status:       atsStatusFlag,
 				DepartmentID: atsDepartmentIDFlag,
 				LocationID:   atsLocationIDFlag,
-				Limit:        atsLimitFlag,
+				Limit:        limit,
 				Cursor:       cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list jobs: %v", err)
-				return err
+				return CursorListResult[api.ATSJob]{}, err
 			}
-			allJobs = append(allJobs, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allJobs = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSJob]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats jobs")
 		}
 
 		response := api.ATSJobsListResponse{
-			Data: allJobs,
+			Data: jobs,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allJobs) == 0 {
-				f.PrintText("No jobs found.")
-				return
-			}
-			table := f.NewTable("ID", "TITLE", "DEPARTMENT", "LOCATION", "TYPE", "STATUS")
-			for _, j := range allJobs {
-				table.AddRow(j.ID, j.Title, j.Department, j.Location, j.EmploymentType, j.Status)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, jobs, hasMore, "No jobs found.", []string{"ID", "TITLE", "DEPARTMENT", "LOCATION", "TYPE", "STATUS"}, func(j api.ATSJob) []string {
+			return []string{j.ID, j.Title, j.Department, j.Location, j.EmploymentType, j.Status}
 		}, response)
 	},
 }
@@ -203,8 +168,7 @@ var atsJobsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		job, err := client.CreateATSJob(cmd.Context(), api.CreateATSJobParams{
@@ -215,11 +179,10 @@ var atsJobsCreateCmd = &cobra.Command{
 			Description:    atsJobDescriptionFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create job: %v", err)
-			return err
+			return HandleError(f, err, "create job")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Job created successfully")
 			f.PrintText("ID:          " + job.ID)
 			f.PrintText("Title:       " + job.Title)
@@ -241,58 +204,40 @@ var atsPostingsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List job postings",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing ats job postings")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := atsCursorFlag
-		var allPostings []api.ATSJobPosting
-		var next string
-
-		for {
-			resp, err := client.ListATSJobPostings(cmd.Context(), api.ATSJobPostingsListParams{
+		postings, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJobPosting], error) {
+			resp, err := client.ListATSJobPostings(ctx, api.ATSJobPostingsListParams{
 				Status: atsStatusFlag,
 				JobID:  atsJobIDFlag,
-				Limit:  atsLimitFlag,
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list job postings: %v", err)
-				return err
+				return CursorListResult[api.ATSJobPosting]{}, err
 			}
-			allPostings = append(allPostings, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allPostings = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSJobPosting]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats job postings")
 		}
 
 		response := api.ATSJobPostingsListResponse{
-			Data: allPostings,
+			Data: postings,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allPostings) == 0 {
-				f.PrintText("No job postings found.")
-				return
-			}
-			table := f.NewTable("ID", "TITLE", "DEPARTMENT", "LOCATION", "STATUS", "POSTED AT")
-			for _, p := range allPostings {
-				table.AddRow(p.ID, p.Title, p.Department, p.Location, p.Status, p.PostedAt)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, postings, hasMore, "No job postings found.", []string{"ID", "TITLE", "DEPARTMENT", "LOCATION", "STATUS", "POSTED AT"}, func(p api.ATSJobPosting) []string {
+			return []string{p.ID, p.Title, p.Department, p.Location, p.Status, p.PostedAt}
 		}, response)
 	},
 }
@@ -305,17 +250,15 @@ var atsPostingsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		posting, err := client.GetATSJobPosting(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get job posting: %v", err)
-			return err
+			return HandleError(f, err, "get job posting")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + posting.ID)
 			f.PrintText("Job ID:      " + posting.JobID)
 			f.PrintText("Title:       " + posting.Title)
@@ -349,57 +292,40 @@ var atsApplicationsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
-		cursor := atsCursorFlag
-		var allApps []api.ATSApplication
-		var next string
-
-		for {
-			resp, err := client.ListATSApplications(cmd.Context(), api.ATSApplicationsListParams{
+		apps, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSApplication], error) {
+			resp, err := client.ListATSApplications(ctx, api.ATSApplicationsListParams{
 				Status:      atsStatusFlag,
 				JobID:       atsJobIDFlag,
 				CandidateID: atsCandidateIDFlag,
 				Stage:       atsStageFlag,
-				Limit:       atsLimitFlag,
+				Limit:       limit,
 				Cursor:      cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list applications: %v", err)
-				return err
+				return CursorListResult[api.ATSApplication]{}, err
 			}
-			allApps = append(allApps, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allApps = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSApplication]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats applications")
 		}
 
 		response := api.ATSApplicationsListResponse{
-			Data: allApps,
+			Data: apps,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allApps) == 0 {
-				f.PrintText("No applications found.")
-				return
-			}
-			table := f.NewTable("ID", "CANDIDATE", "JOB", "STATUS", "STAGE", "APPLIED AT")
-			for _, a := range allApps {
-				table.AddRow(a.ID, a.CandidateName, a.JobTitle, a.Status, a.Stage, a.AppliedAt)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, apps, hasMore, "No applications found.", []string{"ID", "CANDIDATE", "JOB", "STATUS", "STAGE", "APPLIED AT"}, func(a api.ATSApplication) []string {
+			return []string{a.ID, a.CandidateName, a.JobTitle, a.Status, a.Stage, a.AppliedAt}
 		}, response)
 	},
 }
@@ -417,55 +343,38 @@ var atsCandidatesListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
-		cursor := atsCursorFlag
-		var allCandidates []api.ATSCandidate
-		var next string
-
-		for {
-			resp, err := client.ListATSCandidates(cmd.Context(), api.ATSCandidatesListParams{
+		candidates, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSCandidate], error) {
+			resp, err := client.ListATSCandidates(ctx, api.ATSCandidatesListParams{
 				Search: atsSearchFlag,
-				Limit:  atsLimitFlag,
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list candidates: %v", err)
-				return err
+				return CursorListResult[api.ATSCandidate]{}, err
 			}
-			allCandidates = append(allCandidates, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allCandidates = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSCandidate]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats candidates")
 		}
 
 		response := api.ATSCandidatesListResponse{
-			Data: allCandidates,
+			Data: candidates,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allCandidates) == 0 {
-				f.PrintText("No candidates found.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "EMAIL", "PHONE", "LOCATION")
-			for _, c := range allCandidates {
-				name := fmt.Sprintf("%s %s", c.FirstName, c.LastName)
-				table.AddRow(c.ID, name, c.Email, c.Phone, c.Location)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, candidates, hasMore, "No candidates found.", []string{"ID", "NAME", "EMAIL", "PHONE", "LOCATION"}, func(c api.ATSCandidate) []string {
+			name := fmt.Sprintf("%s %s", c.FirstName, c.LastName)
+			return []string{c.ID, name, c.Email, c.Phone, c.Location}
 		}, response)
 	},
 }
@@ -483,53 +392,36 @@ var atsDepartmentsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
-		cursor := atsCursorFlag
-		var allDepartments []api.ATSDepartment
-		var next string
-
-		for {
-			resp, err := client.ListATSDepartments(cmd.Context(), api.ATSDepartmentsListParams{
-				Limit:  atsLimitFlag,
+		departments, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSDepartment], error) {
+			resp, err := client.ListATSDepartments(ctx, api.ATSDepartmentsListParams{
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list departments: %v", err)
-				return err
+				return CursorListResult[api.ATSDepartment]{}, err
 			}
-			allDepartments = append(allDepartments, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allDepartments = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSDepartment]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats departments")
 		}
 
 		response := api.ATSDepartmentsListResponse{
-			Data: allDepartments,
+			Data: departments,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allDepartments) == 0 {
-				f.PrintText("No departments found.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "PARENT ID", "CREATED AT")
-			for _, d := range allDepartments {
-				table.AddRow(d.ID, d.Name, d.ParentID, d.CreatedAt)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, departments, hasMore, "No departments found.", []string{"ID", "NAME", "PARENT ID", "CREATED AT"}, func(d api.ATSDepartment) []string {
+			return []string{d.ID, d.Name, d.ParentID, d.CreatedAt}
 		}, response)
 	},
 }
@@ -547,8 +439,7 @@ var atsLocationsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		var remotePtr *bool
@@ -556,54 +447,38 @@ var atsLocationsListCmd = &cobra.Command{
 			remotePtr = &atsRemoteFlag
 		}
 
-		cursor := atsCursorFlag
-		var allLocations []api.ATSLocation
-		var next string
-
-		for {
-			resp, err := client.ListATSLocations(cmd.Context(), api.ATSLocationsListParams{
+		locations, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSLocation], error) {
+			resp, err := client.ListATSLocations(ctx, api.ATSLocationsListParams{
 				Remote: remotePtr,
-				Limit:  atsLimitFlag,
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list locations: %v", err)
-				return err
+				return CursorListResult[api.ATSLocation]{}, err
 			}
-			allLocations = append(allLocations, resp.Data...)
-			next = resp.Page.Next
-			if !atsAllFlag || next == "" {
-				if !atsAllFlag {
-					allLocations = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ATSLocation]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing ats locations")
 		}
 
 		response := api.ATSLocationsListResponse{
-			Data: allLocations,
+			Data: locations,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allLocations) == 0 {
-				f.PrintText("No locations found.")
-				return
+		return outputList(cmd, f, locations, hasMore, "No locations found.", []string{"ID", "NAME", "CITY", "COUNTRY", "REMOTE"}, func(l api.ATSLocation) []string {
+			remote := "No"
+			if l.Remote {
+				remote = "Yes"
 			}
-			table := f.NewTable("ID", "NAME", "CITY", "COUNTRY", "REMOTE")
-			for _, l := range allLocations {
-				remote := "No"
-				if l.Remote {
-					remote = "Yes"
-				}
-				table.AddRow(l.ID, l.Name, l.City, l.Country, remote)
-			}
-			table.Render()
-			if !atsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+			return []string{l.ID, l.Name, l.City, l.Country, remote}
 		}, response)
 	},
 }
@@ -621,17 +496,15 @@ var atsRejectionReasonsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		reasons, err := client.ListRejectionReasons(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list rejection reasons: %v", err)
-			return err
+			return HandleError(f, err, "list rejection reasons")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(reasons) == 0 {
 				f.PrintText("No rejection reasons found.")
 				return

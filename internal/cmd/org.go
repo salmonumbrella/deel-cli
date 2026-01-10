@@ -22,17 +22,15 @@ var orgGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		org, err := client.GetOrganization(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to get organization: %v", err)
-			return err
+			return HandleError(f, err, "get organization")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:       " + org.ID)
 			f.PrintText("Name:     " + org.Name)
 			f.PrintText("Country:  " + org.Country)
@@ -49,17 +47,15 @@ var orgStructuresCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		structures, err := client.GetOrgStructures(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to get structures: %v", err)
-			return err
+			return HandleError(f, err, "get structures")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(structures) == 0 {
 				f.PrintText("No org structures found.")
 				return
@@ -82,14 +78,12 @@ var orgEntitiesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		entities, err := client.ListLegalEntities(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list entities: %v", err)
-			return err
+			return HandleError(f, err, "list entities")
 		}
 
 		// Apply client-side limit
@@ -97,7 +91,7 @@ var orgEntitiesCmd = &cobra.Command{
 			entities = entities[:orgEntitiesLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(entities) == 0 {
 				f.PrintText("No legal entities found.")
 				return
@@ -131,14 +125,12 @@ var groupsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		groups, err := client.ListGroups(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list groups: %v", err)
-			return err
+			return HandleError(f, err, "list groups")
 		}
 
 		// Apply client-side limit
@@ -146,7 +138,7 @@ var groupsListCmd = &cobra.Command{
 			groups = groups[:groupsLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(groups) == 0 {
 				f.PrintText("No groups found.")
 				return
@@ -172,17 +164,15 @@ var groupsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		group, err := client.GetGroup(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get group: %v", err)
-			return err
+			return HandleError(f, err, "get group")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + group.ID)
 			f.PrintText("Name:        " + group.Name)
 			if group.Description != "" {
@@ -220,8 +210,7 @@ var groupsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		group, err := client.CreateGroup(cmd.Context(), api.CreateGroupParams{
@@ -229,11 +218,10 @@ var groupsCreateCmd = &cobra.Command{
 			Description: groupDescriptionFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create group: %v", err)
-			return err
+			return HandleError(f, err, "create group")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Group created successfully")
 			f.PrintText("ID:          " + group.ID)
 			f.PrintText("Name:        " + group.Name)
@@ -279,8 +267,7 @@ var groupsUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateGroupParams{}
@@ -293,11 +280,10 @@ var groupsUpdateCmd = &cobra.Command{
 
 		group, err := client.UpdateGroup(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update group: %v", err)
-			return err
+			return HandleError(f, err, "update group")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Group updated successfully")
 			f.PrintText("ID:          " + group.ID)
 			f.PrintText("Name:        " + group.Name)
@@ -317,17 +303,15 @@ var groupsDeleteCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteGroup(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete group: %v", err)
-			return err
+			return HandleError(f, err, "delete group")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Group deleted successfully")
 		}, map[string]string{"status": "deleted", "id": args[0]})
 	},
@@ -341,17 +325,15 @@ var groupsCloneCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		group, err := client.CloneGroup(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to clone group: %v", err)
-			return err
+			return HandleError(f, err, "clone group")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Group cloned successfully")
 			f.PrintText("ID:          " + group.ID)
 			f.PrintText("Name:        " + group.Name)
@@ -386,14 +368,12 @@ var legalEntitiesListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		entities, err := client.ListLegalEntities(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list legal entities: %v", err)
-			return err
+			return HandleError(f, err, "list legal entities")
 		}
 
 		// Apply client-side limit
@@ -401,7 +381,7 @@ var legalEntitiesListCmd = &cobra.Command{
 			entities = entities[:legalEntitiesLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(entities) == 0 {
 				f.PrintText("No legal entities found.")
 				return
@@ -451,8 +431,7 @@ var legalEntitiesCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		entity, err := client.CreateLegalEntity(cmd.Context(), api.CreateLegalEntityParams{
@@ -462,11 +441,10 @@ var legalEntitiesCreateCmd = &cobra.Command{
 			RegistrationNumber: entityRegistrationNumberFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create legal entity: %v", err)
-			return err
+			return HandleError(f, err, "create legal entity")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Legal entity created successfully")
 			f.PrintText("ID:       " + entity.ID)
 			f.PrintText("Name:     " + entity.Name)
@@ -517,8 +495,7 @@ var legalEntitiesUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateLegalEntityParams{}
@@ -534,11 +511,10 @@ var legalEntitiesUpdateCmd = &cobra.Command{
 
 		entity, err := client.UpdateLegalEntity(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update legal entity: %v", err)
-			return err
+			return HandleError(f, err, "update legal entity")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Legal entity updated successfully")
 			f.PrintText("ID:       " + entity.ID)
 			f.PrintText("Name:     " + entity.Name)
@@ -571,17 +547,15 @@ var legalEntitiesDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteLegalEntity(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete legal entity: %v", err)
-			return err
+			return HandleError(f, err, "delete legal entity")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Legal entity deleted successfully")
 		}, map[string]string{"status": "deleted", "id": args[0]})
 	},
@@ -595,17 +569,15 @@ var legalEntitiesPayrollSettingsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		settings, err := client.GetPayrollSettings(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get payroll settings: %v", err)
-			return err
+			return HandleError(f, err, "get payroll settings")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:               " + settings.ID)
 			f.PrintText("Legal Entity ID:  " + settings.LegalEntityID)
 			f.PrintText("Frequency:        " + settings.PayrollFrequency)
@@ -642,17 +614,15 @@ var lookupsCurrenciesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		currencies, err := client.ListCurrencies(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list currencies: %v", err)
-			return err
+			return HandleError(f, err, "list currencies")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(currencies) == 0 {
 				f.PrintText("No currencies found.")
 				return
@@ -673,17 +643,15 @@ var lookupsCountriesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		countries, err := client.ListCountries(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list countries: %v", err)
-			return err
+			return HandleError(f, err, "list countries")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(countries) == 0 {
 				f.PrintText("No countries found.")
 				return
@@ -704,17 +672,15 @@ var lookupsJobTitlesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		jobTitles, err := client.ListJobTitles(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list job titles: %v", err)
-			return err
+			return HandleError(f, err, "list job titles")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(jobTitles) == 0 {
 				f.PrintText("No job titles found.")
 				return
@@ -735,17 +701,15 @@ var lookupsSeniorityLevelsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		levels, err := client.ListSeniorityLevels(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list seniority levels: %v", err)
-			return err
+			return HandleError(f, err, "list seniority levels")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(levels) == 0 {
 				f.PrintText("No seniority levels found.")
 				return
@@ -766,17 +730,15 @@ var lookupsTimeOffTypesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		types, err := client.ListTimeOffTypes(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list time off types: %v", err)
-			return err
+			return HandleError(f, err, "list time off types")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(types) == 0 {
 				f.PrintText("No time off types found.")
 				return
@@ -804,17 +766,15 @@ var departmentsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		resp, err := client.ListDepartments(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list departments: %v", err)
-			return err
+			return HandleError(f, err, "list departments")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(resp.Data) == 0 {
 				f.PrintText("No departments found.")
 				return

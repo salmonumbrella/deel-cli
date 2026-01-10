@@ -35,8 +35,7 @@ var calcCostCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		result, err := client.CalculateCost(cmd.Context(), api.CalculateCostParams{
@@ -45,11 +44,10 @@ var calcCostCmd = &cobra.Command{
 			Currency:    calcCurrencyFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to calculate: %v", err)
-			return err
+			return HandleError(f, err, "calculate")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Country:      " + result.Country)
 			f.PrintText(fmt.Sprintf("Gross Salary: %.2f %s", result.GrossSalary, result.Currency))
 			f.PrintText(fmt.Sprintf("Employer Cost: %.2f %s", result.EmployerCost, result.Currency))
@@ -72,8 +70,7 @@ var calcTakeHomeCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		result, err := client.CalculateTakeHome(cmd.Context(), api.CalculateTakeHomeParams{
@@ -82,11 +79,10 @@ var calcTakeHomeCmd = &cobra.Command{
 			Currency:    calcCurrencyFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to calculate: %v", err)
-			return err
+			return HandleError(f, err, "calculate")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Country:      " + result.Country)
 			f.PrintText(fmt.Sprintf("Gross Salary: %.2f %s", result.GrossSalary, result.Currency))
 			f.PrintText(fmt.Sprintf("Net Salary:   %.2f %s", result.NetSalary, result.Currency))
@@ -108,17 +104,15 @@ var calcSalaryHistogramCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		result, err := client.GetSalaryHistogram(cmd.Context(), calcRoleFlag, calcCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to get histogram: %v", err)
-			return err
+			return HandleError(f, err, "get histogram")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Role:    " + result.Role)
 			f.PrintText("Country: " + result.Country)
 			f.PrintText(fmt.Sprintf("Min:     %.2f %s", result.Min, result.Currency))

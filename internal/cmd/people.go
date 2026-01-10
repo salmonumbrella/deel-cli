@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -52,59 +53,44 @@ var peopleListCmd = &cobra.Command{
 
 Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing people")
+		if err != nil {
+			return err
+		}
+
+		people, page, hasMore, err := collectCursorItems(cmd.Context(), peopleAllFlag, peopleCursorFlag, peopleLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Person], error) {
+			resp, err := client.ListPeople(ctx, api.PeopleListParams{
+				Limit:  limit,
+				Cursor: cursor,
+			})
+			if err != nil {
+				return CursorListResult[api.Person]{}, err
+			}
+			return CursorListResult[api.Person]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
 		if err != nil {
 			return HandleError(f, err, "listing people")
 		}
 
-		cursor := peopleCursorFlag
-		var allPeople []api.Person
-		var pageTotal int
-		for {
-			resp, err := client.ListPeople(cmd.Context(), api.PeopleListParams{
-				Limit:  peopleLimitFlag,
-				Cursor: cursor,
-			})
-			if err != nil {
-				return HandleError(f, err, "listing people")
-			}
-			allPeople = append(allPeople, resp.Data...)
-			pageTotal = resp.Page.Total
-			if !peopleAllFlag || resp.Page.Next == "" {
-				if !peopleAllFlag {
-					allPeople = resp.Data
-					pageTotal = resp.Page.Total
-					cursor = resp.Page.Next
-				}
-				break
-			}
-			cursor = resp.Page.Next
+		total := page.Total
+		if peopleAllFlag {
+			total = len(people)
 		}
 
 		response := api.PeopleListResponse{
-			Data: allPeople,
+			Data: people,
 		}
 		response.Page.Next = ""
-		response.Page.Total = pageTotal
-		if peopleAllFlag {
-			response.Page.Total = len(allPeople)
-		}
+		response.Page.Total = total
 
-		return f.Output(func() {
-			if len(allPeople) == 0 {
-				f.PrintText("No people found.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
-			for _, p := range allPeople {
-				table.AddRow(p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status)
-			}
-			table.Render()
-			if !peopleAllFlag && cursor != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, people, hasMore, "No people found.", []string{"ID", "NAME", "EMAIL", "JOB TITLE", "STATUS"}, func(p api.Person) []string {
+			return []string{p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status}
 		}, response)
 	},
 }
@@ -135,7 +121,7 @@ var peopleGetCmd = &cobra.Command{
 				return HandleError(f, err, "parsing personal info")
 			}
 
-			return f.Output(func() {
+			return f.OutputFiltered(cmd.Context(), func() {
 				if id, ok := data["id"]; ok {
 					f.PrintText(fmt.Sprintf("ID:         %v", id))
 				}
@@ -156,7 +142,7 @@ var peopleGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting person")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Name:       " + person.Name)
 			f.PrintText("Email:      " + person.Email)
 			f.PrintText("Job Title:  " + person.JobTitle)
@@ -200,7 +186,7 @@ Examples:
 				return HandleError(f, err, "searching people")
 			}
 
-			return f.Output(func() {
+			return f.OutputFiltered(cmd.Context(), func() {
 				f.PrintText("Found: " + person.Name)
 				f.PrintText("ID:    " + person.HRISProfileID)
 				f.PrintText("Email: " + person.Email)
@@ -244,7 +230,7 @@ Examples:
 			return nil
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText(fmt.Sprintf("Found %d match(es) for \"%s\":\n", len(matches), peopleNameFlag))
 			table := f.NewTable("ID", "NAME", "EMAIL", "JOB TITLE", "STATUS")
 			for _, p := range matches {
@@ -267,17 +253,15 @@ var customFieldsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		fields, err := client.ListCustomFields(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list custom fields: %v", err)
-			return err
+			return HandleError(f, err, "list custom fields")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(fields) == 0 {
 				f.PrintText("No custom fields found.")
 				return
@@ -299,17 +283,15 @@ var customFieldsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		field, err := client.GetCustomField(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get custom field: %v", err)
-			return err
+			return HandleError(f, err, "get custom field")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:    " + field.ID)
 			f.PrintText("Name:  " + field.Name)
 			f.PrintText("Type:  " + field.Type)
@@ -372,8 +354,7 @@ var peopleCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreatePersonParams{
@@ -386,11 +367,10 @@ var peopleCreateCmd = &cobra.Command{
 
 		person, err := client.CreatePerson(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create person: %v", err)
-			return err
+			return HandleError(f, err, "create person")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Person created successfully")
 			f.PrintText("ID:         " + person.ID)
 			f.PrintText("Email:      " + person.Email)
@@ -446,8 +426,7 @@ var peopleUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		info := api.PersonalInfo{
@@ -459,11 +438,10 @@ var peopleUpdateCmd = &cobra.Command{
 
 		updated, err := client.UpdatePersonalInfo(cmd.Context(), args[0], info)
 		if err != nil {
-			f.PrintError("Failed to update personal info: %v", err)
-			return err
+			return HandleError(f, err, "update personal info")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Personal info updated successfully")
 			if updated.ID != "" {
 				f.PrintText("ID:          " + updated.ID)
@@ -514,19 +492,17 @@ var setDepartmentCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		dept, err := client.UpdatePersonDepartment(cmd.Context(), args[0], api.UpdatePersonDepartmentParams{
 			DepartmentID: setDepartmentIDFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to set department: %v", err)
-			return err
+			return HandleError(f, err, "set department")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Department updated successfully")
 			if dept != nil {
 				f.PrintText("Department ID:   " + dept.ID)
@@ -590,8 +566,7 @@ var peopleLocationCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		location := api.WorkingLocation{
@@ -605,11 +580,10 @@ var peopleLocationCmd = &cobra.Command{
 
 		updated, err := client.UpdateWorkingLocation(cmd.Context(), args[0], location)
 		if err != nil {
-			f.PrintError("Failed to update working location: %v", err)
-			return err
+			return HandleError(f, err, "update working location")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Working location updated successfully")
 			f.PrintText("ID:          " + updated.ID)
 			f.PrintText("Country:     " + updated.Country)
@@ -654,8 +628,7 @@ var adjustmentsListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.ListAdjustmentsParams{
@@ -665,11 +638,10 @@ var adjustmentsListCmd = &cobra.Command{
 
 		adjustments, err := client.ListAdjustments(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to list adjustments: %v", err)
-			return err
+			return HandleError(f, err, "list adjustments")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(adjustments) == 0 {
 				f.PrintText("No adjustments found")
 				return
@@ -761,8 +733,7 @@ var adjustmentsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateAdjustmentParams{
@@ -780,11 +751,10 @@ var adjustmentsCreateCmd = &cobra.Command{
 
 		adjustment, err := client.CreateAdjustment(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create adjustment: %v", err)
-			return err
+			return HandleError(f, err, "create adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Adjustment created successfully")
 			f.PrintText("ID:          " + adjustment.ID)
 			f.PrintText("Contract ID: " + adjustment.ContractID)
@@ -816,17 +786,15 @@ var adjustmentsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		adjustment, err := client.GetAdjustment(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get adjustment: %v", err)
-			return err
+			return HandleError(f, err, "get adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + adjustment.ID)
 			f.PrintText("Contract ID: " + adjustment.ContractID)
 			f.PrintText("Category ID: " + adjustment.CategoryID)
@@ -888,8 +856,7 @@ var adjustmentsUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateAdjustmentParams{
@@ -900,11 +867,10 @@ var adjustmentsUpdateCmd = &cobra.Command{
 
 		adjustment, err := client.UpdateAdjustment(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update adjustment: %v", err)
-			return err
+			return HandleError(f, err, "update adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Adjustment updated successfully")
 			f.PrintText("ID:          " + adjustment.ID)
 			f.PrintText("Contract ID: " + adjustment.ContractID)
@@ -924,17 +890,15 @@ var adjustmentsCategoriesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		categories, err := client.ListAdjustmentCategories(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list adjustment categories: %v", err)
-			return err
+			return HandleError(f, err, "list adjustment categories")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(categories) == 0 {
 				f.PrintText("No adjustment categories found")
 				return
@@ -969,17 +933,15 @@ var adjustmentsDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteAdjustment(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete adjustment: %v", err)
-			return err
+			return HandleError(f, err, "delete adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Adjustment deleted successfully")
 			f.PrintText("ID: " + args[0])
 		}, map[string]string{"id": args[0], "status": "deleted"})
@@ -1002,17 +964,15 @@ var managersListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		managers, err := client.ListManagers(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list managers: %v", err)
-			return err
+			return HandleError(f, err, "list managers")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(managers) == 0 {
 				f.PrintText("No managers found")
 				return
@@ -1081,8 +1041,7 @@ var managersCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateManagerParams{
@@ -1094,11 +1053,10 @@ var managersCreateCmd = &cobra.Command{
 
 		manager, err := client.CreateManager(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create manager: %v", err)
-			return err
+			return HandleError(f, err, "create manager")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Manager created successfully")
 			f.PrintText("ID:         " + manager.ID)
 			f.PrintText("Email:      " + manager.Email)
@@ -1199,7 +1157,7 @@ Examples:
 			return HandleError(f, err, "assigning manager")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Manager assigned successfully")
 			f.PrintText("Worker:      " + person.Name + " (" + assignManagerEmailFlag + ")")
 			f.PrintText("Profile ID:  " + person.HRISProfileID)
@@ -1233,17 +1191,15 @@ var relationsListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		relations, err := client.ListWorkerRelations(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to list worker relations: %v", err)
-			return err
+			return HandleError(f, err, "list worker relations")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(relations) == 0 {
 				f.PrintText("No worker relations found")
 				return
@@ -1312,8 +1268,7 @@ var relationsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateWorkerRelationParams{
@@ -1325,11 +1280,10 @@ var relationsCreateCmd = &cobra.Command{
 
 		relation, err := client.CreateWorkerRelation(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create worker relation: %v", err)
-			return err
+			return HandleError(f, err, "create worker relation")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Worker relation created successfully")
 			f.PrintText("ID:            " + relation.ID)
 			f.PrintText("Profile ID:    " + relation.ProfileID)
@@ -1352,17 +1306,15 @@ var relationsDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteWorkerRelation(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete worker relation: %v", err)
-			return err
+			return HandleError(f, err, "delete worker relation")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Worker relation deleted successfully")
 			f.PrintText("ID: " + args[0])
 		}, map[string]string{"id": args[0], "status": "deleted"})

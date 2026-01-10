@@ -32,17 +32,15 @@ var bgCheckOptionsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		options, err := client.ListBackgroundCheckOptions(cmd.Context(), bgCheckCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to list options: %v", err)
-			return err
+			return HandleError(f, err, "list options")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(options) == 0 {
 				f.PrintText("No options found.")
 				return
@@ -70,14 +68,12 @@ var bgCheckListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		checks, err := client.ListBackgroundChecksByContract(cmd.Context(), bgCheckContractFlag)
 		if err != nil {
-			f.PrintError("Failed to list checks: %v", err)
-			return err
+			return HandleError(f, err, "list checks")
 		}
 
 		// Apply client-side limit
@@ -85,7 +81,7 @@ var bgCheckListCmd = &cobra.Command{
 			checks = checks[:bgCheckLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(checks) == 0 {
 				f.PrintText("No background checks found.")
 				return

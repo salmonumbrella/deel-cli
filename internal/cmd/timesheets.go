@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -36,62 +37,44 @@ var timesheetsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List timesheets",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing timesheets")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := timesheetsListCursorFlag
-		var allTimesheets []api.Timesheet
-		var next string
-
-		for {
+		timesheets, _, hasMore, err := collectCursorItems(cmd.Context(), timesheetsListAllFlag, timesheetsListCursorFlag, timesheetsListLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Timesheet], error) {
 			params := api.TimesheetsListParams{
 				ContractID: timesheetsListContractIDFlag,
 				Status:     timesheetsListStatusFlag,
-				Limit:      timesheetsListLimitFlag,
+				Limit:      limit,
 				Cursor:     cursor,
 			}
 
-			resp, err := client.ListTimesheets(cmd.Context(), params)
+			resp, err := client.ListTimesheets(ctx, params)
 			if err != nil {
-				f.PrintError("Failed to list timesheets: %v", err)
-				return err
+				return CursorListResult[api.Timesheet]{}, err
 			}
 
-			allTimesheets = append(allTimesheets, resp.Data...)
-			next = resp.Page.Next
-			if !timesheetsListAllFlag || next == "" {
-				if !timesheetsListAllFlag {
-					allTimesheets = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.Timesheet]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing timesheets")
 		}
 
 		response := api.TimesheetsListResponse{
-			Data: allTimesheets,
+			Data: timesheets,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allTimesheets) == 0 {
-				f.PrintText("No timesheets found.")
-				return
-			}
-			table := f.NewTable("ID", "CONTRACT ID", "STATUS", "PERIOD", "TOTAL HOURS", "CREATED")
-			for _, ts := range allTimesheets {
-				period := fmt.Sprintf("%s to %s", ts.PeriodStart, ts.PeriodEnd)
-				table.AddRow(ts.ID, ts.ContractID, ts.Status, period, fmt.Sprintf("%.2f", ts.TotalHours), ts.CreatedAt)
-			}
-			table.Render()
-			if !timesheetsListAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, timesheets, hasMore, "No timesheets found.", []string{"ID", "CONTRACT ID", "STATUS", "PERIOD", "TOTAL HOURS", "CREATED"}, func(ts api.Timesheet) []string {
+			period := fmt.Sprintf("%s to %s", ts.PeriodStart, ts.PeriodEnd)
+			return []string{ts.ID, ts.ContractID, ts.Status, period, fmt.Sprintf("%.2f", ts.TotalHours), ts.CreatedAt}
 		}, response)
 	},
 }
@@ -104,17 +87,15 @@ var timesheetsGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		timesheet, err := client.GetTimesheet(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get timesheet: %v", err)
-			return err
+			return HandleError(f, err, "get timesheet")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + timesheet.ID)
 			f.PrintText("Contract ID: " + timesheet.ContractID)
 			f.PrintText("Status:      " + timesheet.Status)
@@ -178,8 +159,7 @@ var timesheetsCreateEntryCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateTimesheetEntryParams{
@@ -191,11 +171,10 @@ var timesheetsCreateEntryCmd = &cobra.Command{
 
 		entry, err := client.CreateTimesheetEntry(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create timesheet entry: %v", err)
-			return err
+			return HandleError(f, err, "create timesheet entry")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Timesheet entry created successfully")
 			f.PrintText("ID:          " + entry.ID)
 			f.PrintText("Timesheet:   " + entry.TimesheetID)
@@ -252,8 +231,7 @@ var timesheetsUpdateEntryCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateTimesheetEntryParams{
@@ -263,11 +241,10 @@ var timesheetsUpdateEntryCmd = &cobra.Command{
 
 		entry, err := client.UpdateTimesheetEntry(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update timesheet entry: %v", err)
-			return err
+			return HandleError(f, err, "update timesheet entry")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Timesheet entry updated successfully")
 			f.PrintText("ID:          " + entry.ID)
 			f.PrintText("Timesheet:   " + entry.TimesheetID)
@@ -309,13 +286,11 @@ var timesheetsDeleteEntryCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		if err := client.DeleteTimesheetEntry(cmd.Context(), args[0]); err != nil {
-			f.PrintError("Failed to delete timesheet entry: %v", err)
-			return err
+			return HandleError(f, err, "delete timesheet entry")
 		}
 
 		f.PrintSuccess("Timesheet entry deleted successfully.")
@@ -364,8 +339,7 @@ var timesheetsReviewCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.ReviewTimesheetParams{
@@ -375,11 +349,10 @@ var timesheetsReviewCmd = &cobra.Command{
 
 		timesheet, err := client.ReviewTimesheet(cmd.Context(), timesheetID, params)
 		if err != nil {
-			f.PrintError("Failed to review timesheet: %v", err)
-			return err
+			return HandleError(f, err, "review timesheet")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Timesheet %s successfully", action+"d")
 			f.PrintText("ID:          " + timesheet.ID)
 			f.PrintText("Contract ID: " + timesheet.ContractID)
@@ -404,17 +377,15 @@ var presetsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		presets, err := client.ListHourlyPresets(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list hourly presets: %v", err)
-			return err
+			return HandleError(f, err, "list hourly presets")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(presets) == 0 {
 				f.PrintText("No hourly presets found.")
 				return
@@ -483,8 +454,7 @@ var presetsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateHourlyPresetParams{
@@ -495,11 +465,10 @@ var presetsCreateCmd = &cobra.Command{
 
 		preset, err := client.CreateHourlyPreset(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create hourly preset: %v", err)
-			return err
+			return HandleError(f, err, "create hourly preset")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Hourly preset created successfully")
 			f.PrintText("ID:            " + preset.ID)
 			f.PrintText("Name:          " + preset.Name)
@@ -599,8 +568,7 @@ var presetsUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateHourlyPresetParams{
@@ -614,11 +582,10 @@ var presetsUpdateCmd = &cobra.Command{
 
 		preset, err := client.UpdateHourlyPreset(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update hourly preset: %v", err)
-			return err
+			return HandleError(f, err, "update hourly preset")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Hourly preset updated successfully")
 			f.PrintText("ID:            " + preset.ID)
 			f.PrintText("Name:          " + preset.Name)
@@ -651,17 +618,15 @@ var presetsDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteHourlyPreset(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete hourly preset: %v", err)
-			return err
+			return HandleError(f, err, "delete hourly preset")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Hourly preset deleted successfully")
 		}, map[string]string{"status": "deleted", "id": args[0]})
 	},

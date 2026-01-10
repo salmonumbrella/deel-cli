@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -42,55 +43,37 @@ var tasksListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "listing tasks")
 		}
 
-		cursor := tasksCursorFlag
-		var allTasks []api.Task
-		var next string
-
-		for {
-			resp, err := client.ListTasks(cmd.Context(), api.TasksListParams{
+		tasks, _, hasMore, err := collectCursorItems(cmd.Context(), tasksAllFlag, tasksCursorFlag, tasksLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Task], error) {
+			resp, err := client.ListTasks(ctx, api.TasksListParams{
 				ContractID: tasksContractIDFlag,
 				Status:     tasksStatusFlag,
-				Limit:      tasksLimitFlag,
+				Limit:      limit,
 				Cursor:     cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list tasks: %v", err)
-				return err
+				return CursorListResult[api.Task]{}, err
 			}
-			allTasks = append(allTasks, resp.Data...)
-			next = resp.Page.Next
-			if !tasksAllFlag || next == "" {
-				if !tasksAllFlag {
-					allTasks = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.Task]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next: resp.Page.Next,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing tasks")
 		}
 
 		response := api.TasksListResponse{
-			Data: allTasks,
+			Data: tasks,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allTasks) == 0 {
-				f.PrintText("No tasks found.")
-				return
-			}
-			table := f.NewTable("ID", "TITLE", "AMOUNT", "STATUS")
-			for _, t := range allTasks {
-				table.AddRow(t.ID, t.Title, fmt.Sprintf("%.2f %s", t.Amount, t.Currency), t.Status)
-			}
-			table.Render()
-			if !tasksAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, tasks, hasMore, "No tasks found.", []string{"ID", "TITLE", "AMOUNT", "STATUS"}, func(t api.Task) []string {
+			return []string{t.ID, t.Title, fmt.Sprintf("%.2f %s", t.Amount, t.Currency), t.Status}
 		}, response)
 	},
 }
@@ -130,8 +113,7 @@ var tasksCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		task, err := client.CreateTask(cmd.Context(), api.CreateTaskParams{
@@ -141,11 +123,10 @@ var tasksCreateCmd = &cobra.Command{
 			Amount:      tasksAmountFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create task: %v", err)
-			return err
+			return HandleError(f, err, "create task")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Task created successfully!")
 			f.PrintText("ID:     " + task.ID)
 			f.PrintText("Title:  " + task.Title)
@@ -236,7 +217,7 @@ task-based contracts to find the task (this may take a few seconds).`,
 			return HandleError(f, err, "updating task")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Task updated successfully")
 			f.PrintText("ID:     " + task.ID)
 			f.PrintText("Title:  " + task.Title)
@@ -295,13 +276,11 @@ var tasksReviewManyCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		if err := client.ReviewMultipleTasks(cmd.Context(), tasksReviewManyContractIDFlag, tasksReviewManyIDsFlag, status); err != nil {
-			f.PrintError("Failed to review tasks: %v", err)
-			return err
+			return HandleError(f, err, "review tasks")
 		}
 
 		f.PrintSuccess("Tasks %s successfully.", status)

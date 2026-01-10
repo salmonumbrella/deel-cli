@@ -30,17 +30,15 @@ var complianceDocsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		docs, err := client.ListComplianceDocs(cmd.Context(), complianceContractFlag)
 		if err != nil {
-			f.PrintError("Failed to list documents: %v", err)
-			return err
+			return HandleError(f, err, "list documents")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(docs) == 0 {
 				f.PrintText("No compliance documents found.")
 				return
@@ -71,17 +69,15 @@ var complianceTemplatesCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		templates, err := client.ListComplianceTemplates(cmd.Context(), complianceCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to list templates: %v", err)
-			return err
+			return HandleError(f, err, "list templates")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(templates) == 0 {
 				f.PrintText("No templates found.")
 				return
@@ -108,17 +104,15 @@ var complianceValidationsCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		validation, err := client.GetComplianceValidations(cmd.Context(), complianceContractFlag)
 		if err != nil {
-			f.PrintError("Failed to get validations: %v", err)
-			return err
+			return HandleError(f, err, "get validations")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Contract:   " + validation.ContractID)
 			f.PrintText("Status:     " + validation.Status)
 			f.PrintText(fmt.Sprintf("Issues:     %d", validation.Issues))

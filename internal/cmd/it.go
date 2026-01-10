@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -27,58 +28,40 @@ var itAssetsCmd = &cobra.Command{
 	Use:   "assets",
 	Short: "List IT assets",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing it assets")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := itAssetsCursorFlag
-		var allAssets []api.ITAsset
-		var next string
-
-		for {
-			resp, err := client.ListITAssets(cmd.Context(), api.ITAssetsListParams{
+		assets, _, hasMore, err := collectCursorItems(cmd.Context(), itAssetsAllFlag, itAssetsCursorFlag, itAssetsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ITAsset], error) {
+			resp, err := client.ListITAssets(ctx, api.ITAssetsListParams{
 				Status: itAssetsStatusFlag,
 				Type:   itAssetsTypeFlag,
-				Limit:  itAssetsLimitFlag,
+				Limit:  limit,
 				Cursor: cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list assets: %v", err)
-				return err
+				return CursorListResult[api.ITAsset]{}, err
 			}
-			allAssets = append(allAssets, resp.Data...)
-			next = resp.Page.Next
-			if !itAssetsAllFlag || next == "" {
-				if !itAssetsAllFlag {
-					allAssets = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.ITAsset]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing it assets")
 		}
 
 		response := api.ITAssetsListResponse{
-			Data: allAssets,
+			Data: assets,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allAssets) == 0 {
-				f.PrintText("No IT assets found.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "TYPE", "SERIAL", "STATUS", "ASSIGNED TO")
-			for _, a := range allAssets {
-				table.AddRow(a.ID, a.Name, a.Type, a.SerialNumber, a.Status, a.AssignedTo)
-			}
-			table.Render()
-			if !itAssetsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, assets, hasMore, "No IT assets found.", []string{"ID", "NAME", "TYPE", "SERIAL", "STATUS", "ASSIGNED TO"}, func(a api.ITAsset) []string {
+			return []string{a.ID, a.Name, a.Type, a.SerialNumber, a.Status, a.AssignedTo}
 		}, response)
 	},
 }
@@ -90,17 +73,15 @@ var itOrdersCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		orders, err := client.ListITOrders(cmd.Context(), itOrdersLimitFlag)
 		if err != nil {
-			f.PrintError("Failed to list orders: %v", err)
-			return err
+			return HandleError(f, err, "list orders")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(orders) == 0 {
 				f.PrintText("No IT orders found.")
 				return
@@ -122,17 +103,15 @@ var itPoliciesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		policies, err := client.ListHardwarePolicies(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list policies: %v", err)
-			return err
+			return HandleError(f, err, "list policies")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(policies) == 0 {
 				f.PrintText("No hardware policies found.")
 				return

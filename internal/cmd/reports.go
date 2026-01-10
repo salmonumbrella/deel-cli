@@ -28,8 +28,7 @@ var paymentsReportCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		report, err := client.GetDetailedPaymentsReport(cmd.Context(), api.DetailedPaymentsReportParams{
@@ -39,11 +38,10 @@ var paymentsReportCmd = &cobra.Command{
 			Status:     paymentsReportStatusFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to get payments report: %v", err)
-			return err
+			return HandleError(f, err, "get payments report")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Report ID:     " + report.ReportID)
 			f.PrintText("Generated:     " + report.GeneratedAt)
 			f.PrintText("Period:        " + report.StartDate + " to " + report.EndDate)

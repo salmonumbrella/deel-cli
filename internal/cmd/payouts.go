@@ -46,8 +46,7 @@ var withdrawCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		withdrawal, err := client.WithdrawFunds(cmd.Context(), api.WithdrawFundsParams{
@@ -56,11 +55,10 @@ var withdrawCmd = &cobra.Command{
 			Description: withdrawDescriptionFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to withdraw funds: %v", err)
-			return err
+			return HandleError(f, err, "withdraw funds")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Withdrawal initiated")
 			f.PrintText("ID:          " + withdrawal.ID)
 			f.PrintText(fmt.Sprintf("Amount:      %.2f %s", withdrawal.Amount, withdrawal.Currency))
@@ -80,17 +78,15 @@ var autoWithdrawalCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		settings, err := client.GetAutoWithdrawal(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to get auto-withdrawal settings: %v", err)
-			return err
+			return HandleError(f, err, "get auto-withdrawal settings")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText(fmt.Sprintf("Enabled:    %t", settings.Enabled))
 			if settings.Threshold > 0 {
 				f.PrintText(fmt.Sprintf("Threshold:  %.2f %s", settings.Threshold, settings.Currency))
@@ -147,8 +143,7 @@ var autoWithdrawalSetCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.SetAutoWithdrawalParams{}
@@ -167,11 +162,10 @@ var autoWithdrawalSetCmd = &cobra.Command{
 
 		settings, err := client.SetAutoWithdrawal(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to update auto-withdrawal settings: %v", err)
-			return err
+			return HandleError(f, err, "update auto-withdrawal settings")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Auto-withdrawal settings updated")
 			f.PrintText(fmt.Sprintf("Enabled:    %t", settings.Enabled))
 			if settings.Threshold > 0 {
@@ -191,17 +185,15 @@ var balancesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		balances, err := client.ListContractorBalances(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list contractor balances: %v", err)
-			return err
+			return HandleError(f, err, "list contractor balances")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(balances) == 0 {
 				f.PrintText("No contractor balances found.")
 				return

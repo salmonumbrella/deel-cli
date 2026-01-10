@@ -33,14 +33,12 @@ var milestonesListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		milestones, err := client.ListMilestones(cmd.Context(), milestonesContractIDFlag)
 		if err != nil {
-			f.PrintError("Failed to list milestones: %v", err)
-			return err
+			return HandleError(f, err, "list milestones")
 		}
 
 		// Apply client-side limit
@@ -48,7 +46,7 @@ var milestonesListCmd = &cobra.Command{
 			milestones = milestones[:milestonesLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(milestones) == 0 {
 				f.PrintText("No milestones found.")
 				return
@@ -106,8 +104,7 @@ var milestonesCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		milestone, err := client.CreateMilestone(cmd.Context(), api.CreateMilestoneParams{
@@ -118,11 +115,10 @@ var milestonesCreateCmd = &cobra.Command{
 			DueDate:     milestonesDueDateFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create milestone: %v", err)
-			return err
+			return HandleError(f, err, "create milestone")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Milestone created successfully!")
 			f.PrintText("ID:     " + milestone.ID)
 			f.PrintText("Title:  " + milestone.Title)
@@ -156,13 +152,11 @@ var milestonesDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		if err := client.DeleteMilestone(cmd.Context(), args[0]); err != nil {
-			f.PrintError("Failed to delete milestone: %v", err)
-			return err
+			return HandleError(f, err, "delete milestone")
 		}
 
 		f.PrintSuccess("Milestone deleted successfully.")

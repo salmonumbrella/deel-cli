@@ -47,8 +47,7 @@ var tokensCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		token, err := client.CreateWorkerAccessToken(cmd.Context(), api.CreateWorkerAccessTokenParams{
@@ -57,11 +56,10 @@ var tokensCreateCmd = &cobra.Command{
 			TTL:      tokensTTLFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create token: %v", err)
-			return err
+			return HandleError(f, err, "create token")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Token:     " + token.Token)
 			f.PrintText("Worker ID: " + token.WorkerID)
 			f.PrintText("Scope:     " + token.Scope)

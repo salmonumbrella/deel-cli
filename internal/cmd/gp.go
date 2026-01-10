@@ -95,8 +95,7 @@ var gpCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateGPContractParams{
@@ -112,11 +111,10 @@ var gpCreateCmd = &cobra.Command{
 
 		contract, err := client.CreateGPContract(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create GP contract: %v", err)
-			return err
+			return HandleError(f, err, "create GP contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("GP contract created successfully")
 			f.PrintText("ID:            " + contract.ID)
 			f.PrintText("Worker ID:     " + contract.WorkerID)
@@ -160,14 +158,12 @@ var gpBankAccountsListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		accounts, err := client.ListGPBankAccounts(cmd.Context(), gpBankAccountsListWorkerIDFlag)
 		if err != nil {
-			f.PrintError("Failed to list bank accounts: %v", err)
-			return err
+			return HandleError(f, err, "list bank accounts")
 		}
 
 		// Apply client-side limit
@@ -175,7 +171,7 @@ var gpBankAccountsListCmd = &cobra.Command{
 			accounts = accounts[:gpBankAccountsLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(accounts) == 0 {
 				f.PrintText("No bank accounts found")
 				return
@@ -255,8 +251,7 @@ var gpBankAccountsAddCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.AddGPBankAccountParams{
@@ -269,11 +264,10 @@ var gpBankAccountsAddCmd = &cobra.Command{
 
 		bankAccount, err := client.AddGPBankAccount(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to add bank account: %v", err)
-			return err
+			return HandleError(f, err, "add bank account")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Bank account added successfully")
 			f.PrintText("ID:             " + bankAccount.ID)
 			f.PrintText("Worker ID:      " + bankAccount.WorkerID)
@@ -314,8 +308,7 @@ var gpReportsG2NCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.ListG2NReportsParams{
@@ -325,11 +318,10 @@ var gpReportsG2NCmd = &cobra.Command{
 
 		reports, err := client.ListG2NReports(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to list gross-to-net reports: %v", err)
-			return err
+			return HandleError(f, err, "list gross-to-net reports")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(reports) == 0 {
 				f.PrintText("No gross-to-net reports found")
 				return
@@ -394,8 +386,7 @@ var gpTerminateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.RequestGPTerminationParams{
@@ -406,11 +397,10 @@ var gpTerminateCmd = &cobra.Command{
 
 		termination, err := client.RequestGPTermination(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to request GP termination: %v", err)
-			return err
+			return HandleError(f, err, "request GP termination")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("GP termination requested successfully")
 			f.PrintText("ID:             " + termination.ID)
 			f.PrintText("Worker ID:      " + termination.WorkerID)
@@ -479,8 +469,7 @@ var gpShiftsCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateGPShiftParams{
@@ -493,11 +482,10 @@ var gpShiftsCreateCmd = &cobra.Command{
 
 		shift, err := client.CreateGPShift(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create GP shift: %v", err)
-			return err
+			return HandleError(f, err, "create GP shift")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("GP shift created successfully")
 			f.PrintText("ID:            " + shift.ID)
 			f.PrintText("Worker ID:     " + shift.WorkerID)
@@ -530,14 +518,12 @@ var gpRatesListCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		rates, err := client.ListGPShiftRates(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list shift rates: %v", err)
-			return err
+			return HandleError(f, err, "list shift rates")
 		}
 
 		// Apply client-side limit
@@ -545,7 +531,7 @@ var gpRatesListCmd = &cobra.Command{
 			rates = rates[:gpRatesLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(rates) == 0 {
 				f.PrintText("No shift rates found")
 				return
@@ -621,8 +607,7 @@ var gpRatesCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.GPCreateShiftRateParams{
@@ -634,11 +619,10 @@ var gpRatesCreateCmd = &cobra.Command{
 
 		shiftRate, err := client.CreateGPShiftRate(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create shift rate: %v", err)
-			return err
+			return HandleError(f, err, "create shift rate")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Shift rate created successfully")
 			f.PrintText("ID:       " + shiftRate.ID)
 			f.PrintText("Name:     " + shiftRate.Name)

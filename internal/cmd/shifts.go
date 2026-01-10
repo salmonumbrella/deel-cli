@@ -29,8 +29,7 @@ var shiftsListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		shifts, err := client.ListShifts(cmd.Context(), api.ShiftsListParams{
@@ -40,11 +39,10 @@ var shiftsListCmd = &cobra.Command{
 			Limit:     shiftsLimitFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to list shifts: %v", err)
-			return err
+			return HandleError(f, err, "list shifts")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(shifts) == 0 {
 				f.PrintText("No shifts found.")
 				return
@@ -71,17 +69,15 @@ var shiftsRatesCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		rates, err := client.ListShiftRates(cmd.Context(), shiftsCountryFlag)
 		if err != nil {
-			f.PrintError("Failed to list rates: %v", err)
-			return err
+			return HandleError(f, err, "list rates")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(rates) == 0 {
 				f.PrintText("No rates found.")
 				return

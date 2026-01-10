@@ -104,8 +104,7 @@ var eorCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateEORContractParams{
@@ -124,11 +123,10 @@ var eorCreateCmd = &cobra.Command{
 
 		contract, err := client.CreateEORContract(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create EOR contract: %v", err)
-			return err
+			return HandleError(f, err, "create EOR contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR contract created successfully")
 			f.PrintText("ID:            " + contract.ID)
 			f.PrintText("Title:         " + contract.Title)
@@ -167,17 +165,15 @@ var eorGetCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		contract, err := client.GetEORContract(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get EOR contract: %v", err)
-			return err
+			return HandleError(f, err, "get EOR contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:            " + contract.ID)
 			f.PrintText("Title:         " + contract.Title)
 			f.PrintText("Status:        " + contract.Status)
@@ -228,17 +224,15 @@ var eorSignCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		contract, err := client.SignEORContract(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to sign EOR contract: %v", err)
-			return err
+			return HandleError(f, err, "sign EOR contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR contract signed successfully")
 			f.PrintText("ID:     " + contract.ID)
 			f.PrintText("Title:  " + contract.Title)
@@ -277,8 +271,7 @@ var eorCancelCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CancelEORContractParams{
@@ -287,11 +280,10 @@ var eorCancelCmd = &cobra.Command{
 
 		contract, err := client.CancelEORContract(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to cancel EOR contract: %v", err)
-			return err
+			return HandleError(f, err, "cancel EOR contract")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR contract cancelled successfully")
 			f.PrintText("ID:     " + contract.ID)
 			f.PrintText("Title:  " + contract.Title)
@@ -373,8 +365,7 @@ var eorAmendCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateEORAmendmentParams{
@@ -386,11 +377,10 @@ var eorAmendCmd = &cobra.Command{
 
 		amendment, err := client.CreateEORAmendment(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to create EOR amendment: %v", err)
-			return err
+			return HandleError(f, err, "create EOR amendment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR amendment created successfully")
 			f.PrintText("ID:             " + amendment.ID)
 			f.PrintText("Contract ID:    " + amendment.ContractID)
@@ -440,7 +430,7 @@ var eorAmendmentsListCmd = &cobra.Command{
 			amendments = amendments[:eorAmendmentsLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(amendments) == 0 {
 				f.PrintText("No amendments found.")
 				return
@@ -483,7 +473,7 @@ var eorAmendmentsSignCmd = &cobra.Command{
 			return HandleError(f, err, "signing amendment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Amendment signed successfully")
 			f.PrintText("ID:             " + amendment.ID)
 			f.PrintText("Contract ID:    " + amendment.ContractID)
@@ -526,7 +516,7 @@ var eorAmendmentsAcceptCmd = &cobra.Command{
 			return HandleError(f, err, "accepting amendment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Amendment accepted successfully")
 			f.PrintText("ID:             " + amendment.ID)
 			f.PrintText("Contract ID:    " + amendment.ContractID)
@@ -601,8 +591,7 @@ Example:
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.EORTerminationParams{
@@ -620,11 +609,10 @@ Example:
 
 		termination, err := client.RequestEORTermination(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to request EOR termination: %v", err)
-			return err
+			return HandleError(f, err, "request EOR termination")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR termination requested successfully")
 			f.PrintText("ID:                " + termination.ID)
 			f.PrintText("Contract ID:       " + termination.ContractID)
@@ -701,8 +689,7 @@ var workersCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.CreateEORWorkerParams{
@@ -716,11 +703,10 @@ var workersCreateCmd = &cobra.Command{
 
 		worker, err := client.CreateEORWorker(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to create EOR worker: %v", err)
-			return err
+			return HandleError(f, err, "create EOR worker")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("EOR worker created successfully")
 			f.PrintText("ID:         " + worker.ID)
 			f.PrintText("Email:      " + worker.Email)
@@ -804,8 +790,7 @@ var bankAccountsAddCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.AddBankAccountParams{
@@ -821,11 +806,10 @@ var bankAccountsAddCmd = &cobra.Command{
 
 		bankAccount, err := client.AddEORWorkerBankAccount(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to add bank account: %v", err)
-			return err
+			return HandleError(f, err, "add bank account")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Bank account added successfully")
 			f.PrintText("ID:             " + bankAccount.ID)
 			f.PrintText("Account Holder: " + bankAccount.AccountHolder)

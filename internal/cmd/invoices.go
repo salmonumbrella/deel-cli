@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -28,57 +29,41 @@ var invoicesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all invoices",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing invoices")
 		if err != nil {
-			return HandleError(f, err, "listing invoices")
+			return err
 		}
 
-		cursor := invoicesCursorFlag
-		var allInvoices []api.Invoice
-		var next string
-
-		for {
-			resp, err := client.ListInvoices(cmd.Context(), api.InvoicesListParams{
-				Limit:      invoicesLimitFlag,
+		invoices, _, hasMore, err := collectCursorItems(cmd.Context(), invoicesAllFlag, invoicesCursorFlag, invoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Invoice], error) {
+			resp, err := client.ListInvoices(ctx, api.InvoicesListParams{
+				Limit:      limit,
 				Cursor:     cursor,
 				Status:     invoicesStatusFlag,
 				ContractID: invoicesContractFlag,
 			})
 			if err != nil {
-				return HandleError(f, err, "listing invoices")
+				return CursorListResult[api.Invoice]{}, err
 			}
-			allInvoices = append(allInvoices, resp.Data...)
-			next = resp.Page.Next
-			if !invoicesAllFlag || next == "" {
-				if !invoicesAllFlag {
-					allInvoices = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.Invoice]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing invoices")
 		}
 
 		response := api.InvoicesListResponse{
-			Data: allInvoices,
+			Data: invoices,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allInvoices) == 0 {
-				f.PrintText("No invoices found.")
-				return
-			}
-			table := f.NewTable("ID", "NUMBER", "WORKER", "AMOUNT", "STATUS", "DUE DATE")
-			for _, inv := range allInvoices {
-				amount := fmt.Sprintf("%.2f %s", float64(inv.Amount), inv.Currency)
-				table.AddRow(inv.ID, inv.Number, inv.WorkerName, amount, inv.Status, inv.DueDate)
-			}
-			table.Render()
-			if !invoicesAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, invoices, hasMore, "No invoices found.", []string{"ID", "NUMBER", "WORKER", "AMOUNT", "STATUS", "DUE DATE"}, func(inv api.Invoice) []string {
+			amount := fmt.Sprintf("%.2f %s", float64(inv.Amount), inv.Currency)
+			return []string{inv.ID, inv.Number, inv.WorkerName, amount, inv.Status, inv.DueDate}
 		}, response)
 	},
 }
@@ -99,7 +84,7 @@ var invoicesGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting invoice")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + invoice.ID)
 			f.PrintText("Number:      " + invoice.Number)
 			f.PrintText("Status:      " + invoice.Status)
@@ -160,7 +145,7 @@ Filter options (when listing all):
 				return HandleError(f, err, "listing adjustments")
 			}
 
-			return f.Output(func() {
+			return f.OutputFiltered(cmd.Context(), func() {
 				if len(adjustments) == 0 {
 					f.PrintText("No adjustments found.")
 					return
@@ -188,7 +173,7 @@ Filter options (when listing all):
 			return HandleError(f, err, "listing adjustments")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(adjustments) == 0 {
 				f.PrintText("No adjustments found.")
 				return
@@ -230,7 +215,7 @@ var invoicesAdjustmentsGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + adjustment.ID)
 			f.PrintText("Type:        " + adjustment.Type)
 			f.PrintText("Status:      " + adjustment.Status)
@@ -311,7 +296,7 @@ var invoicesAdjustmentsApproveCmd = &cobra.Command{
 			}
 
 			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
-				f.PrintError("Failed to approve %s: %v", id, err)
+				_ = HandleError(f, err, "approving adjustment")
 				failed = append(failed, id)
 				continue
 			}
@@ -363,7 +348,7 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 			}
 
 			if err := client.ReviewInvoiceAdjustment(cmd.Context(), id, params); err != nil {
-				f.PrintError("Failed to decline %s: %v", id, err)
+				_ = HandleError(f, err, "declining adjustment")
 				failed = append(failed, id)
 				continue
 			}
@@ -423,7 +408,7 @@ var invoicesAdjustmentsCreateCmd = &cobra.Command{
 			return HandleError(f, err, "creating adjustment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Adjustment created successfully")
 			f.PrintText("ID:     " + adjustment.ID)
 			f.PrintText("Type:   " + adjustment.Type)
@@ -484,56 +469,40 @@ var deelInvoicesCmd = &cobra.Command{
 	Use:   "deel-invoices",
 	Short: "List Deel-issued invoices",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing invoices")
 		if err != nil {
-			return HandleError(f, err, "listing invoices")
+			return err
 		}
 
-		cursor := deelInvoicesCursorFlag
-		var allDeelInvoices []api.DeelInvoice
-		var next string
-
-		for {
-			resp, err := client.ListDeelInvoices(cmd.Context(), api.DeelInvoicesListParams{
-				Limit:  deelInvoicesLimitFlag,
+		invoices, _, hasMore, err := collectCursorItems(cmd.Context(), deelInvoicesAllFlag, deelInvoicesCursorFlag, deelInvoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DeelInvoice], error) {
+			resp, err := client.ListDeelInvoices(ctx, api.DeelInvoicesListParams{
+				Limit:  limit,
 				Cursor: cursor,
 				Status: deelInvoicesStatusFlag,
 			})
 			if err != nil {
-				return HandleError(f, err, "listing invoices")
+				return CursorListResult[api.DeelInvoice]{}, err
 			}
-			allDeelInvoices = append(allDeelInvoices, resp.Data...)
-			next = resp.Page.Next
-			if !deelInvoicesAllFlag || next == "" {
-				if !deelInvoicesAllFlag {
-					allDeelInvoices = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.DeelInvoice]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing invoices")
 		}
 
 		response := api.DeelInvoicesListResponse{
-			Data: allDeelInvoices,
+			Data: invoices,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allDeelInvoices) == 0 {
-				f.PrintText("No Deel invoices found.")
-				return
-			}
-			table := f.NewTable("ID", "NUMBER", "AMOUNT", "STATUS", "ISSUE DATE", "DUE DATE")
-			for _, inv := range allDeelInvoices {
-				amount := fmt.Sprintf("%.2f %s", inv.Amount, inv.Currency)
-				table.AddRow(inv.ID, inv.Number, amount, inv.Status, inv.IssueDate, inv.DueDate)
-			}
-			table.Render()
-			if !deelInvoicesAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, invoices, hasMore, "No Deel invoices found.", []string{"ID", "NUMBER", "AMOUNT", "STATUS", "ISSUE DATE", "DUE DATE"}, func(inv api.DeelInvoice) []string {
+			amount := fmt.Sprintf("%.2f %s", inv.Amount, inv.Currency)
+			return []string{inv.ID, inv.Number, amount, inv.Status, inv.IssueDate, inv.DueDate}
 		}, response)
 	},
 }

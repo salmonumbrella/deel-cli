@@ -30,14 +30,12 @@ var costCentersListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		centers, err := client.ListCostCenters(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list cost centers: %v", err)
-			return err
+			return HandleError(f, err, "list cost centers")
 		}
 
 		// Apply client-side limit
@@ -45,7 +43,7 @@ var costCentersListCmd = &cobra.Command{
 			centers = centers[:costCentersLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(centers) == 0 {
 				f.PrintText("No cost centers found.")
 				return
@@ -87,15 +85,13 @@ The JSON file should contain an array of cost centers:
 		// Read the file
 		data, err := os.ReadFile(costCenterFileFlag)
 		if err != nil {
-			f.PrintError("Failed to read file: %v", err)
-			return err
+			return HandleError(f, err, "read file")
 		}
 
 		// Parse the JSON
 		var centers []api.CostCenterInput
 		if err := json.Unmarshal(data, &centers); err != nil {
-			f.PrintError("Failed to parse JSON: %v", err)
-			return err
+			return HandleError(f, err, "parse JSON")
 		}
 
 		if len(centers) == 0 {
@@ -117,19 +113,17 @@ The JSON file should contain an array of cost centers:
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		synced, err := client.SyncCostCenters(cmd.Context(), api.SyncCostCentersParams{
 			CostCenters: centers,
 		})
 		if err != nil {
-			f.PrintError("Failed to sync cost centers: %v", err)
-			return err
+			return HandleError(f, err, "sync cost centers")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Synced %d cost centers successfully", len(synced))
 			table := f.NewTable("ID", "CODE", "NAME", "STATUS")
 			for _, c := range synced {

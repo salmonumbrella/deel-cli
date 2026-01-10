@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -32,57 +33,41 @@ var offCycleListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List off-cycle payments",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing payments")
+		if err != nil {
+			return err
+		}
+
+		payments, _, hasMore, err := collectCursorItems(cmd.Context(), offCycleAllFlag, offCycleCursorFlag, offCycleLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OffCyclePayment], error) {
+			resp, err := client.ListOffCyclePayments(ctx, api.OffCyclePaymentsListParams{
+				ContractID: offCycleContractFlag,
+				Status:     offCycleStatusFlag,
+				Limit:      limit,
+				Cursor:     cursor,
+			})
+			if err != nil {
+				return CursorListResult[api.OffCyclePayment]{}, err
+			}
+			return CursorListResult[api.OffCyclePayment]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
 		if err != nil {
 			return HandleError(f, err, "listing payments")
 		}
 
-		cursor := offCycleCursorFlag
-		var allPayments []api.OffCyclePayment
-		var next string
-
-		for {
-			resp, err := client.ListOffCyclePayments(cmd.Context(), api.OffCyclePaymentsListParams{
-				ContractID: offCycleContractFlag,
-				Status:     offCycleStatusFlag,
-				Limit:      offCycleLimitFlag,
-				Cursor:     cursor,
-			})
-			if err != nil {
-				return HandleError(f, err, "listing payments")
-			}
-			allPayments = append(allPayments, resp.Data...)
-			next = resp.Page.Next
-			if !offCycleAllFlag || next == "" {
-				if !offCycleAllFlag {
-					allPayments = resp.Data
-				}
-				break
-			}
-			cursor = next
-		}
-
 		response := api.OffCyclePaymentsListResponse{
-			Data: allPayments,
+			Data: payments,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allPayments) == 0 {
-				f.PrintText("No off-cycle payments found.")
-				return
-			}
-			table := f.NewTable("ID", "WORKER", "TYPE", "AMOUNT", "STATUS", "DATE")
-			for _, p := range allPayments {
-				amount := fmt.Sprintf("%.2f %s", p.Amount, p.Currency)
-				table.AddRow(p.ID, p.WorkerName, p.Type, amount, p.Status, p.PaymentDate)
-			}
-			table.Render()
-			if !offCycleAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, payments, hasMore, "No off-cycle payments found.", []string{"ID", "WORKER", "TYPE", "AMOUNT", "STATUS", "DATE"}, func(p api.OffCyclePayment) []string {
+			amount := fmt.Sprintf("%.2f %s", p.Amount, p.Currency)
+			return []string{p.ID, p.WorkerName, p.Type, amount, p.Status, p.PaymentDate}
 		}, response)
 	},
 }
@@ -162,7 +147,7 @@ var breakdownCmd = &cobra.Command{
 			return HandleError(f, err, "getting payment")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Payment ID:        " + breakdown.PaymentID)
 			f.PrintText(fmt.Sprintf("Gross Amount:      %.2f %s", breakdown.GrossAmount, breakdown.Currency))
 			f.PrintText(fmt.Sprintf("Net Amount:        %.2f %s", breakdown.NetAmount, breakdown.Currency))
@@ -195,57 +180,41 @@ var receiptsCmd = &cobra.Command{
 	Use:   "receipts",
 	Short: "List payment receipts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing payments")
 		if err != nil {
-			return HandleError(f, err, "listing payments")
+			return err
 		}
 
-		cursor := receiptsCursorFlag
-		var allReceipts []api.DetailedPaymentReceipt
-		var next string
-
-		for {
-			resp, err := client.ListDetailedPaymentReceipts(cmd.Context(), api.DetailedPaymentReceiptsListParams{
-				Limit:      receiptsLimitFlag,
+		receipts, _, hasMore, err := collectCursorItems(cmd.Context(), receiptsAllFlag, receiptsCursorFlag, receiptsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DetailedPaymentReceipt], error) {
+			resp, err := client.ListDetailedPaymentReceipts(ctx, api.DetailedPaymentReceiptsListParams{
+				Limit:      limit,
 				Cursor:     cursor,
 				ContractID: receiptsContractFlag,
 				PaymentID:  receiptsPaymentFlag,
 			})
 			if err != nil {
-				return HandleError(f, err, "listing payments")
+				return CursorListResult[api.DetailedPaymentReceipt]{}, err
 			}
-			allReceipts = append(allReceipts, resp.Data...)
-			next = resp.Page.Next
-			if !receiptsAllFlag || next == "" {
-				if !receiptsAllFlag {
-					allReceipts = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.DetailedPaymentReceipt]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing payments")
 		}
 
 		response := api.DetailedPaymentReceiptsListResponse{
-			Data: allReceipts,
+			Data: receipts,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allReceipts) == 0 {
-				f.PrintText("No payment receipts found.")
-				return
-			}
-			table := f.NewTable("ID", "PAYMENT ID", "WORKER", "AMOUNT", "ISSUE DATE")
-			for _, r := range allReceipts {
-				amount := fmt.Sprintf("%.2f %s", r.Amount, r.Currency)
-				table.AddRow(r.ID, r.PaymentID, r.WorkerName, amount, r.IssueDate)
-			}
-			table.Render()
-			if !receiptsAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, receipts, hasMore, "No payment receipts found.", []string{"ID", "PAYMENT ID", "WORKER", "AMOUNT", "ISSUE DATE"}, func(r api.DetailedPaymentReceipt) []string {
+			amount := fmt.Sprintf("%.2f %s", r.Amount, r.Currency)
+			return []string{r.ID, r.PaymentID, r.WorkerName, amount, r.IssueDate}
 		}, response)
 	},
 }

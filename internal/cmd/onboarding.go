@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,55 +26,39 @@ var onboardingListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List employees in onboarding",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing onboarding")
+		if err != nil {
+			return err
+		}
+
+		employees, _, hasMore, err := collectCursorItems(cmd.Context(), onboardingAllFlag, onboardingCursorFlag, onboardingLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OnboardingEmployee], error) {
+			resp, err := client.ListOnboardingEmployees(ctx, api.OnboardingListParams{
+				Status: onboardingStatusFlag,
+				Limit:  limit,
+				Cursor: cursor,
+			})
+			if err != nil {
+				return CursorListResult[api.OnboardingEmployee]{}, err
+			}
+			return CursorListResult[api.OnboardingEmployee]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
 		if err != nil {
 			return HandleError(f, err, "listing onboarding")
 		}
 
-		cursor := onboardingCursorFlag
-		var allEmployees []api.OnboardingEmployee
-		var next string
-
-		for {
-			resp, err := client.ListOnboardingEmployees(cmd.Context(), api.OnboardingListParams{
-				Status: onboardingStatusFlag,
-				Limit:  onboardingLimitFlag,
-				Cursor: cursor,
-			})
-			if err != nil {
-				return HandleError(f, err, "listing onboarding")
-			}
-			allEmployees = append(allEmployees, resp.Data...)
-			next = resp.Page.Next
-			if !onboardingAllFlag || next == "" {
-				if !onboardingAllFlag {
-					allEmployees = resp.Data
-				}
-				break
-			}
-			cursor = next
-		}
-
 		response := api.OnboardingListResponse{
-			Data: allEmployees,
+			Data: employees,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allEmployees) == 0 {
-				f.PrintText("No employees in onboarding.")
-				return
-			}
-			table := f.NewTable("ID", "NAME", "COUNTRY", "STATUS", "STAGE", "PROGRESS")
-			for _, e := range allEmployees {
-				table.AddRow(e.ID, e.Name, e.Country, e.Status, e.Stage, fmt.Sprintf("%d%%", e.Progress))
-			}
-			table.Render()
-			if !onboardingAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, employees, hasMore, "No employees in onboarding.", []string{"ID", "NAME", "COUNTRY", "STATUS", "STAGE", "PROGRESS"}, func(e api.OnboardingEmployee) []string {
+			return []string{e.ID, e.Name, e.Country, e.Status, e.Stage, fmt.Sprintf("%d%%", e.Progress)}
 		}, response)
 	},
 }
@@ -94,7 +79,7 @@ var onboardingGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting onboarding details")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Employee:     " + details.EmployeeName)
 			f.PrintText("Status:       " + details.Status)
 			f.PrintText("Stage:        " + details.Stage)

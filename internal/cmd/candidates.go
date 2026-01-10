@@ -51,8 +51,7 @@ var candidatesAddCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		candidate, err := client.AddCandidate(cmd.Context(), api.AddCandidateParams{
@@ -62,11 +61,10 @@ var candidatesAddCmd = &cobra.Command{
 			Phone:     candidatePhoneFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to add candidate: %v", err)
-			return err
+			return HandleError(f, err, "add candidate")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Candidate added successfully")
 			f.PrintText("ID:         " + candidate.ID)
 			f.PrintText("Name:       " + candidate.FirstName + " " + candidate.LastName)
@@ -128,8 +126,7 @@ var candidatesUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateCandidateParams{}
@@ -151,11 +148,10 @@ var candidatesUpdateCmd = &cobra.Command{
 
 		candidate, err := client.UpdateCandidate(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update candidate: %v", err)
-			return err
+			return HandleError(f, err, "update candidate")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Candidate updated successfully")
 			f.PrintText("ID:         " + candidate.ID)
 			f.PrintText("Name:       " + candidate.FirstName + " " + candidate.LastName)

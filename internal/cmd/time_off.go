@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -28,59 +29,41 @@ var timeOffListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List time off requests",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		f := getFormatter()
-		client, err := getClient()
+		client, f, err := initClient("listing time off")
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
 			return err
 		}
 
-		cursor := timeOffCursorFlag
-		var allRequests []api.TimeOffRequest
-		var next string
-
-		for {
-			resp, err := client.ListTimeOffRequests(cmd.Context(), api.TimeOffListParams{
+		requests, _, hasMore, err := collectCursorItems(cmd.Context(), timeOffAllFlag, timeOffCursorFlag, timeOffLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.TimeOffRequest], error) {
+			resp, err := client.ListTimeOffRequests(ctx, api.TimeOffListParams{
 				HRISProfileID: timeOffProfileFlag,
 				Status:        timeOffStatusFlag,
-				Limit:         timeOffLimitFlag,
+				Limit:         limit,
 				Cursor:        cursor,
 			})
 			if err != nil {
-				f.PrintError("Failed to list time off: %v", err)
-				return err
+				return CursorListResult[api.TimeOffRequest]{}, err
 			}
-			allRequests = append(allRequests, resp.Data...)
-			next = resp.Page.Next
-			if !timeOffAllFlag || next == "" {
-				if !timeOffAllFlag {
-					allRequests = resp.Data
-				}
-				break
-			}
-			cursor = next
+			return CursorListResult[api.TimeOffRequest]{
+				Items: resp.Data,
+				Page: CursorPage{
+					Next:  resp.Page.Next,
+					Total: resp.Page.Total,
+				},
+			}, nil
+		})
+		if err != nil {
+			return HandleError(f, err, "listing time off")
 		}
 
 		response := api.TimeOffListResponse{
-			Data: allRequests,
+			Data: requests,
 		}
 		response.Page.Next = ""
 
-		return f.Output(func() {
-			if len(allRequests) == 0 {
-				f.PrintText("No time off requests found.")
-				return
-			}
-			table := f.NewTable("ID", "WORKER", "TYPE", "DATES", "DAYS", "STATUS")
-			for _, t := range allRequests {
-				dates := t.StartDate + " - " + t.EndDate
-				table.AddRow(t.ID, t.WorkerName, t.Type, dates, fmt.Sprintf("%.1f", t.Days), t.Status)
-			}
-			table.Render()
-			if !timeOffAllFlag && next != "" {
-				f.PrintText("")
-				f.PrintText("More results available. Use --cursor to paginate or --all to fetch everything.")
-			}
+		return outputList(cmd, f, requests, hasMore, "No time off requests found.", []string{"ID", "WORKER", "TYPE", "DATES", "DAYS", "STATUS"}, func(t api.TimeOffRequest) []string {
+			dates := t.StartDate + " - " + t.EndDate
+			return []string{t.ID, t.WorkerName, t.Type, dates, fmt.Sprintf("%.1f", t.Days), t.Status}
 		}, response)
 	},
 }
@@ -92,17 +75,15 @@ var timeOffPoliciesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		policies, err := client.ListTimeOffPolicies(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list policies: %v", err)
-			return err
+			return HandleError(f, err, "list policies")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(policies) == 0 {
 				f.PrintText("No policies found.")
 				return
@@ -153,8 +134,7 @@ var timeOffCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		req, err := client.CreateTimeOffRequest(cmd.Context(), api.CreateTimeOffParams{
@@ -165,8 +145,7 @@ var timeOffCreateCmd = &cobra.Command{
 			Reason:        timeOffCreateReasonFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create request: %v", err)
-			return err
+			return HandleError(f, err, "create request")
 		}
 
 		f.PrintSuccess("Created time off request: %s", req.ID)
@@ -194,13 +173,11 @@ var timeOffCancelCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		if err := client.CancelTimeOffRequest(cmd.Context(), args[0]); err != nil {
-			f.PrintError("Failed to cancel: %v", err)
-			return err
+			return HandleError(f, err, "cancel")
 		}
 
 		f.PrintSuccess("Cancelled time off request: %s", args[0])
@@ -239,17 +216,15 @@ var timeOffApproveCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		approval, err := client.ApproveRejectTimeOff(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to approve time off request: %v", err)
-			return err
+			return HandleError(f, err, "approve time off request")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Time off request approved successfully")
 			f.PrintText("Request ID: " + approval.RequestID)
 			f.PrintText("Status:     " + approval.Status)
@@ -296,17 +271,15 @@ var timeOffRejectCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		approval, err := client.ApproveRejectTimeOff(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to reject time off request: %v", err)
-			return err
+			return HandleError(f, err, "reject time off request")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Time off request rejected successfully")
 			f.PrintText("Request ID: " + approval.RequestID)
 			f.PrintText("Status:     " + approval.Status)
@@ -350,8 +323,7 @@ var timeOffValidateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.ValidateTimeOffParams{
@@ -363,11 +335,10 @@ var timeOffValidateCmd = &cobra.Command{
 
 		validation, err := client.ValidateTimeOffRequest(cmd.Context(), params)
 		if err != nil {
-			f.PrintError("Failed to validate time off request: %v", err)
-			return err
+			return HandleError(f, err, "validate time off request")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if validation.Valid {
 				f.PrintSuccess("Time off request is valid")
 			} else {
@@ -401,17 +372,15 @@ var timeOffEntitlementsCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		entitlements, err := client.GetEntitlements(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get entitlements: %v", err)
-			return err
+			return HandleError(f, err, "get entitlements")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(entitlements) == 0 {
 				f.PrintText("No entitlements found for profile: " + args[0])
 				return
@@ -444,17 +413,15 @@ var timeOffScheduleCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		schedule, err := client.GetWorkSchedule(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get work schedule: %v", err)
-			return err
+			return HandleError(f, err, "get work schedule")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Work Schedule for Profile: " + schedule.ProfileID)
 			f.PrintText("")
 			f.PrintText("Timezone:      " + schedule.Timezone)

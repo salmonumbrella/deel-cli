@@ -34,14 +34,12 @@ var webhooksListCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		webhooks, err := client.ListWebhooks(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list webhooks: %v", err)
-			return err
+			return HandleError(f, err, "list webhooks")
 		}
 
 		// Apply client-side limit
@@ -49,7 +47,7 @@ var webhooksListCmd = &cobra.Command{
 			webhooks = webhooks[:webhooksLimitFlag]
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(webhooks) == 0 {
 				f.PrintText("No webhooks found.")
 				return
@@ -75,17 +73,15 @@ var webhooksGetCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		webhook, err := client.GetWebhook(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to get webhook: %v", err)
-			return err
+			return HandleError(f, err, "get webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:          " + webhook.ID)
 			f.PrintText("URL:         " + webhook.URL)
 			f.PrintText("Status:      " + webhook.Status)
@@ -132,8 +128,7 @@ var webhooksCreateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		webhook, err := client.CreateWebhook(cmd.Context(), api.CreateWebhookParams{
@@ -142,11 +137,10 @@ var webhooksCreateCmd = &cobra.Command{
 			Description: webhooksDescriptionFlag,
 		})
 		if err != nil {
-			f.PrintError("Failed to create webhook: %v", err)
-			return err
+			return HandleError(f, err, "create webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Webhook created successfully")
 			f.PrintText("ID:          " + webhook.ID)
 			f.PrintText("URL:         " + webhook.URL)
@@ -200,8 +194,7 @@ var webhooksUpdateCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		params := api.UpdateWebhookParams{}
@@ -217,11 +210,10 @@ var webhooksUpdateCmd = &cobra.Command{
 
 		webhook, err := client.UpdateWebhook(cmd.Context(), args[0], params)
 		if err != nil {
-			f.PrintError("Failed to update webhook: %v", err)
-			return err
+			return HandleError(f, err, "update webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Webhook updated successfully")
 			f.PrintText("ID:          " + webhook.ID)
 			f.PrintText("URL:         " + webhook.URL)
@@ -255,19 +247,17 @@ var webhooksEnableCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		webhook, err := client.UpdateWebhook(cmd.Context(), args[0], api.UpdateWebhookParams{
 			Status: "active",
 		})
 		if err != nil {
-			f.PrintError("Failed to enable webhook: %v", err)
-			return err
+			return HandleError(f, err, "enable webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Webhook enabled successfully")
 			f.PrintText("ID:     " + webhook.ID)
 			f.PrintText("Status: " + webhook.Status)
@@ -296,19 +286,17 @@ var webhooksDisableCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		webhook, err := client.UpdateWebhook(cmd.Context(), args[0], api.UpdateWebhookParams{
 			Status: "disabled",
 		})
 		if err != nil {
-			f.PrintError("Failed to disable webhook: %v", err)
-			return err
+			return HandleError(f, err, "disable webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Webhook disabled successfully")
 			f.PrintText("ID:     " + webhook.ID)
 			f.PrintText("Status: " + webhook.Status)
@@ -335,17 +323,15 @@ var webhooksDeleteCmd = &cobra.Command{
 
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		err = client.DeleteWebhook(cmd.Context(), args[0])
 		if err != nil {
-			f.PrintError("Failed to delete webhook: %v", err)
-			return err
+			return HandleError(f, err, "delete webhook")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Webhook deleted successfully")
 		}, map[string]string{"status": "deleted", "id": args[0]})
 	},
@@ -358,17 +344,15 @@ var webhooksEventTypesCmd = &cobra.Command{
 		f := getFormatter()
 		client, err := getClient()
 		if err != nil {
-			f.PrintError("Failed to get client: %v", err)
-			return err
+			return HandleError(f, err, "initializing client")
 		}
 
 		eventTypes, err := client.ListWebhookEventTypes(cmd.Context())
 		if err != nil {
-			f.PrintError("Failed to list webhook event types: %v", err)
-			return err
+			return HandleError(f, err, "list webhook event types")
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if len(eventTypes) == 0 {
 				f.PrintText("No event types found.")
 				return
@@ -413,8 +397,7 @@ var webhooksVerifyCmd = &cobra.Command{
 		} else if webhooksVerifyPayloadFileFlag != "" {
 			data, err := os.ReadFile(webhooksVerifyPayloadFileFlag)
 			if err != nil {
-				f.PrintError("Failed to read payload file: %v", err)
-				return err
+				return HandleError(f, err, "read payload file")
 			}
 			payload = string(data)
 		} else if webhooksVerifyPayloadFlag != "" {
@@ -434,7 +417,7 @@ var webhooksVerifyCmd = &cobra.Command{
 			"provided_signature": provided,
 		}
 
-		return f.Output(func() {
+		return f.OutputFiltered(cmd.Context(), func() {
 			if match {
 				f.PrintSuccess("Signature is valid")
 			} else {
