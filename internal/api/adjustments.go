@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 )
 
@@ -45,6 +46,8 @@ type CreateAdjustmentParams struct {
 	Date           string  `json:"date"`
 	CycleReference string  `json:"cycle_reference,omitempty"`
 	MoveNextCycle  bool    `json:"move_next_cycle,omitempty"`
+	Vendor         string  `json:"vendor,omitempty"`         // Vendor name (defaults to "Company" if empty)
+	Country        string  `json:"country,omitempty"`        // ISO 3166-1 alpha-2 country code (defaults to "CA" if empty)
 }
 
 // UpdateAdjustmentParams are parameters for updating an adjustment
@@ -82,6 +85,34 @@ func (c *Client) CreateAdjustment(ctx context.Context, params CreateAdjustmentPa
 	writeField("currency", params.Currency)
 	writeField("description", params.Description)
 	writeField("date_of_adjustment", params.Date)
+
+	// Required by API: vendor and country
+	vendor := params.Vendor
+	if vendor == "" {
+		vendor = "Company" // Default vendor placeholder
+	}
+	writeField("vendor", vendor)
+
+	country := params.Country
+	if country == "" {
+		country = "CA" // Default to Canada
+	}
+	writeField("country", country)
+
+	// Create placeholder file part (required by API)
+	// Some adjustment types require a file, we provide a minimal placeholder with correct MIME type
+	if writeErr == nil {
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="file"; filename="adjustment.txt"`)
+		h.Set("Content-Type", "text/plain")
+		part, err := writer.CreatePart(h)
+		if err != nil {
+			writeErr = err
+		} else {
+			// Write placeholder content
+			_, writeErr = part.Write([]byte("Adjustment record"))
+		}
+	}
 
 	// Optional fields
 	if params.CycleReference != "" {

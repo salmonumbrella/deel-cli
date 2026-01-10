@@ -18,6 +18,9 @@ func TestCreateAdjustment(t *testing.T) {
 		assert.Equal(t, "Performance bonus", fields["description"])
 		assert.Equal(t, "2024-01-15", fields["date_of_adjustment"])
 		assert.Equal(t, "Performance bonus", fields["title"])
+		// Verify default values for vendor and country
+		assert.Equal(t, "Company", fields["vendor"])
+		assert.Equal(t, "CA", fields["country"])
 	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":          "adj1",

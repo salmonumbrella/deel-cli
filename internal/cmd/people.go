@@ -701,6 +701,8 @@ var (
 	adjustmentsCreateDateFlag           string
 	adjustmentsCreateCycleReferenceFlag string
 	adjustmentsCreateMoveNextCycleFlag  bool
+	adjustmentsCreateVendorFlag         string
+	adjustmentsCreateCountryFlag        string
 )
 
 var adjustmentsCreateCmd = &cobra.Command{
@@ -772,6 +774,8 @@ var adjustmentsCreateCmd = &cobra.Command{
 			Date:           adjustmentsCreateDateFlag,
 			CycleReference: adjustmentsCreateCycleReferenceFlag,
 			MoveNextCycle:  adjustmentsCreateMoveNextCycleFlag,
+			Vendor:         adjustmentsCreateVendorFlag,
+			Country:        adjustmentsCreateCountryFlag,
 		}
 
 		adjustment, err := client.CreateAdjustment(cmd.Context(), params)
@@ -1413,6 +1417,8 @@ func init() {
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateDateFlag, "date", "", "Date YYYY-MM-DD (required)")
 	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateCycleReferenceFlag, "cycle-reference", "", "Payroll cycle reference (optional)")
 	adjustmentsCreateCmd.Flags().BoolVar(&adjustmentsCreateMoveNextCycleFlag, "move-next-cycle", false, "Move adjustment to next payroll cycle (optional)")
+	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateVendorFlag, "vendor", "", "Vendor name (optional)")
+	adjustmentsCreateCmd.Flags().StringVar(&adjustmentsCreateCountryFlag, "country", "", "Country code ISO 3166-1 alpha-2 (optional, defaults to CA)")
 
 	// Adjustments update command flags
 	adjustmentsUpdateCmd.Flags().StringVar(&adjustmentsUpdateAmountFlag, "amount", "", "Amount (optional)")

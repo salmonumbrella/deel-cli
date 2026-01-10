@@ -289,7 +289,7 @@ func TestListLegalEntities(t *testing.T) {
 	response := map[string]any{
 		"data": []map[string]any{
 			{"id": "le-1", "name": "Delicious Milk Corporation", "country": "CA"},
-			{"id": "le-2", "name": "Wanver Inc", "country": "US"},
+			{"id": "le-2", "name": "Acme Corp", "country": "US"},
 		},
 	}
 	server := mockServer(t, "GET", "/rest/v2/legal-entities", http.StatusOK, response)
