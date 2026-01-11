@@ -45,7 +45,7 @@ var atsOffersCmd = &cobra.Command{
 			return err
 		}
 
-		offers, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSOffer], error) {
+		offers, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSOffer], error) {
 			resp, err := client.ListATSOffers(ctx, api.ATSOffersListParams{
 				Status: atsStatusFlag,
 				Limit:  limit,
@@ -66,10 +66,7 @@ var atsOffersCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats offers")
 		}
 
-		response := api.ATSOffersListResponse{
-			Data: offers,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(offers, page)
 
 		return outputList(cmd, f, offers, hasMore, "No offers found.", []string{"ID", "CANDIDATE", "POSITION", "SALARY", "STATUS"}, func(o api.ATSOffer) []string {
 			salary := fmt.Sprintf("%.2f %s", o.Salary, o.Currency)
@@ -93,7 +90,7 @@ var atsJobsListCmd = &cobra.Command{
 			return err
 		}
 
-		jobs, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJob], error) {
+		jobs, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJob], error) {
 			resp, err := client.ListATSJobs(ctx, api.ATSJobsListParams{
 				Status:       atsStatusFlag,
 				DepartmentID: atsDepartmentIDFlag,
@@ -116,10 +113,7 @@ var atsJobsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats jobs")
 		}
 
-		response := api.ATSJobsListResponse{
-			Data: jobs,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(jobs, page)
 
 		return outputList(cmd, f, jobs, hasMore, "No jobs found.", []string{"ID", "TITLE", "DEPARTMENT", "LOCATION", "TYPE", "STATUS"}, func(j api.ATSJob) []string {
 			return []string{j.ID, j.Title, j.Department, j.Location, j.EmploymentType, j.Status}
@@ -209,7 +203,7 @@ var atsPostingsListCmd = &cobra.Command{
 			return err
 		}
 
-		postings, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJobPosting], error) {
+		postings, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSJobPosting], error) {
 			resp, err := client.ListATSJobPostings(ctx, api.ATSJobPostingsListParams{
 				Status: atsStatusFlag,
 				JobID:  atsJobIDFlag,
@@ -231,10 +225,7 @@ var atsPostingsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats job postings")
 		}
 
-		response := api.ATSJobPostingsListResponse{
-			Data: postings,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(postings, page)
 
 		return outputList(cmd, f, postings, hasMore, "No job postings found.", []string{"ID", "TITLE", "DEPARTMENT", "LOCATION", "STATUS", "POSTED AT"}, func(p api.ATSJobPosting) []string {
 			return []string{p.ID, p.Title, p.Department, p.Location, p.Status, p.PostedAt}
@@ -295,7 +286,7 @@ var atsApplicationsListCmd = &cobra.Command{
 			return HandleError(f, err, "initializing client")
 		}
 
-		apps, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSApplication], error) {
+		apps, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSApplication], error) {
 			resp, err := client.ListATSApplications(ctx, api.ATSApplicationsListParams{
 				Status:      atsStatusFlag,
 				JobID:       atsJobIDFlag,
@@ -319,10 +310,7 @@ var atsApplicationsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats applications")
 		}
 
-		response := api.ATSApplicationsListResponse{
-			Data: apps,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(apps, page)
 
 		return outputList(cmd, f, apps, hasMore, "No applications found.", []string{"ID", "CANDIDATE", "JOB", "STATUS", "STAGE", "APPLIED AT"}, func(a api.ATSApplication) []string {
 			return []string{a.ID, a.CandidateName, a.JobTitle, a.Status, a.Stage, a.AppliedAt}
@@ -346,7 +334,7 @@ var atsCandidatesListCmd = &cobra.Command{
 			return HandleError(f, err, "initializing client")
 		}
 
-		candidates, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSCandidate], error) {
+		candidates, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSCandidate], error) {
 			resp, err := client.ListATSCandidates(ctx, api.ATSCandidatesListParams{
 				Search: atsSearchFlag,
 				Limit:  limit,
@@ -367,10 +355,7 @@ var atsCandidatesListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats candidates")
 		}
 
-		response := api.ATSCandidatesListResponse{
-			Data: candidates,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(candidates, page)
 
 		return outputList(cmd, f, candidates, hasMore, "No candidates found.", []string{"ID", "NAME", "EMAIL", "PHONE", "LOCATION"}, func(c api.ATSCandidate) []string {
 			name := fmt.Sprintf("%s %s", c.FirstName, c.LastName)
@@ -395,7 +380,7 @@ var atsDepartmentsListCmd = &cobra.Command{
 			return HandleError(f, err, "initializing client")
 		}
 
-		departments, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSDepartment], error) {
+		departments, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSDepartment], error) {
 			resp, err := client.ListATSDepartments(ctx, api.ATSDepartmentsListParams{
 				Limit:  limit,
 				Cursor: cursor,
@@ -415,10 +400,7 @@ var atsDepartmentsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats departments")
 		}
 
-		response := api.ATSDepartmentsListResponse{
-			Data: departments,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(departments, page)
 
 		return outputList(cmd, f, departments, hasMore, "No departments found.", []string{"ID", "NAME", "PARENT ID", "CREATED AT"}, func(d api.ATSDepartment) []string {
 			return []string{d.ID, d.Name, d.ParentID, d.CreatedAt}
@@ -447,7 +429,7 @@ var atsLocationsListCmd = &cobra.Command{
 			remotePtr = &atsRemoteFlag
 		}
 
-		locations, _, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSLocation], error) {
+		locations, page, hasMore, err := collectCursorItems(cmd.Context(), atsAllFlag, atsCursorFlag, atsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ATSLocation], error) {
 			resp, err := client.ListATSLocations(ctx, api.ATSLocationsListParams{
 				Remote: remotePtr,
 				Limit:  limit,
@@ -468,10 +450,7 @@ var atsLocationsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing ats locations")
 		}
 
-		response := api.ATSLocationsListResponse{
-			Data: locations,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(locations, page)
 
 		return outputList(cmd, f, locations, hasMore, "No locations found.", []string{"ID", "NAME", "CITY", "COUNTRY", "REMOTE"}, func(l api.ATSLocation) []string {
 			remote := "No"

@@ -34,7 +34,7 @@ var timeOffListCmd = &cobra.Command{
 			return err
 		}
 
-		requests, _, hasMore, err := collectCursorItems(cmd.Context(), timeOffAllFlag, timeOffCursorFlag, timeOffLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.TimeOffRequest], error) {
+		requests, page, hasMore, err := collectCursorItems(cmd.Context(), timeOffAllFlag, timeOffCursorFlag, timeOffLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.TimeOffRequest], error) {
 			resp, err := client.ListTimeOffRequests(ctx, api.TimeOffListParams{
 				HRISProfileID: timeOffProfileFlag,
 				Status:        timeOffStatusFlag,
@@ -56,10 +56,7 @@ var timeOffListCmd = &cobra.Command{
 			return HandleError(f, err, "listing time off")
 		}
 
-		response := api.TimeOffListResponse{
-			Data: requests,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(requests, page)
 
 		return outputList(cmd, f, requests, hasMore, "No time off requests found.", []string{"ID", "WORKER", "TYPE", "DATES", "DAYS", "STATUS"}, func(t api.TimeOffRequest) []string {
 			dates := t.StartDate + " - " + t.EndDate

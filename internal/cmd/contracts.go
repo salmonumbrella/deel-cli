@@ -83,7 +83,7 @@ var contractsListCmd = &cobra.Command{
 			return err
 		}
 
-		allContracts, _, hasMore, err := collectCursorItems(cmd.Context(), contractsAllFlag, contractsCursorFlag, contractsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Contract], error) {
+		allContracts, page, hasMore, err := collectCursorItems(cmd.Context(), contractsAllFlag, contractsCursorFlag, contractsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Contract], error) {
 			resp, err := client.ListContracts(ctx, api.ContractsListParams{
 				Limit:  limit,
 				Cursor: cursor,
@@ -154,10 +154,7 @@ var contractsListCmd = &cobra.Command{
 			allContracts = filtered
 		}
 
-		response := api.ContractsListResponse{
-			Data: allContracts,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(allContracts, page)
 
 		return outputList(cmd, f, allContracts, hasMore, "No contracts found.", []string{"ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS"}, func(c api.Contract) []string {
 			entityID := c.EntityID

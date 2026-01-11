@@ -42,7 +42,7 @@ var timesheetsListCmd = &cobra.Command{
 			return err
 		}
 
-		timesheets, _, hasMore, err := collectCursorItems(cmd.Context(), timesheetsListAllFlag, timesheetsListCursorFlag, timesheetsListLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Timesheet], error) {
+		timesheets, page, hasMore, err := collectCursorItems(cmd.Context(), timesheetsListAllFlag, timesheetsListCursorFlag, timesheetsListLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Timesheet], error) {
 			params := api.TimesheetsListParams{
 				ContractID: timesheetsListContractIDFlag,
 				Status:     timesheetsListStatusFlag,
@@ -67,10 +67,7 @@ var timesheetsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing timesheets")
 		}
 
-		response := api.TimesheetsListResponse{
-			Data: timesheets,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(timesheets, page)
 
 		return outputList(cmd, f, timesheets, hasMore, "No timesheets found.", []string{"ID", "CONTRACT ID", "STATUS", "PERIOD", "TOTAL HOURS", "CREATED"}, func(ts api.Timesheet) []string {
 			period := fmt.Sprintf("%s to %s", ts.PeriodStart, ts.PeriodEnd)

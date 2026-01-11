@@ -78,16 +78,11 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 			return HandleError(f, err, "listing people")
 		}
 
-		total := page.Total
 		if peopleAllFlag {
-			total = len(people)
+			page.Total = len(people)
 		}
 
-		response := api.PeopleListResponse{
-			Data: people,
-		}
-		response.Page.Next = ""
-		response.Page.Total = total
+		response := makeListResponse(people, page)
 
 		return outputList(cmd, f, people, hasMore, "No people found.", []string{"ID", "NAME", "EMAIL", "JOB TITLE", "STATUS"}, func(p api.Person) []string {
 			return []string{p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status}

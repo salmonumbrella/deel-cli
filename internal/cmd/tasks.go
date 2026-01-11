@@ -46,7 +46,7 @@ var tasksListCmd = &cobra.Command{
 			return HandleError(f, err, "listing tasks")
 		}
 
-		tasks, _, hasMore, err := collectCursorItems(cmd.Context(), tasksAllFlag, tasksCursorFlag, tasksLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Task], error) {
+		tasks, page, hasMore, err := collectCursorItems(cmd.Context(), tasksAllFlag, tasksCursorFlag, tasksLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Task], error) {
 			resp, err := client.ListTasks(ctx, api.TasksListParams{
 				ContractID: tasksContractIDFlag,
 				Status:     tasksStatusFlag,
@@ -67,10 +67,7 @@ var tasksListCmd = &cobra.Command{
 			return HandleError(f, err, "listing tasks")
 		}
 
-		response := api.TasksListResponse{
-			Data: tasks,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(tasks, page)
 
 		return outputList(cmd, f, tasks, hasMore, "No tasks found.", []string{"ID", "TITLE", "AMOUNT", "STATUS"}, func(t api.Task) []string {
 			return []string{t.ID, t.Title, fmt.Sprintf("%.2f %s", t.Amount, t.Currency), t.Status}

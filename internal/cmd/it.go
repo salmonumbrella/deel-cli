@@ -33,7 +33,7 @@ var itAssetsCmd = &cobra.Command{
 			return err
 		}
 
-		assets, _, hasMore, err := collectCursorItems(cmd.Context(), itAssetsAllFlag, itAssetsCursorFlag, itAssetsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ITAsset], error) {
+		assets, page, hasMore, err := collectCursorItems(cmd.Context(), itAssetsAllFlag, itAssetsCursorFlag, itAssetsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.ITAsset], error) {
 			resp, err := client.ListITAssets(ctx, api.ITAssetsListParams{
 				Status: itAssetsStatusFlag,
 				Type:   itAssetsTypeFlag,
@@ -55,10 +55,7 @@ var itAssetsCmd = &cobra.Command{
 			return HandleError(f, err, "listing it assets")
 		}
 
-		response := api.ITAssetsListResponse{
-			Data: assets,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(assets, page)
 
 		return outputList(cmd, f, assets, hasMore, "No IT assets found.", []string{"ID", "NAME", "TYPE", "SERIAL", "STATUS", "ASSIGNED TO"}, func(a api.ITAsset) []string {
 			return []string{a.ID, a.Name, a.Type, a.SerialNumber, a.Status, a.AssignedTo}

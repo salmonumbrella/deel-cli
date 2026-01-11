@@ -34,7 +34,7 @@ var invoicesListCmd = &cobra.Command{
 			return err
 		}
 
-		invoices, _, hasMore, err := collectCursorItems(cmd.Context(), invoicesAllFlag, invoicesCursorFlag, invoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Invoice], error) {
+		invoices, page, hasMore, err := collectCursorItems(cmd.Context(), invoicesAllFlag, invoicesCursorFlag, invoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Invoice], error) {
 			resp, err := client.ListInvoices(ctx, api.InvoicesListParams{
 				Limit:      limit,
 				Cursor:     cursor,
@@ -56,10 +56,7 @@ var invoicesListCmd = &cobra.Command{
 			return HandleError(f, err, "listing invoices")
 		}
 
-		response := api.InvoicesListResponse{
-			Data: invoices,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(invoices, page)
 
 		return outputList(cmd, f, invoices, hasMore, "No invoices found.", []string{"ID", "NUMBER", "WORKER", "AMOUNT", "STATUS", "DUE DATE"}, func(inv api.Invoice) []string {
 			amount := fmt.Sprintf("%.2f %s", float64(inv.Amount), inv.Currency)
@@ -474,7 +471,7 @@ var deelInvoicesCmd = &cobra.Command{
 			return err
 		}
 
-		invoices, _, hasMore, err := collectCursorItems(cmd.Context(), deelInvoicesAllFlag, deelInvoicesCursorFlag, deelInvoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DeelInvoice], error) {
+		invoices, page, hasMore, err := collectCursorItems(cmd.Context(), deelInvoicesAllFlag, deelInvoicesCursorFlag, deelInvoicesLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DeelInvoice], error) {
 			resp, err := client.ListDeelInvoices(ctx, api.DeelInvoicesListParams{
 				Limit:  limit,
 				Cursor: cursor,
@@ -495,10 +492,7 @@ var deelInvoicesCmd = &cobra.Command{
 			return HandleError(f, err, "listing invoices")
 		}
 
-		response := api.DeelInvoicesListResponse{
-			Data: invoices,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(invoices, page)
 
 		return outputList(cmd, f, invoices, hasMore, "No Deel invoices found.", []string{"ID", "NUMBER", "AMOUNT", "STATUS", "ISSUE DATE", "DUE DATE"}, func(inv api.DeelInvoice) []string {
 			amount := fmt.Sprintf("%.2f %s", inv.Amount, inv.Currency)

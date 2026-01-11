@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/salmonumbrella/deel-cli/internal/api"
 	"github.com/salmonumbrella/deel-cli/internal/outfmt"
 )
 
@@ -20,6 +21,18 @@ type CursorPage struct {
 type CursorListResult[T any] struct {
 	Items []T
 	Page  CursorPage
+}
+
+// makeListResponse builds a ListResponse from items and page info.
+// It clears Page.Next (since --all mode has fetched everything) and preserves Total.
+func makeListResponse[T any](items []T, page CursorPage) api.ListResponse[T] {
+	return api.ListResponse[T]{
+		Data: items,
+		Page: api.Page{
+			Next:  "", // Always clear - we've collected all items
+			Total: page.Total,
+		},
+	}
 }
 
 func outputList[T any](cmd *cobra.Command, f *outfmt.Formatter, items []T, hasMore bool, emptyMessage string, headers []string, rowFunc func(T) []string, response any) error {

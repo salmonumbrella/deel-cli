@@ -38,7 +38,7 @@ var offCycleListCmd = &cobra.Command{
 			return err
 		}
 
-		payments, _, hasMore, err := collectCursorItems(cmd.Context(), offCycleAllFlag, offCycleCursorFlag, offCycleLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OffCyclePayment], error) {
+		payments, page, hasMore, err := collectCursorItems(cmd.Context(), offCycleAllFlag, offCycleCursorFlag, offCycleLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OffCyclePayment], error) {
 			resp, err := client.ListOffCyclePayments(ctx, api.OffCyclePaymentsListParams{
 				ContractID: offCycleContractFlag,
 				Status:     offCycleStatusFlag,
@@ -60,10 +60,7 @@ var offCycleListCmd = &cobra.Command{
 			return HandleError(f, err, "listing payments")
 		}
 
-		response := api.OffCyclePaymentsListResponse{
-			Data: payments,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(payments, page)
 
 		return outputList(cmd, f, payments, hasMore, "No off-cycle payments found.", []string{"ID", "WORKER", "TYPE", "AMOUNT", "STATUS", "DATE"}, func(p api.OffCyclePayment) []string {
 			amount := fmt.Sprintf("%.2f %s", p.Amount, p.Currency)
@@ -185,7 +182,7 @@ var receiptsCmd = &cobra.Command{
 			return err
 		}
 
-		receipts, _, hasMore, err := collectCursorItems(cmd.Context(), receiptsAllFlag, receiptsCursorFlag, receiptsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DetailedPaymentReceipt], error) {
+		receipts, page, hasMore, err := collectCursorItems(cmd.Context(), receiptsAllFlag, receiptsCursorFlag, receiptsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.DetailedPaymentReceipt], error) {
 			resp, err := client.ListDetailedPaymentReceipts(ctx, api.DetailedPaymentReceiptsListParams{
 				Limit:      limit,
 				Cursor:     cursor,
@@ -207,10 +204,7 @@ var receiptsCmd = &cobra.Command{
 			return HandleError(f, err, "listing payments")
 		}
 
-		response := api.DetailedPaymentReceiptsListResponse{
-			Data: receipts,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(receipts, page)
 
 		return outputList(cmd, f, receipts, hasMore, "No payment receipts found.", []string{"ID", "PAYMENT ID", "WORKER", "AMOUNT", "ISSUE DATE"}, func(r api.DetailedPaymentReceipt) []string {
 			amount := fmt.Sprintf("%.2f %s", r.Amount, r.Currency)

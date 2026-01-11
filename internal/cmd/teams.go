@@ -30,7 +30,7 @@ var teamsListCmd = &cobra.Command{
 			return err
 		}
 
-		teams, _, hasMore, err := collectCursorItems(cmd.Context(), teamsAllFlag, teamsCursorFlag, teamsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Team], error) {
+		teams, page, hasMore, err := collectCursorItems(cmd.Context(), teamsAllFlag, teamsCursorFlag, teamsLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.Team], error) {
 			resp, err := client.ListTeams(ctx, limit, cursor)
 			if err != nil {
 				return CursorListResult[api.Team]{}, err
@@ -47,10 +47,7 @@ var teamsListCmd = &cobra.Command{
 			return HandleError(f, err, "listing teams")
 		}
 
-		response := api.TeamsListResponse{
-			Data: teams,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(teams, page)
 
 		return outputList(cmd, f, teams, hasMore, "No teams found.", []string{"ID", "NAME", "MANAGER", "MEMBERS"}, func(t api.Team) []string {
 			return []string{t.ID, t.Name, t.ManagerName, fmt.Sprintf("%d", t.MemberCount)}

@@ -31,7 +31,7 @@ var onboardingListCmd = &cobra.Command{
 			return err
 		}
 
-		employees, _, hasMore, err := collectCursorItems(cmd.Context(), onboardingAllFlag, onboardingCursorFlag, onboardingLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OnboardingEmployee], error) {
+		employees, page, hasMore, err := collectCursorItems(cmd.Context(), onboardingAllFlag, onboardingCursorFlag, onboardingLimitFlag, func(ctx context.Context, cursor string, limit int) (CursorListResult[api.OnboardingEmployee], error) {
 			resp, err := client.ListOnboardingEmployees(ctx, api.OnboardingListParams{
 				Status: onboardingStatusFlag,
 				Limit:  limit,
@@ -52,10 +52,7 @@ var onboardingListCmd = &cobra.Command{
 			return HandleError(f, err, "listing onboarding")
 		}
 
-		response := api.OnboardingListResponse{
-			Data: employees,
-		}
-		response.Page.Next = ""
+		response := makeListResponse(employees, page)
 
 		return outputList(cmd, f, employees, hasMore, "No employees in onboarding.", []string{"ID", "NAME", "COUNTRY", "STATUS", "STAGE", "PROGRESS"}, func(e api.OnboardingEmployee) []string {
 			return []string{e.ID, e.Name, e.Country, e.Status, e.Stage, fmt.Sprintf("%d%%", e.Progress)}
