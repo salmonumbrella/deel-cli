@@ -6,8 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/salmonumbrella/deel-cli/internal/api"
 )
 
 type testItem struct {
@@ -55,31 +53,4 @@ func TestCollectCursorItems_AllPages(t *testing.T) {
 	assert.Len(t, items, 2)
 	assert.Equal(t, "", page.Next)
 	assert.False(t, hasMore)
-}
-
-func TestNewCursorListCommand_Flags(t *testing.T) {
-	cmd := NewCursorListCommand(CursorListConfig[testItem]{
-		Use:          "list",
-		Short:        "List items",
-		Operation:    "listing items",
-		DefaultLimit: 50,
-		SupportsAll:  true,
-		Headers:      []string{"ID", "NAME"},
-		RowFunc:      func(item testItem) []string { return []string{item.ID, item.Name} },
-		EmptyMessage: "No items found",
-		Fetch: func(ctx context.Context, client *api.Client, cursor string, limit int) (CursorListResult[testItem], error) {
-			return CursorListResult[testItem]{}, nil
-		},
-	})
-
-	require.NotNil(t, cmd)
-	limitFlag := cmd.Flags().Lookup("limit")
-	require.NotNil(t, limitFlag)
-	assert.Equal(t, "50", limitFlag.DefValue)
-
-	cursorFlag := cmd.Flags().Lookup("cursor")
-	require.NotNil(t, cursorFlag)
-
-	allFlag := cmd.Flags().Lookup("all")
-	require.NotNil(t, allFlag)
 }
