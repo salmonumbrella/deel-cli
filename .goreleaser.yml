@@ -66,6 +66,21 @@ changelog:
       - Merge pull request
       - Merge branch
 
+brews:
+  - name: deel-cli
+    repository:
+      owner: salmonumbrella
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/salmonumbrella/deel-cli"
+    description: "CLI for Deel to manage contracts, invoices, and payments"
+    license: "MIT"
+    install: |
+      bin.install "deel"
+    test: |
+      system "#{bin}/deel", "--help"
+
 release:
   github:
     owner: salmonumbrella
