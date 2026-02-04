@@ -35,6 +35,7 @@ var (
 	jsonFlag           bool
 	dryRunFlag         bool
 	dataOnlyFlag       bool
+	rawFlag            bool
 	idempotencyKeyFlag string
 )
 
@@ -52,8 +53,9 @@ Get started:
   deel contracts list # View contracts
 
 JSON output:
-  --json              # Output as JSON object with data array and pagination
-  --json --items      # Output just the data array (for piping to jq)
+  --json              # Output JSON (lists include data/page; single resources are wrapped in data)
+  --json --items      # Output only the data array/object (for piping to jq)
+  --json --raw        # Output raw JSON without the data envelope
   --json --jq '.data[].name'  # Apply JQ filter to JSON output`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -98,6 +100,10 @@ JSON output:
 			ctx := outfmt.WithDataOnly(cmd.Context(), true)
 			cmd.SetContext(ctx)
 		}
+		if rawFlag {
+			ctx := outfmt.WithRaw(cmd.Context(), true)
+			cmd.SetContext(ctx)
+		}
 		// Set dry-run mode in context
 		if dryRunFlag {
 			ctx := dryrun.WithDryRun(cmd.Context(), true)
@@ -116,9 +122,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")
 	rootCmd.PersistentFlags().StringVar(&jqFlag, "jq", "", "JQ filter for JSON output (alias for --query)")
 	rootCmd.PersistentFlags().BoolVar(&dryRunFlag, "dry-run", false, "Preview changes without executing")
-	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data-only", false, "Output only the data array for list responses (use with --json)")
+	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data-only", false, "Output only the data array/object (use with --json)")
 	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "data", false, "Alias for --data-only")
 	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "items", false, "Alias for --data-only")
+	rootCmd.PersistentFlags().BoolVar(&rawFlag, "raw", false, "Output raw JSON without the data envelope (use with --json)")
 	rootCmd.PersistentFlags().StringVar(&idempotencyKeyFlag, "idempotency-key", "", "Idempotency key for write requests")
 
 	// Add subcommands
@@ -181,6 +188,7 @@ func getFormatter() *outfmt.Formatter {
 	f := outfmt.New(os.Stdout, os.Stderr, format, colorMode)
 	f.SetQuery(queryFlag)
 	f.SetDataOnly(dataOnlyFlag)
+	f.SetRaw(rawFlag)
 	return f
 }
 

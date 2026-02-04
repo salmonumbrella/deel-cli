@@ -19,15 +19,16 @@ var tasksCmd = &cobra.Command{
 }
 
 var (
-	tasksContractIDFlag  string
-	tasksStatusFlag      string
-	tasksLimitFlag       int
-	tasksCursorFlag      string
-	tasksAllFlag         bool
-	tasksTitleFlag       string
-	tasksDescriptionFlag string
-	tasksAmountFlag      float64
-	tasksForceFlag       bool
+	tasksContractIDFlag    string
+	tasksStatusFlag        string
+	tasksLimitFlag         int
+	tasksCursorFlag        string
+	tasksAllFlag           bool
+	tasksTitleFlag         string
+	tasksDescriptionFlag   string
+	tasksAmountFlag        float64
+	tasksForceFlag         bool
+	tasksDateSubmittedFlag string
 )
 
 var tasksListCmd = &cobra.Command{
@@ -114,10 +115,11 @@ var tasksCreateCmd = &cobra.Command{
 		}
 
 		task, err := client.CreateTask(cmd.Context(), api.CreateTaskParams{
-			ContractID:  tasksContractIDFlag,
-			Title:       tasksTitleFlag,
-			Description: tasksDescriptionFlag,
-			Amount:      tasksAmountFlag,
+			ContractID:    tasksContractIDFlag,
+			Title:         tasksTitleFlag,
+			Description:   tasksDescriptionFlag,
+			Amount:        tasksAmountFlag,
+			DateSubmitted: tasksDateSubmittedFlag,
 		})
 		if err != nil {
 			return HandleError(f, err, "create task")
@@ -471,6 +473,7 @@ func init() {
 	tasksCreateCmd.Flags().StringVar(&tasksTitleFlag, "title", "", "Task title (required)")
 	tasksCreateCmd.Flags().StringVar(&tasksDescriptionFlag, "description", "", "Task description")
 	tasksCreateCmd.Flags().Float64Var(&tasksAmountFlag, "amount", 0, "Task amount (required)")
+	tasksCreateCmd.Flags().StringVar(&tasksDateSubmittedFlag, "date-submitted", "", "Submission date (YYYY-MM-DD, defaults to today)")
 
 	// Update command flags
 	tasksUpdateCmd.Flags().StringVar(&tasksUpdateContractIDFlag, "contract-id", "", "Contract ID (required)")

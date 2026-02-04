@@ -34,6 +34,7 @@ type Formatter struct {
 	profile   termenv.Profile
 	query     string
 	dataOnly  bool
+	raw       bool
 }
 
 // New creates a new Formatter
@@ -56,6 +57,11 @@ func (f *Formatter) SetQuery(query string) {
 // SetDataOnly controls whether JSON output should return only the data/items array when present.
 func (f *Formatter) SetDataOnly(enabled bool) {
 	f.dataOnly = enabled
+}
+
+// SetRaw controls whether JSON output should skip the data envelope.
+func (f *Formatter) SetRaw(enabled bool) {
+	f.raw = enabled
 }
 
 func (f *Formatter) detectColorProfile() termenv.Profile {
@@ -218,13 +224,18 @@ func padRight(s string, width int) string {
 func (f *Formatter) Output(textFn func(), jsonData any) error {
 	if f.IsJSON() {
 		data := jsonData
+		queryTarget := jsonData
+		raw := f.raw
 		if f.dataOnly {
 			if extracted, ok := extractData(jsonData); ok {
 				data = extracted
+				queryTarget = extracted
 			}
+		} else if !raw {
+			data = ensureEnvelope(jsonData)
 		}
 		if f.query != "" {
-			result, err := filter.Apply(data, f.query)
+			result, err := filter.Apply(queryTarget, f.query)
 			if err != nil {
 				return err
 			}
@@ -247,14 +258,22 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 		if ctx != nil && GetDataOnly(ctx) {
 			dataOnly = true
 		}
+		raw := f.raw
+		if ctx != nil && GetRaw(ctx) {
+			raw = true
+		}
 		data := jsonData
+		queryTarget := jsonData
 		if dataOnly {
 			if extracted, ok := extractData(jsonData); ok {
 				data = extracted
+				queryTarget = extracted
 			}
+		} else if !raw {
+			data = ensureEnvelope(jsonData)
 		}
 		if query != "" {
-			result, err := filter.Apply(data, query)
+			result, err := filter.Apply(queryTarget, query)
 			if err != nil {
 				return err
 			}
@@ -294,4 +313,14 @@ func extractData(data any) (any, bool) {
 		}
 	}
 	return data, false
+}
+
+func ensureEnvelope(data any) any {
+	if data == nil {
+		return map[string]any{"data": nil}
+	}
+	if _, ok := extractData(data); ok {
+		return data
+	}
+	return map[string]any{"data": data}
 }

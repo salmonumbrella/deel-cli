@@ -5,22 +5,34 @@ Manage contracts, people, payroll, time off, and more from the command line.
 ## Features
 
 - **Authentication** - authenticate once, tokens refresh indefinitely
+- **ATS & Candidates** - track offers and candidates
 - **Benefits** - view employee benefits by country
 - **Background checks** - manage screening and verification
 - **Calculators** - estimate employer costs and take-home pay
 - **Compliance** - access documents, templates, and validations
 - **Contracts** - list, view, and manage contract details
+- **Cost centers** - manage cost center structure
+- **EOR** - manage Employer of Record contracts
+- **Global payroll (GP)** - manage GP contracts and workers
 - **Immigration** - track visa cases and requirements
 - **Invoices** - manage invoices and adjustments
 - **IT assets** - track hardware and orders
+- **Milestones & Tasks** - manage milestone and task-based work
 - **Multiple accounts** - switch between Deel accounts
 - **Onboarding** - monitor employee onboarding status
+- **Offboarding** - manage offboarding workflows
 - **Organization** - view org structure and legal entities
+- **Payments & Payouts** - payment breakdowns, receipts, and withdrawals
 - **Payroll** - access payslips, payments, and receipts
 - **People** - list workers and custom fields
+- **Reports** - generate reports for payroll and contracts
+- **Screenings** - manage screenings and verification flows
 - **Shifts** - view shift schedules and rates
 - **Teams** - manage team structures
+- **Timesheets** - track timesheet submissions and approvals
+- **Tokens** - issue worker tokens
 - **Time off** - create and track PTO requests
+- **Webhooks** - manage webhook endpoints and events
 
 ## Installation
 
@@ -71,9 +83,11 @@ deel auth login
 For AI agents or scripting, use the JSON and filter flags:
 
 ```bash
-deel contracts list --json --data-only
+deel contracts list --json --items
+deel contracts get <contract-id> --json
+deel contracts get <contract-id> --json --raw
 deel contracts list --json --jq '.data[] | .id'
-deel people list --json --data-only --jq '.[] | {id, name, email}'
+deel people list --json --items --jq '.[] | {id, name, email}'
 ```
 
 **Terminal:**
@@ -168,6 +182,25 @@ deel contracts list [--limit <n>] [--cursor <token>] [--all]  # List all contrac
 deel contracts get <contract-id>             # Get contract details
 deel contracts amendments <contract-id>      # List contract amendments
 deel contracts payment-dates <contract-id>   # Get payment schedule
+```
+
+### Milestones
+
+```bash
+deel milestones list --contract-id <id> [--limit <n>]
+deel milestones create --contract-id <id> --title <title> --amount <n> [--description <text>] [--due-date <yyyy-mm-dd>]
+deel milestones delete <milestone-id> [--force]
+```
+
+### Tasks
+
+```bash
+deel tasks list --contract-id <id> [--status <status>] [--limit <n>] [--cursor <token>] [--all]
+deel tasks create --contract-id <id> --title <title> --amount <n> [--description <text>] [--date-submitted <yyyy-mm-dd>]
+deel tasks update <task-id> [--contract-id <id>] [--title <title>] [--description <text>] [--amount <n>]
+deel tasks approve <task-id> [--contract-id <id>]
+deel tasks reject <task-id> [--contract-id <id>]
+deel tasks delete <task-id> [--contract-id <id>] [--force]
 ```
 
 ### Time Off
@@ -323,6 +356,22 @@ deel webhooks disable <webhook-id>
 deel webhooks verify --secret <secret> --signature <sig> --payload-file <file>
 ```
 
+## Additional Command Groups
+
+Run `deel <command> --help` for full subcommands and flags.
+
+- `milestones` - create, list, and delete contract milestones
+- `tasks` - create, update, and review tasks for pay-as-you-go contracts
+- `timesheets` - list, edit, and review timesheets
+- `reports` - generate payment reports
+- `payouts` - withdrawals and auto-withdrawal settings
+- `eor` - Employer of Record contracts and amendments
+- `gp` - Global Payroll contracts, reports, and shifts
+- `candidates` - add and update ATS candidates
+- `screenings` - KYC/AML screenings and verification
+- `cost-centers` - list and sync cost centers
+- `offboarding` - offboarding trackers and terminations
+
 ## Output Formats
 
 ### Text
@@ -345,7 +394,19 @@ $ deel people list --output json
 {
   "data": [
     {"name": "John Doe", "email": "john@example.com", "status": "active"}
-  ]
+  ],
+  "page": {"next": "", "total": 1}
+}
+
+$ deel contracts get <contract-id> --output json
+{
+  "data": {"id": "c1", "title": "Contractor Agreement"}
+}
+
+$ deel contracts get <contract-id> --output json --raw
+{
+  "id": "c1",
+  "title": "Contractor Agreement"
 }
 ```
 
@@ -423,9 +484,15 @@ All commands support these flags:
 
 - `--account <name>` - Account to use (overrides DEEL_ACCOUNT)
 - `--output <format>` - Output format: `text` or `json` (default: text)
+- `--json` - Alias for `--output json`
 - `--color <mode>` - Color mode: `auto`, `always`, or `never` (default: auto)
 - `--debug` - Enable debug output (shows API requests/responses)
 - `--query <jq>` - Filter JSON output using a JQ expression
+- `--jq <jq>` - Alias for `--query`
+- `--data-only` - Output only the data array/object (use with `--json`)
+- `--items` - Alias for `--data-only`
+- `--data` - Alias for `--data-only`
+- `--raw` - Output raw JSON without the data envelope (use with `--json`)
 - `--dry-run` - Preview changes without executing write requests
 - `--idempotency-key <key>` - Idempotency key for write requests
 - `--help` - Show help for any command
