@@ -315,30 +315,27 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 				}
 				v = v.Elem()
 			}
-			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				// Not a list; fall back to normal JSON output (still compact due to pretty=false).
-				goto normalJSON
-			}
-
-			enc := json.NewEncoder(f.out)
-			for i := 0; i < v.Len(); i++ {
-				item := v.Index(i).Interface()
-				out := any(item)
-				if query != "" {
-					result, err := filter.Apply(item, query)
-					if err != nil {
+			if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+				enc := json.NewEncoder(f.out)
+				for i := 0; i < v.Len(); i++ {
+					item := v.Index(i).Interface()
+					out := any(item)
+					if query != "" {
+						result, err := filter.Apply(item, query)
+						if err != nil {
+							return err
+						}
+						out = result
+					}
+					if err := enc.Encode(out); err != nil {
 						return err
 					}
-					out = result
 				}
-				if err := enc.Encode(out); err != nil {
-					return err
-				}
+				return nil
 			}
-			return nil
+			// Not a list; fall through to normal JSON output (still compact due to pretty=false).
 		}
 
-	normalJSON:
 		data := jsonData
 		queryTarget := jsonData
 		if dataOnly {

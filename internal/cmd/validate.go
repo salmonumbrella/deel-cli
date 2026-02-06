@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -33,9 +32,10 @@ func validateCurrency(currency string) error {
 	if len(upper) != 3 {
 		return fmt.Errorf("invalid currency code %q (must be 3 letters)", currency)
 	}
-	matched, _ := regexp.MatchString("^[A-Z]{3}$", upper)
-	if !matched {
-		return fmt.Errorf("invalid currency code %q (must contain only letters)", currency)
+	for _, r := range upper {
+		if r < 'A' || r > 'Z' {
+			return fmt.Errorf("invalid currency code %q (must contain only letters)", currency)
+		}
 	}
 	return nil
 }

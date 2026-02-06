@@ -474,7 +474,7 @@ var setDepartmentCmd = &cobra.Command{
 				"PersonID":     args[0],
 				"DepartmentID": setDepartmentIDFlag,
 			},
-		}); ok || err != nil {
+		}); ok {
 			return err
 		}
 

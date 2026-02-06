@@ -134,16 +134,22 @@ func (c *Client) Delete(ctx context.Context, path string) (json.RawMessage, erro
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any) (json.RawMessage, error) {
-	// Check circuit breaker
+	url := c.baseURL + path
+	return c.doWithRetry(ctx, func() (*http.Response, error) {
+		return c.doRequest(ctx, method, url, body)
+	}, nil)
+}
+
+// doWithRetry executes an HTTP request function with retry logic, circuit breaker,
+// rate limit handling, and response processing. The optional onRetry callback is
+// called before each retry attempt (e.g., to reset seekable request bodies).
+func (c *Client) doWithRetry(ctx context.Context, reqFn func() (*http.Response, error), onRetry func() error) (json.RawMessage, error) {
 	if err := c.checkCircuitBreaker(); err != nil {
 		return nil, err
 	}
 
-	url := c.baseURL + path
-
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		// Check context before each attempt
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -160,9 +166,14 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 				return nil, ctx.Err()
 			case <-time.After(backoff):
 			}
+			if onRetry != nil {
+				if err := onRetry(); err != nil {
+					return nil, err
+				}
+			}
 		}
 
-		resp, err := c.doRequest(ctx, method, url, body)
+		resp, err := reqFn()
 		if err != nil {
 			lastErr = err
 			continue
@@ -189,7 +200,6 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 		// Handle server errors (5xx)
 		if resp.StatusCode >= 500 {
 			c.recordFailure()
-			// Read response body to get error details
 			errBody, _ := io.ReadAll(resp.Body)
 			if err := resp.Body.Close(); err != nil {
 				slog.Debug("failed to close response body", "error", err)
@@ -279,17 +289,26 @@ func (c *Client) parseRetryAfter(resp *http.Response) time.Duration {
 		return c.baseBackoff
 	}
 
+	var d time.Duration
+
 	// Try parsing as seconds
 	if seconds, err := strconv.Atoi(retryAfter); err == nil {
-		return time.Duration(seconds) * time.Second
+		d = time.Duration(seconds) * time.Second
+	} else if t, err := http.ParseTime(retryAfter); err == nil {
+		// Try parsing as HTTP date
+		d = time.Until(t)
+	} else {
+		return c.baseBackoff
 	}
 
-	// Try parsing as HTTP date
-	if t, err := http.ParseTime(retryAfter); err == nil {
-		return time.Until(t)
+	// Cap at maxBackoff to prevent a server from blocking us indefinitely
+	if d > c.maxBackoff {
+		d = c.maxBackoff
 	}
-
-	return c.baseBackoff
+	if d < 0 {
+		d = c.baseBackoff
+	}
+	return d
 }
 
 func (c *Client) parseError(statusCode int, body []byte) error {
@@ -368,108 +387,19 @@ func (c *Client) recordSuccess() {
 // doMultipart performs an HTTP request with multipart/form-data body,
 // using the same retry logic, circuit breaker, and error handling as do().
 func (c *Client) doMultipart(ctx context.Context, method, path string, body io.Reader, contentType string) (json.RawMessage, error) {
-	// Check circuit breaker
-	if err := c.checkCircuitBreaker(); err != nil {
-		return nil, err
-	}
-
 	url := c.baseURL + path
-
-	var lastErr error
-	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		// Check context before each attempt
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		if attempt > 0 {
-			backoff := c.calculateBackoff(attempt)
-			if c.debug {
-				slog.Info("retrying request", "attempt", attempt, "backoff", backoff)
-			}
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-
+	return c.doWithRetry(ctx, func() (*http.Response, error) {
+		return c.doMultipartRequest(ctx, method, url, body, contentType)
+	}, func() error {
 		// For retries, we need to be able to re-read the body.
 		// The caller should pass a *bytes.Reader or similar seekable reader.
-		if seeker, ok := body.(io.Seeker); ok && attempt > 0 {
+		if seeker, ok := body.(io.Seeker); ok {
 			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
-				return nil, fmt.Errorf("failed to reset body for retry: %w", err)
+				return fmt.Errorf("failed to reset body for retry: %w", err)
 			}
 		}
-
-		resp, err := c.doMultipartRequest(ctx, method, url, body, contentType)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		// Handle rate limiting
-		if resp.StatusCode == http.StatusTooManyRequests {
-			retryAfter := c.parseRetryAfter(resp)
-			if c.debug {
-				slog.Info("rate limited", "retry_after", retryAfter)
-			}
-			if err := resp.Body.Close(); err != nil {
-				slog.Debug("failed to close response body", "error", err)
-			}
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(retryAfter):
-			}
-			lastErr = fmt.Errorf("rate limited")
-			continue
-		}
-
-		// Handle server errors (5xx)
-		if resp.StatusCode >= 500 {
-			c.recordFailure()
-			// Read response body to get error details
-			errBody, _ := io.ReadAll(resp.Body)
-			if err := resp.Body.Close(); err != nil {
-				slog.Debug("failed to close response body", "error", err)
-			}
-			if c.debug && len(errBody) > 0 {
-				slog.Info("server error response", "status", resp.StatusCode, "body", string(errBody))
-			}
-			lastErr = fmt.Errorf("server error: %d: %s", resp.StatusCode, string(errBody))
-			continue
-		}
-
-		// Success or client error
-		c.recordSuccess()
-
-		respBody, err := io.ReadAll(resp.Body)
-		closeErr := resp.Body.Close()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
-		}
-		if closeErr != nil {
-			slog.Debug("failed to close response body", "error", closeErr)
-		}
-
-		if resp.StatusCode >= 400 {
-			if c.debug {
-				slog.Info("api error response", "status", resp.StatusCode, "body", string(respBody))
-			}
-			return nil, c.parseError(resp.StatusCode, respBody)
-		}
-
-		if c.debug {
-			slog.Info("api response", "status", resp.StatusCode, "content_length", len(respBody))
-		}
-
-		return respBody, nil
-	}
-
-	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+		return nil
+	})
 }
 
 // doMultipartRequest creates and executes a single multipart HTTP request.

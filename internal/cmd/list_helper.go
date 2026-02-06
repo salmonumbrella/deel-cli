@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -10,6 +11,9 @@ import (
 )
 
 const moreResultsMessage = "More results available. Use --cursor to paginate or --all to fetch everything."
+
+// maxPaginationPages is a safety limit to prevent runaway pagination when using --all.
+const maxPaginationPages = 100
 
 // CursorPage captures cursor pagination info.
 type CursorPage struct {
@@ -64,6 +68,7 @@ func collectCursorItems[T any](
 		items   []T
 		page    CursorPage
 		hasMore bool
+		pages   int
 	)
 
 	for {
@@ -71,6 +76,7 @@ func collectCursorItems[T any](
 		if err != nil {
 			return nil, CursorPage{}, false, err
 		}
+		pages++
 
 		if !all {
 			items = result.Items
@@ -85,6 +91,9 @@ func collectCursorItems[T any](
 		}
 		if result.Page.Next == "" {
 			break
+		}
+		if pages >= maxPaginationPages {
+			return nil, CursorPage{}, false, fmt.Errorf("pagination safety limit reached (%d pages); use --limit and --cursor for manual pagination", maxPaginationPages)
 		}
 		cursor = result.Page.Next
 	}
