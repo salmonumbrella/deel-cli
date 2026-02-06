@@ -37,43 +37,34 @@ var gpCreateCmd = &cobra.Command{
 
 		// Validate required flags
 		if gpCreateWorkerEmailFlag == "" {
-			f.PrintError("--worker-email flag is required")
-			return fmt.Errorf("--worker-email flag is required")
+			return failValidation(cmd, f, "--worker-email flag is required")
 		}
 		if gpCreateWorkerNameFlag == "" {
-			f.PrintError("--worker-name flag is required")
-			return fmt.Errorf("--worker-name flag is required")
+			return failValidation(cmd, f, "--worker-name flag is required")
 		}
 		if gpCreateCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 		if gpCreateStartDateFlag == "" {
-			f.PrintError("--start-date flag is required")
-			return fmt.Errorf("--start-date flag is required")
+			return failValidation(cmd, f, "--start-date flag is required")
 		}
 		if gpCreateJobTitleFlag == "" {
-			f.PrintError("--job-title flag is required")
-			return fmt.Errorf("--job-title flag is required")
+			return failValidation(cmd, f, "--job-title flag is required")
 		}
 		if gpCreateSalaryFlag == "" {
-			f.PrintError("--salary flag is required")
-			return fmt.Errorf("--salary flag is required")
+			return failValidation(cmd, f, "--salary flag is required")
 		}
 		if gpCreateCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 		if gpCreatePayFrequencyFlag == "" {
-			f.PrintError("--pay-frequency flag is required")
-			return fmt.Errorf("--pay-frequency flag is required")
+			return failValidation(cmd, f, "--pay-frequency flag is required")
 		}
 
 		// Parse salary
 		salary, err := strconv.ParseFloat(gpCreateSalaryFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --salary value: %v", err)
-			return fmt.Errorf("invalid --salary value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("Invalid --salary value: %v", err))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -152,8 +143,7 @@ var gpBankAccountsListCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpBankAccountsListWorkerIDFlag == "" {
-			f.PrintError("--worker-id flag is required")
-			return fmt.Errorf("--worker-id flag is required")
+			return failValidation(cmd, f, "--worker-id flag is required")
 		}
 
 		client, err := getClient()
@@ -214,24 +204,19 @@ var gpBankAccountsAddCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpBankAccountAddWorkerIDFlag == "" {
-			f.PrintError("--worker-id flag is required")
-			return fmt.Errorf("--worker-id flag is required")
+			return failValidation(cmd, f, "--worker-id flag is required")
 		}
 		if gpBankAccountAddAccountHolderFlag == "" {
-			f.PrintError("--account-holder flag is required")
-			return fmt.Errorf("--account-holder flag is required")
+			return failValidation(cmd, f, "--account-holder flag is required")
 		}
 		if gpBankAccountAddBankNameFlag == "" {
-			f.PrintError("--bank-name flag is required")
-			return fmt.Errorf("--bank-name flag is required")
+			return failValidation(cmd, f, "--bank-name flag is required")
 		}
 		if gpBankAccountAddAccountNumberFlag == "" {
-			f.PrintError("--account-number flag is required")
-			return fmt.Errorf("--account-number flag is required")
+			return failValidation(cmd, f, "--account-number flag is required")
 		}
 		if gpBankAccountAddCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -302,8 +287,7 @@ var gpReportsG2NCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpReportsG2NWorkerIDFlag == "" {
-			f.PrintError("--worker-id flag is required")
-			return fmt.Errorf("--worker-id flag is required")
+			return failValidation(cmd, f, "--worker-id flag is required")
 		}
 
 		client, err := getClient()
@@ -359,16 +343,13 @@ var gpTerminateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpTerminateWorkerIDFlag == "" {
-			f.PrintError("--worker-id flag is required")
-			return fmt.Errorf("--worker-id flag is required")
+			return failValidation(cmd, f, "--worker-id flag is required")
 		}
 		if gpTerminateReasonFlag == "" {
-			f.PrintError("--reason flag is required")
-			return fmt.Errorf("--reason flag is required")
+			return failValidation(cmd, f, "--reason flag is required")
 		}
 		if gpTerminateEffectiveDateFlag == "" {
-			f.PrintError("--effective-date flag is required")
-			return fmt.Errorf("--effective-date flag is required")
+			return failValidation(cmd, f, "--effective-date flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -436,20 +417,16 @@ var gpShiftsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpShiftsCreateWorkerIDFlag == "" {
-			f.PrintError("--worker-id flag is required")
-			return fmt.Errorf("--worker-id flag is required")
+			return failValidation(cmd, f, "--worker-id flag is required")
 		}
 		if gpShiftsCreateDateFlag == "" {
-			f.PrintError("--date flag is required")
-			return fmt.Errorf("--date flag is required")
+			return failValidation(cmd, f, "--date flag is required")
 		}
 		if gpShiftsCreateStartTimeFlag == "" {
-			f.PrintError("--start-time flag is required")
-			return fmt.Errorf("--start-time flag is required")
+			return failValidation(cmd, f, "--start-time flag is required")
 		}
 		if gpShiftsCreateEndTimeFlag == "" {
-			f.PrintError("--end-time flag is required")
-			return fmt.Errorf("--end-time flag is required")
+			return failValidation(cmd, f, "--end-time flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -568,27 +545,22 @@ var gpRatesCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if gpRatesCreateNameFlag == "" {
-			f.PrintError("--name flag is required")
-			return fmt.Errorf("--name flag is required")
+			return failValidation(cmd, f, "--name flag is required")
 		}
 		if gpRatesCreateRateFlag == "" {
-			f.PrintError("--rate flag is required")
-			return fmt.Errorf("--rate flag is required")
+			return failValidation(cmd, f, "--rate flag is required")
 		}
 		if gpRatesCreateCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 		if gpRatesCreateTypeFlag == "" {
-			f.PrintError("--type flag is required")
-			return fmt.Errorf("--type flag is required")
+			return failValidation(cmd, f, "--type flag is required")
 		}
 
 		// Parse rate
 		rate, err := strconv.ParseFloat(gpRatesCreateRateFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --rate value: %v", err)
-			return fmt.Errorf("invalid --rate value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("Invalid --rate value: %v", err))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

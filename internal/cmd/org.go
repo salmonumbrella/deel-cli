@@ -192,8 +192,7 @@ var groupsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if groupNameFlag == "" {
-			f.PrintError("--name flag is required")
-			return fmt.Errorf("--name flag is required")
+			return failValidation(cmd, f, "--name flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -242,8 +241,7 @@ var groupsUpdateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("description") {
-			f.PrintError("At least one flag (--name or --description) must be provided")
-			return fmt.Errorf("no update flags provided")
+			return failValidation(cmd, f, "At least one flag (--name or --description) must be provided")
 		}
 
 		details := map[string]string{
@@ -403,16 +401,13 @@ var legalEntitiesCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if entityNameFlag == "" {
-			f.PrintError("--name flag is required")
-			return fmt.Errorf("--name flag is required")
+			return failValidation(cmd, f, "--name flag is required")
 		}
 		if entityCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 		if entityTypeFlag == "" {
-			f.PrintError("--type flag is required")
-			return fmt.Errorf("--type flag is required")
+			return failValidation(cmd, f, "--type flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -467,8 +462,7 @@ var legalEntitiesUpdateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if !cmd.Flags().Changed("name") && !cmd.Flags().Changed("type") && !cmd.Flags().Changed("reg-number") {
-			f.PrintError("At least one flag (--name, --type, or --reg-number) must be provided")
-			return fmt.Errorf("no update flags provided")
+			return failValidation(cmd, f, "At least one flag (--name, --type, or --reg-number) must be provided")
 		}
 
 		details := map[string]string{

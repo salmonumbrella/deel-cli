@@ -129,20 +129,16 @@ var atsJobsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if atsJobTitleFlag == "" {
-			f.PrintError("--title flag is required")
-			return fmt.Errorf("--title flag is required")
+			return failValidation(cmd, f, "--title flag is required")
 		}
 		if atsJobDepartmentIDFlag == "" {
-			f.PrintError("--department-id flag is required")
-			return fmt.Errorf("--department-id flag is required")
+			return failValidation(cmd, f, "--department-id flag is required")
 		}
 		if atsJobLocationIDFlag == "" {
-			f.PrintError("--location-id flag is required")
-			return fmt.Errorf("--location-id flag is required")
+			return failValidation(cmd, f, "--location-id flag is required")
 		}
 		if atsJobEmploymentTypeFlag == "" {
-			f.PrintError("--employment-type flag is required")
-			return fmt.Errorf("--employment-type flag is required")
+			return failValidation(cmd, f, "--employment-type flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

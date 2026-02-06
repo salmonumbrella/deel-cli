@@ -110,8 +110,7 @@ var timeOffCreateCmd = &cobra.Command{
 
 		if timeOffCreateProfileFlag == "" || timeOffCreatePolicyFlag == "" ||
 			timeOffCreateStartFlag == "" || timeOffCreateEndFlag == "" {
-			f.PrintError("Required: --profile, --policy, --start, --end")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "required: --profile, --policy, --start, --end")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -145,8 +144,9 @@ var timeOffCreateCmd = &cobra.Command{
 			return HandleError(f, err, "create request")
 		}
 
-		f.PrintSuccess("Created time off request: %s", req.ID)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Created time off request: %s", req.ID)
+		}, req)
 	},
 }
 
@@ -177,8 +177,12 @@ var timeOffCancelCmd = &cobra.Command{
 			return HandleError(f, err, "cancel")
 		}
 
-		f.PrintSuccess("Cancelled time off request: %s", args[0])
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Cancelled time off request: %s", args[0])
+		}, map[string]any{
+			"cancelled":  true,
+			"request_id": args[0],
+		})
 	},
 }
 
@@ -244,8 +248,7 @@ var timeOffRejectCmd = &cobra.Command{
 		f := getFormatter()
 
 		if timeOffRejectCommentFlag == "" {
-			f.PrintError("--comment flag is required for rejections")
-			return fmt.Errorf("--comment flag is required")
+			return failValidation(cmd, f, "--comment flag is required for rejections")
 		}
 
 		params := api.ApproveRejectParams{
@@ -302,20 +305,16 @@ var timeOffValidateCmd = &cobra.Command{
 
 		// Validate required flags
 		if timeOffValidateProfileFlag == "" {
-			f.PrintError("--profile-id flag is required")
-			return fmt.Errorf("--profile-id flag is required")
+			return failValidation(cmd, f, "--profile-id flag is required")
 		}
 		if timeOffValidateTypeFlag == "" {
-			f.PrintError("--type flag is required")
-			return fmt.Errorf("--type flag is required")
+			return failValidation(cmd, f, "--type flag is required")
 		}
 		if timeOffValidateStartDateFlag == "" {
-			f.PrintError("--start-date flag is required")
-			return fmt.Errorf("--start-date flag is required")
+			return failValidation(cmd, f, "--start-date flag is required")
 		}
 		if timeOffValidateEndDateFlag == "" {
-			f.PrintError("--end-date flag is required")
-			return fmt.Errorf("--end-date flag is required")
+			return failValidation(cmd, f, "--end-date flag is required")
 		}
 
 		client, err := getClient()

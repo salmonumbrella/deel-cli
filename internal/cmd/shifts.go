@@ -63,8 +63,7 @@ var shiftsRatesCmd = &cobra.Command{
 		f := getFormatter()
 
 		if shiftsCountryFlag == "" {
-			f.PrintError("--country is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--country is required")
 		}
 
 		client, err := getClient()

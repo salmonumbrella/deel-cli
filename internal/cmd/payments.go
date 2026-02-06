@@ -87,8 +87,7 @@ var offCycleCreateCmd = &cobra.Command{
 		if offCycleCreateContractFlag == "" || offCycleCreateAmountFlag == 0 ||
 			offCycleCreateCurrencyFlag == "" || offCycleCreateTypeFlag == "" ||
 			offCycleCreateDateFlag == "" {
-			f.PrintError("Required: --contract, --amount, --currency, --type, --date")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "Required: --contract, --amount, --currency, --type, --date")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -123,8 +122,9 @@ var offCycleCreateCmd = &cobra.Command{
 			return HandleError(f, err, "creating payment")
 		}
 
-		f.PrintSuccess("Created off-cycle payment: %s", payment.ID)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Created off-cycle payment: %s", payment.ID)
+		}, payment)
 	},
 }
 

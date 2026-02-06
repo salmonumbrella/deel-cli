@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"strings"
 
@@ -105,12 +104,10 @@ var webhooksCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if webhooksURLFlag == "" {
-			f.PrintError("--url flag is required")
-			return fmt.Errorf("--url flag is required")
+			return failValidation(cmd, f, "--url flag is required")
 		}
 		if len(webhooksEventsFlag) == 0 {
-			f.PrintError("--events flag is required (provide at least one event)")
-			return fmt.Errorf("--events flag is required")
+			return failValidation(cmd, f, "--events flag is required (provide at least one event)")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -166,8 +163,7 @@ var webhooksUpdateCmd = &cobra.Command{
 
 		// Check if at least one flag was provided
 		if !cmd.Flags().Changed("url") && !cmd.Flags().Changed("events") && !cmd.Flags().Changed("description") {
-			f.PrintError("At least one flag (--url, --events, or --description) must be provided")
-			return fmt.Errorf("no update flags provided")
+			return failValidation(cmd, f, "at least one flag (--url, --events, or --description) must be provided")
 		}
 
 		details := map[string]string{
@@ -383,12 +379,10 @@ var webhooksVerifyCmd = &cobra.Command{
 		f := getFormatter()
 
 		if webhooksVerifySecretFlag == "" {
-			f.PrintError("--secret is required")
-			return fmt.Errorf("--secret is required")
+			return failValidation(cmd, f, "--secret is required")
 		}
 		if webhooksVerifySignatureFlag == "" {
-			f.PrintError("--signature is required")
-			return fmt.Errorf("--signature is required")
+			return failValidation(cmd, f, "--signature is required")
 		}
 
 		var payload string
@@ -403,8 +397,7 @@ var webhooksVerifyCmd = &cobra.Command{
 		} else if webhooksVerifyPayloadFlag != "" {
 			payload = webhooksVerifyPayloadFlag
 		} else {
-			f.PrintError("Provide --payload, --payload-file, or --signed-payload")
-			return fmt.Errorf("payload is required")
+			return failValidation(cmd, f, "provide --payload, --payload-file, or --signed-payload")
 		}
 
 		provided := extractSignatureValue(webhooksVerifySignatureFlag)

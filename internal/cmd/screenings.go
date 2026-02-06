@@ -36,8 +36,7 @@ var screeningsVeriffCmd = &cobra.Command{
 		f := getFormatter()
 
 		if screeningWorkerIDFlag == "" {
-			f.PrintError("--worker-id is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--worker-id is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -157,8 +156,7 @@ var screeningsExternalKYCCmd = &cobra.Command{
 
 		if screeningWorkerIDFlag == "" || screeningProviderFlag == "" ||
 			screeningVerifiedAtFlag == "" || screeningDocTypeFlag == "" {
-			f.PrintError("--worker-id, --provider, --verified-at, and --doc-type are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--worker-id, --provider, --verified-at, and --doc-type are required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -212,8 +210,7 @@ var screeningsManualVerifyCmd = &cobra.Command{
 		f := getFormatter()
 
 		if screeningWorkerIDFlag == "" || screeningVerifiedByFlag == "" {
-			f.PrintError("--worker-id and --verified-by are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--worker-id and --verified-by are required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

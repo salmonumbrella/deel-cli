@@ -165,8 +165,7 @@ Examples:
 		f := getFormatter()
 
 		if peopleEmailFlag == "" && peopleNameFlag == "" {
-			f.PrintError("--email or --name is required")
-			return fmt.Errorf("--email or --name flag is required")
+			return failValidation(cmd, f, "--email or --name is required")
 		}
 
 		client, err := getClient()
@@ -312,24 +311,19 @@ var peopleCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if peopleCreateEmailFlag == "" {
-			f.PrintError("--email flag is required")
-			return fmt.Errorf("--email flag is required")
+			return failValidation(cmd, f, "--email flag is required")
 		}
 		if peopleCreateFirstNameFlag == "" {
-			f.PrintError("--first-name flag is required")
-			return fmt.Errorf("--first-name flag is required")
+			return failValidation(cmd, f, "--first-name flag is required")
 		}
 		if peopleCreateLastNameFlag == "" {
-			f.PrintError("--last-name flag is required")
-			return fmt.Errorf("--last-name flag is required")
+			return failValidation(cmd, f, "--last-name flag is required")
 		}
 		if peopleCreateTypeFlag == "" {
-			f.PrintError("--type flag is required")
-			return fmt.Errorf("--type flag is required")
+			return failValidation(cmd, f, "--type flag is required")
 		}
 		if peopleCreateCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -469,8 +463,7 @@ var setDepartmentCmd = &cobra.Command{
 		f := getFormatter()
 
 		if setDepartmentIDFlag == "" {
-			f.PrintError("--department-id flag is required")
-			return fmt.Errorf("--department-id flag is required")
+			return failValidation(cmd, f, "--department-id flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -526,8 +519,7 @@ var peopleLocationCmd = &cobra.Command{
 		f := getFormatter()
 
 		if peopleLocationCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 
 		details := map[string]string{
@@ -680,35 +672,28 @@ var adjustmentsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if adjustmentsCreateContractIDFlag == "" {
-			f.PrintError("--contract-id flag is required")
-			return fmt.Errorf("--contract-id flag is required")
+			return failValidation(cmd, f, "--contract-id flag is required")
 		}
 		if adjustmentsCreateCategoryIDFlag == "" {
-			f.PrintError("--category-id flag is required")
-			return fmt.Errorf("--category-id flag is required")
+			return failValidation(cmd, f, "--category-id flag is required")
 		}
 		if adjustmentsCreateAmountFlag == "" {
-			f.PrintError("--amount flag is required")
-			return fmt.Errorf("--amount flag is required")
+			return failValidation(cmd, f, "--amount flag is required")
 		}
 		if adjustmentsCreateCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 		if adjustmentsCreateDescriptionFlag == "" {
-			f.PrintError("--description flag is required")
-			return fmt.Errorf("--description flag is required")
+			return failValidation(cmd, f, "--description flag is required")
 		}
 		if adjustmentsCreateDateFlag == "" {
-			f.PrintError("--date flag is required")
-			return fmt.Errorf("--date flag is required")
+			return failValidation(cmd, f, "--date flag is required")
 		}
 
 		// Parse amount
 		amount, err := strconv.ParseFloat(adjustmentsCreateAmountFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --amount value: %v", err)
-			return fmt.Errorf("invalid --amount value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("Invalid --amount value: %v", err))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -821,8 +806,7 @@ var adjustmentsUpdateCmd = &cobra.Command{
 		if adjustmentsUpdateAmountFlag != "" {
 			parsed, err := strconv.ParseFloat(adjustmentsUpdateAmountFlag, 64)
 			if err != nil {
-				f.PrintError("Invalid --amount value: %v", err)
-				return fmt.Errorf("invalid --amount value: %w", err)
+				return failValidation(cmd, f, fmt.Sprintf("Invalid --amount value: %v", err))
 			}
 			amount = parsed
 		}
@@ -1004,20 +988,16 @@ var managersCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if managersCreateEmailFlag == "" {
-			f.PrintError("--email flag is required")
-			return fmt.Errorf("--email flag is required")
+			return failValidation(cmd, f, "--email flag is required")
 		}
 		if managersCreateFirstNameFlag == "" {
-			f.PrintError("--first-name flag is required")
-			return fmt.Errorf("--first-name flag is required")
+			return failValidation(cmd, f, "--first-name flag is required")
 		}
 		if managersCreateLastNameFlag == "" {
-			f.PrintError("--last-name flag is required")
-			return fmt.Errorf("--last-name flag is required")
+			return failValidation(cmd, f, "--last-name flag is required")
 		}
 		if managersCreateRoleFlag == "" {
-			f.PrintError("--role flag is required")
-			return fmt.Errorf("--role flag is required")
+			return failValidation(cmd, f, "--role flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -1091,12 +1071,10 @@ Examples:
 		f := getFormatter()
 
 		if assignManagerEmailFlag == "" {
-			f.PrintError("--email flag is required")
-			return fmt.Errorf("--email flag is required")
+			return failValidation(cmd, f, "--email flag is required")
 		}
 		if assignManagerManagerIDFlag == "" {
-			f.PrintError("--manager flag is required")
-			return fmt.Errorf("--manager flag is required")
+			return failValidation(cmd, f, "--manager flag is required")
 		}
 
 		client, err := getClient()
@@ -1111,8 +1089,7 @@ Examples:
 		}
 
 		if person.HRISProfileID == "" {
-			f.PrintError("Worker found but has no profile ID")
-			return fmt.Errorf("worker has no profile ID")
+			return fail(cmd, f, "validating worker profile", "server", "Worker found but has no profile ID")
 		}
 
 		// Use start date from flag or person's start date
@@ -1122,8 +1099,7 @@ Examples:
 		}
 		// StartDate is required, so if still empty, error out
 		if startDate == "" {
-			f.PrintError("--start-date is required (worker has no start date on file)")
-			return fmt.Errorf("--start-date is required")
+			return failValidation(cmd, f, "--start-date is required (worker has no start date on file)")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -1231,20 +1207,16 @@ var relationsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if relationsCreateProfileIDFlag == "" {
-			f.PrintError("--profile-id flag is required")
-			return fmt.Errorf("--profile-id flag is required")
+			return failValidation(cmd, f, "--profile-id flag is required")
 		}
 		if relationsCreateManagerIDFlag == "" {
-			f.PrintError("--manager-id flag is required")
-			return fmt.Errorf("--manager-id flag is required")
+			return failValidation(cmd, f, "--manager-id flag is required")
 		}
 		if relationsCreateRelationTypeFlag == "" {
-			f.PrintError("--relation-type flag is required")
-			return fmt.Errorf("--relation-type flag is required")
+			return failValidation(cmd, f, "--relation-type flag is required")
 		}
 		if relationsCreateStartDateFlag == "" {
-			f.PrintError("--start-date flag is required")
-			return fmt.Errorf("--start-date flag is required")
+			return failValidation(cmd, f, "--start-date flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

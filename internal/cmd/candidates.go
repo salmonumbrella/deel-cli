@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
@@ -31,8 +29,7 @@ var candidatesAddCmd = &cobra.Command{
 		f := getFormatter()
 
 		if candidateFirstNameFlag == "" || candidateLastNameFlag == "" || candidateEmailFlag == "" {
-			f.PrintError("--first-name, --last-name, and --email are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--first-name, --last-name, and --email are required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -92,8 +89,7 @@ var candidatesUpdateCmd = &cobra.Command{
 			!cmd.Flags().Changed("email") &&
 			!cmd.Flags().Changed("phone") &&
 			!cmd.Flags().Changed("status") {
-			f.PrintError("At least one flag (--first-name, --last-name, --email, --phone, or --status) must be provided")
-			return fmt.Errorf("no update flags provided")
+			return failValidation(cmd, f, "at least one flag (--first-name, --last-name, --email, --phone, or --status) must be provided")
 		}
 
 		details := map[string]string{

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/salmonumbrella/deel-cli/internal/api"
@@ -67,8 +65,7 @@ var immigrationDocsCmd = &cobra.Command{
 		f := getFormatter()
 
 		if immigrationCaseFlag == "" {
-			f.PrintError("--case is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--case is required")
 		}
 
 		client, err := getClient()
@@ -102,8 +99,7 @@ var immigrationVisaTypesCmd = &cobra.Command{
 		f := getFormatter()
 
 		if immigrationCountryFlag == "" {
-			f.PrintError("--country is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--country is required")
 		}
 
 		client, err := getClient()
@@ -137,8 +133,7 @@ var immigrationCheckCmd = &cobra.Command{
 		f := getFormatter()
 
 		if immigrationFromFlag == "" || immigrationToFlag == "" {
-			f.PrintError("--from and --to are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--from and --to are required")
 		}
 
 		client, err := getClient()
@@ -177,8 +172,7 @@ var immigrationCreateCmd = &cobra.Command{
 
 		if immigrationContractFlag == "" || immigrationTypeFlag == "" ||
 			immigrationCountryFlag == "" || immigrationStartFlag == "" {
-			f.PrintError("--contract-id, --type, --country, and --start-date are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--contract-id, --type, --country, and --start-date are required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -235,8 +229,7 @@ var immigrationUploadCmd = &cobra.Command{
 
 		if immigrationCaseFlag == "" || immigrationDocNameFlag == "" ||
 			immigrationDocTypeFlag == "" || immigrationDocURLFlag == "" {
-			f.PrintError("--case, --name, --type, and --doc-url are required")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "--case, --name, --type, and --doc-url are required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

@@ -28,8 +28,7 @@ var withdrawCmd = &cobra.Command{
 		f := getFormatter()
 
 		if withdrawAmountFlag == 0 || withdrawCurrencyFlag == "" {
-			f.PrintError("Required: --amount and --currency")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "required: --amount and --currency")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -114,8 +113,7 @@ var autoWithdrawalSetCmd = &cobra.Command{
 		// Check if at least one flag was provided
 		if !cmd.Flags().Changed("enabled") && !cmd.Flags().Changed("threshold") &&
 			!cmd.Flags().Changed("currency") && !cmd.Flags().Changed("schedule") {
-			f.PrintError("At least one flag (--enabled, --threshold, --currency, or --schedule) must be provided")
-			return fmt.Errorf("no update flags provided")
+			return failValidation(cmd, f, "at least one flag (--enabled, --threshold, --currency, or --schedule) must be provided")
 		}
 
 		details := map[string]string{}

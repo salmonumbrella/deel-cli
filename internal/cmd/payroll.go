@@ -26,8 +26,7 @@ var payrollPayslipsCmd = &cobra.Command{
 		f := getFormatter()
 
 		if payrollWorkerFlag == "" {
-			f.PrintError("--worker is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--worker is required")
 		}
 
 		client, err := getClient()
@@ -86,8 +85,7 @@ var payrollPaymentsCmd = &cobra.Command{
 		f := getFormatter()
 
 		if payrollCycleFlag == "" {
-			f.PrintError("--cycle is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--cycle is required")
 		}
 
 		client, err := getClient()
@@ -150,12 +148,10 @@ var payrollDownloadCmd = &cobra.Command{
 		f := getFormatter()
 
 		if payrollDownloadWorkerFlag == "" {
-			f.PrintError("--worker is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--worker is required")
 		}
 		if payrollDownloadPayslipFlag == "" {
-			f.PrintError("--payslip is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--payslip is required")
 		}
 
 		client, err := getClient()

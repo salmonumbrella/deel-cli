@@ -78,8 +78,7 @@ The JSON file should contain an array of cost centers:
 		f := getFormatter()
 
 		if costCenterFileFlag == "" {
-			f.PrintError("--file is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--file is required")
 		}
 
 		// Read the file
@@ -95,8 +94,7 @@ The JSON file should contain an array of cost centers:
 		}
 
 		if len(centers) == 0 {
-			f.PrintError("No cost centers found in file")
-			return fmt.Errorf("empty cost centers array")
+			return failValidation(cmd, f, "No cost centers found in file")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

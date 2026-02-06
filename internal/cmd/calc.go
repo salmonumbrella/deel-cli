@@ -29,8 +29,7 @@ var calcCostCmd = &cobra.Command{
 		f := getFormatter()
 
 		if calcCountryFlag == "" || calcSalaryFlag == 0 || calcCurrencyFlag == "" {
-			f.PrintError("Required: --country, --salary, --currency")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "required: --country, --salary, --currency")
 		}
 
 		client, err := getClient()
@@ -64,8 +63,7 @@ var calcTakeHomeCmd = &cobra.Command{
 		f := getFormatter()
 
 		if calcCountryFlag == "" || calcSalaryFlag == 0 || calcCurrencyFlag == "" {
-			f.PrintError("Required: --country, --salary, --currency")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "required: --country, --salary, --currency")
 		}
 
 		client, err := getClient()
@@ -98,8 +96,7 @@ var calcSalaryHistogramCmd = &cobra.Command{
 		f := getFormatter()
 
 		if calcRoleFlag == "" || calcCountryFlag == "" {
-			f.PrintError("Required: --role, --country")
-			return fmt.Errorf("missing required flags")
+			return failValidation(cmd, f, "required: --role, --country")
 		}
 
 		client, err := getClient()

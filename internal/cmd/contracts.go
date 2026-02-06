@@ -252,7 +252,7 @@ Examples:
 		f := getFormatter()
 
 		if amendScopeFlag == "" {
-			return HandleError(f, fmt.Errorf("--scope is required"), "validating input")
+			return failValidation(cmd, f, "--scope is required")
 		}
 
 		params := api.CreateContractAmendmentParams{
@@ -332,24 +332,19 @@ var contractsCreateCmd = &cobra.Command{
 
 		// Validate required fields
 		if contractTitleFlag == "" {
-			f.PrintError("--title is required")
-			return fmt.Errorf("title is required")
+			return failValidation(cmd, f, "--title is required")
 		}
 		if contractTypeFlag == "" {
-			f.PrintError("--type is required (fixed_rate, pay_as_you_go, milestone, task_based)")
-			return fmt.Errorf("type is required")
+			return failValidation(cmd, f, "--type is required (fixed_rate, pay_as_you_go, milestone, task_based)")
 		}
 		if contractWorkerEmailFlag == "" {
-			f.PrintError("--worker-email is required")
-			return fmt.Errorf("worker-email is required")
+			return failValidation(cmd, f, "--worker-email is required")
 		}
 		if contractCurrencyFlag == "" {
-			f.PrintError("--currency is required")
-			return fmt.Errorf("currency is required")
+			return failValidation(cmd, f, "--currency is required")
 		}
 		if contractCountryFlag == "" {
-			f.PrintError("--country is required")
-			return fmt.Errorf("country is required")
+			return failValidation(cmd, f, "--country is required")
 		}
 
 		params := api.CreateContractParams{
@@ -413,21 +408,42 @@ var contractsCreateCmd = &cobra.Command{
 			return HandleError(f, err, "creating contract")
 		}
 
-		f.PrintSuccess("Contract created successfully")
-		f.PrintText("Contract ID: " + contract.ID)
-		f.PrintText("Status: " + contract.Status)
-		f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
-		f.PrintText("\nNext steps:")
-		f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
-		f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+		result := map[string]any{
+			"contract": contract,
+			"urls": map[string]string{
+				"contract": "https://app.deel.com/contract/" + contract.ID + "/contracts",
+			},
+			"next_steps": []string{
+				"deel contracts sign " + contract.ID,
+				"deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag,
+			},
+		}
+
+		managerAssignment := map[string]any{}
 		if contractManagerFlag != "" {
+			managerAssignment = map[string]any{
+				"requested_manager_id": contractManagerFlag,
+				"attempted":            false,
+				"assigned":             false,
+			}
+			result["manager_assignment"] = managerAssignment
+
 			waitDuration := contractManagerWaitFlag
 			if waitDuration <= 0 {
-				f.PrintText("")
-				f.PrintText("NOTE: Manager assignment during contract creation is not supported by Deel API.")
-				f.PrintText("After the worker signs and appears in the People directory, assign their manager:")
-				f.PrintText("  deel people assign-manager --email " + contractWorkerEmailFlag + " --manager " + contractManagerFlag)
-				return nil
+				managerAssignment["reason"] = "automatic_manager_assignment_disabled"
+				return f.OutputFiltered(cmd.Context(), func() {
+					f.PrintSuccess("Contract created successfully")
+					f.PrintText("Contract ID: " + contract.ID)
+					f.PrintText("Status: " + contract.Status)
+					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
+					f.PrintText("\nNext steps:")
+					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
+					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+					f.PrintText("")
+					f.PrintText("NOTE: Manager assignment during contract creation is not supported by Deel API.")
+					f.PrintText("After the worker signs and appears in the People directory, assign their manager:")
+					f.PrintText("  deel people assign-manager --email " + contractWorkerEmailFlag + " --manager " + contractManagerFlag)
+				}, result)
 			}
 
 			workerEmail := contract.WorkerEmail
@@ -443,7 +459,18 @@ var contractsCreateCmd = &cobra.Command{
 				f.PrintWarning("Manager not assigned automatically: %v", err)
 				f.PrintText("Assign manually once ready:")
 				f.PrintText("  deel people assign-manager --email " + workerEmail + " --manager " + contractManagerFlag)
-				return nil
+				managerAssignment["attempted"] = true
+				managerAssignment["error"] = err.Error()
+				managerAssignment["worker_email"] = workerEmail
+				return f.OutputFiltered(cmd.Context(), func() {
+					f.PrintSuccess("Contract created successfully")
+					f.PrintText("Contract ID: " + contract.ID)
+					f.PrintText("Status: " + contract.Status)
+					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
+					f.PrintText("\nNext steps:")
+					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
+					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+				}, result)
 			}
 
 			startDate := contract.StartDate
@@ -462,14 +489,45 @@ var contractsCreateCmd = &cobra.Command{
 				f.PrintWarning("Manager not assigned automatically: %v", err)
 				f.PrintText("Assign manually once ready:")
 				f.PrintText("  deel people assign-manager --email " + workerEmail + " --manager " + contractManagerFlag)
-				return nil
+				managerAssignment["attempted"] = true
+				managerAssignment["error"] = err.Error()
+				managerAssignment["worker_email"] = workerEmail
+				managerAssignment["hris_profile_id"] = person.HRISProfileID
+				return f.OutputFiltered(cmd.Context(), func() {
+					f.PrintSuccess("Contract created successfully")
+					f.PrintText("Contract ID: " + contract.ID)
+					f.PrintText("Status: " + contract.Status)
+					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
+					f.PrintText("\nNext steps:")
+					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
+					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+				}, result)
 			}
 
-			f.PrintSuccess("Manager assigned successfully")
-			f.PrintText("Worker:  " + workerEmail)
-			f.PrintText("Manager: " + contractManagerFlag)
+			managerAssignment["attempted"] = true
+			managerAssignment["assigned"] = true
+			managerAssignment["worker_email"] = workerEmail
+			managerAssignment["hris_profile_id"] = person.HRISProfileID
+			managerAssignment["start_date"] = startDate
 		}
-		return nil
+
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Contract created successfully")
+			f.PrintText("Contract ID: " + contract.ID)
+			f.PrintText("Status: " + contract.Status)
+			f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
+			f.PrintText("\nNext steps:")
+			f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
+			f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
+			if contractManagerFlag != "" && managerAssignment["assigned"] == true {
+				f.PrintText("")
+				f.PrintSuccess("Manager assigned successfully")
+				if workerEmail, ok := managerAssignment["worker_email"].(string); ok && workerEmail != "" {
+					f.PrintText("Worker:  " + workerEmail)
+				}
+				f.PrintText("Manager: " + contractManagerFlag)
+			}
+		}, result)
 	},
 }
 
@@ -481,7 +539,7 @@ var contractsSignCmd = &cobra.Command{
 		f := getFormatter()
 
 		if signSignerFlag == "" {
-			return HandleError(f, fmt.Errorf("--signer is required"), "validating input")
+			return failValidation(cmd, f, "--signer is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -506,10 +564,11 @@ var contractsSignCmd = &cobra.Command{
 			return HandleError(f, err, "signing contract")
 		}
 
-		f.PrintSuccess("Contract signed successfully")
-		f.PrintText("Contract ID: " + contract.ID)
-		f.PrintText("Status: " + contract.Status)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Contract signed successfully")
+			f.PrintText("Contract ID: " + contract.ID)
+			f.PrintText("Status: " + contract.Status)
+		}, contract)
 	},
 }
 
@@ -532,10 +591,7 @@ Examples:
 		f := getFormatter()
 
 		if terminateReasonFlag == "" {
-			f.PrintError("--reason is required")
-			f.PrintText("\nTo see available reasons, run:")
-			f.PrintText("  deel contracts termination-reasons")
-			return fmt.Errorf("reason is required")
+			return failValidation(cmd, f, "--reason is required", "To see available reasons, run: deel contracts termination-reasons")
 		}
 
 		client, err := getClient()
@@ -563,7 +619,7 @@ Examples:
 			for _, r := range reasons {
 				f.PrintText("  • " + r.Name)
 			}
-			return fmt.Errorf("unknown reason")
+			return failValidation(cmd, f, fmt.Sprintf("Unknown termination reason: %s", terminateReasonFlag))
 		}
 
 		params := api.TerminateContractParams{
@@ -594,13 +650,20 @@ Examples:
 			return HandleError(f, err, "terminating contract")
 		}
 
-		f.PrintSuccess("Contract termination initiated successfully")
-		f.PrintText("Contract ID: " + args[0])
-		f.PrintText("Reason: " + terminateReasonFlag)
-		if terminateDateFlag != "" {
-			f.PrintText("Effective Date: " + terminateDateFlag)
-		}
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Contract termination initiated successfully")
+			f.PrintText("Contract ID: " + args[0])
+			f.PrintText("Reason: " + terminateReasonFlag)
+			if terminateDateFlag != "" {
+				f.PrintText("Effective Date: " + terminateDateFlag)
+			}
+		}, map[string]any{
+			"terminated":     true,
+			"contract_id":    args[0],
+			"reason":         terminateReasonFlag,
+			"effective_date": terminateDateFlag,
+			"immediate":      terminateImmediateFlag,
+		})
 	},
 }
 
@@ -665,7 +728,7 @@ var contractsInviteCmd = &cobra.Command{
 		f := getFormatter()
 
 		if inviteEmailFlag == "" {
-			return HandleError(f, fmt.Errorf("--email is required"), "validating input")
+			return failValidation(cmd, f, "--email is required")
 		}
 
 		client, err := getClient()
@@ -684,10 +747,16 @@ var contractsInviteCmd = &cobra.Command{
 			return HandleError(f, err, "sending invitation")
 		}
 
-		f.PrintSuccess("Invitation email sent successfully")
-		f.PrintText("Contract ID: " + args[0])
-		f.PrintText("Sent to: " + inviteEmailFlag)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Invitation email sent successfully")
+			f.PrintText("Contract ID: " + args[0])
+			f.PrintText("Sent to: " + inviteEmailFlag)
+		}, map[string]any{
+			"sent":        true,
+			"contract_id": args[0],
+			"email":       inviteEmailFlag,
+			"locale":      inviteLocaleFlag,
+		})
 	},
 }
 

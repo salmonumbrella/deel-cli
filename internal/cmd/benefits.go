@@ -25,8 +25,7 @@ var benefitsListCmd = &cobra.Command{
 		f := getFormatter()
 
 		if benefitsCountryFlag == "" {
-			f.PrintError("--country is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--country is required")
 		}
 
 		client, err := getClient()
@@ -66,8 +65,7 @@ var benefitsEmployeeCmd = &cobra.Command{
 		f := getFormatter()
 
 		if benefitsEmployeeFlag == "" {
-			f.PrintError("--employee is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--employee is required")
 		}
 
 		client, err := getClient()

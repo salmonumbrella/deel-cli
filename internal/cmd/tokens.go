@@ -28,8 +28,7 @@ var tokensCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if tokensWorkerFlag == "" {
-			f.PrintError("--worker is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--worker is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

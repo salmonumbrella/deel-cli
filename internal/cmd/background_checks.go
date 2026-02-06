@@ -26,8 +26,7 @@ var bgCheckOptionsCmd = &cobra.Command{
 		f := getFormatter()
 
 		if bgCheckCountryFlag == "" {
-			f.PrintError("--country is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--country is required")
 		}
 
 		client, err := getClient()
@@ -62,8 +61,7 @@ var bgCheckListCmd = &cobra.Command{
 		f := getFormatter()
 
 		if bgCheckContractFlag == "" {
-			f.PrintError("--contract is required")
-			return fmt.Errorf("missing required flag")
+			return failValidation(cmd, f, "--contract is required")
 		}
 
 		client, err := getClient()

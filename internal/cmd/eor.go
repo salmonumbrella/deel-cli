@@ -40,47 +40,37 @@ var eorCreateCmd = &cobra.Command{
 
 		// Validate required flags
 		if eorCreateTitleFlag == "" {
-			f.PrintError("--title flag is required")
-			return fmt.Errorf("--title flag is required")
+			return failValidation(cmd, f, "--title flag is required")
 		}
 		if eorCreateWorkerEmailFlag == "" {
-			f.PrintError("--worker-email flag is required")
-			return fmt.Errorf("--worker-email flag is required")
+			return failValidation(cmd, f, "--worker-email flag is required")
 		}
 		if eorCreateWorkerNameFlag == "" {
-			f.PrintError("--worker-name flag is required")
-			return fmt.Errorf("--worker-name flag is required")
+			return failValidation(cmd, f, "--worker-name flag is required")
 		}
 		if eorCreateCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 		if eorCreateStartDateFlag == "" {
-			f.PrintError("--start-date flag is required")
-			return fmt.Errorf("--start-date flag is required")
+			return failValidation(cmd, f, "--start-date flag is required")
 		}
 		if eorCreateSalaryFlag == "" {
-			f.PrintError("--salary flag is required")
-			return fmt.Errorf("--salary flag is required")
+			return failValidation(cmd, f, "--salary flag is required")
 		}
 		if eorCreateCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 		if eorCreatePayFrequencyFlag == "" {
-			f.PrintError("--pay-frequency flag is required")
-			return fmt.Errorf("--pay-frequency flag is required")
+			return failValidation(cmd, f, "--pay-frequency flag is required")
 		}
 		if eorCreateJobTitleFlag == "" {
-			f.PrintError("--job-title flag is required")
-			return fmt.Errorf("--job-title flag is required")
+			return failValidation(cmd, f, "--job-title flag is required")
 		}
 
 		// Parse salary
 		salary, err := strconv.ParseFloat(eorCreateSalaryFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --salary value: %v", err)
-			return fmt.Errorf("invalid --salary value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("Invalid --salary value: %v", err))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -253,8 +243,7 @@ var eorCancelCmd = &cobra.Command{
 		f := getFormatter()
 
 		if eorCancelReasonFlag == "" {
-			f.PrintError("--reason flag is required")
-			return fmt.Errorf("--reason flag is required")
+			return failValidation(cmd, f, "--reason flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -312,16 +301,13 @@ var eorAmendCmd = &cobra.Command{
 		f := getFormatter()
 
 		if eorAmendTypeFlag == "" {
-			f.PrintError("--type flag is required")
-			return fmt.Errorf("--type flag is required")
+			return failValidation(cmd, f, "--type flag is required")
 		}
 		if eorAmendEffectiveDateFlag == "" {
-			f.PrintError("--effective-date flag is required")
-			return fmt.Errorf("--effective-date flag is required")
+			return failValidation(cmd, f, "--effective-date flag is required")
 		}
 		if eorAmendReasonFlag == "" {
-			f.PrintError("--reason flag is required")
-			return fmt.Errorf("--reason flag is required")
+			return failValidation(cmd, f, "--reason flag is required")
 		}
 
 		// Build changes map
@@ -329,8 +315,7 @@ var eorAmendCmd = &cobra.Command{
 		if eorAmendSalaryFlag != "" {
 			salary, err := strconv.ParseFloat(eorAmendSalaryFlag, 64)
 			if err != nil {
-				f.PrintError("Invalid --salary value: %v", err)
-				return fmt.Errorf("invalid --salary value: %w", err)
+				return failValidation(cmd, f, fmt.Sprintf("Invalid --salary value: %v", err))
 			}
 			changes["salary"] = salary
 		}
@@ -345,8 +330,7 @@ var eorAmendCmd = &cobra.Command{
 		}
 
 		if len(changes) == 0 {
-			f.PrintError("At least one change flag (--salary, --job-title, --seniority, --scope) is required")
-			return fmt.Errorf("at least one change flag is required")
+			return failValidation(cmd, f, "At least one change flag (--salary, --job-title, --seniority, --scope) is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -562,16 +546,13 @@ Example:
 		f := getFormatter()
 
 		if eorTerminateReasonFlag == "" {
-			f.PrintError("--reason flag is required")
-			return fmt.Errorf("--reason flag is required")
+			return failValidation(cmd, f, "--reason flag is required")
 		}
 		if eorTerminateReasonDetailFlag == "" {
-			f.PrintError("--reason-detail flag is required (100-5000 chars)")
-			return fmt.Errorf("--reason-detail flag is required")
+			return failValidation(cmd, f, "--reason-detail flag is required (100-5000 chars)")
 		}
 		if len(eorTerminateReasonDetailFlag) < 100 {
-			f.PrintError("--reason-detail must be at least 100 characters")
-			return fmt.Errorf("--reason-detail must be at least 100 characters")
+			return failValidation(cmd, f, "--reason-detail must be at least 100 characters")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -655,20 +636,16 @@ var workersCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if workersCreateEmailFlag == "" {
-			f.PrintError("--email flag is required")
-			return fmt.Errorf("--email flag is required")
+			return failValidation(cmd, f, "--email flag is required")
 		}
 		if workersCreateFirstNameFlag == "" {
-			f.PrintError("--first-name flag is required")
-			return fmt.Errorf("--first-name flag is required")
+			return failValidation(cmd, f, "--first-name flag is required")
 		}
 		if workersCreateLastNameFlag == "" {
-			f.PrintError("--last-name flag is required")
-			return fmt.Errorf("--last-name flag is required")
+			return failValidation(cmd, f, "--last-name flag is required")
 		}
 		if workersCreateCountryFlag == "" {
-			f.PrintError("--country flag is required")
-			return fmt.Errorf("--country flag is required")
+			return failValidation(cmd, f, "--country flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -753,20 +730,16 @@ var bankAccountsAddCmd = &cobra.Command{
 		f := getFormatter()
 
 		if bankAccountAddAccountHolderFlag == "" {
-			f.PrintError("--account-holder flag is required")
-			return fmt.Errorf("--account-holder flag is required")
+			return failValidation(cmd, f, "--account-holder flag is required")
 		}
 		if bankAccountAddBankNameFlag == "" {
-			f.PrintError("--bank-name flag is required")
-			return fmt.Errorf("--bank-name flag is required")
+			return failValidation(cmd, f, "--bank-name flag is required")
 		}
 		if bankAccountAddAccountNumberFlag == "" {
-			f.PrintError("--account-number flag is required")
-			return fmt.Errorf("--account-number flag is required")
+			return failValidation(cmd, f, "--account-number flag is required")
 		}
 		if bankAccountAddCurrencyFlag == "" {
-			f.PrintError("--currency flag is required")
-			return fmt.Errorf("--currency flag is required")
+			return failValidation(cmd, f, "--currency flag is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{

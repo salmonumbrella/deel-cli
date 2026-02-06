@@ -27,8 +27,7 @@ var milestonesListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 		if milestonesContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return nil
+			return failValidation(cmd, f, "--contract-id is required")
 		}
 
 		client, err := getClient()
@@ -75,16 +74,13 @@ var milestonesCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if milestonesContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return nil
+			return failValidation(cmd, f, "--contract-id is required")
 		}
 		if milestonesTitleFlag == "" {
-			f.PrintError("--title is required")
-			return nil
+			return failValidation(cmd, f, "--title is required")
 		}
 		if milestonesAmountFlag <= 0 {
-			f.PrintError("--amount is required and must be positive")
-			return nil
+			return failValidation(cmd, f, "--amount is required and must be positive")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -144,10 +140,8 @@ var milestonesDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if !milestonesForceFlag {
-			f.PrintText(fmt.Sprintf("Are you sure you want to delete milestone %s?", args[0]))
-			f.PrintText("Use --force to confirm.")
-			return nil
+		if ok, err := requireForce(cmd, f, milestonesForceFlag, "delete", "milestone", args[0], "deel milestones delete "+args[0]+" --force"); !ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -159,8 +153,12 @@ var milestonesDeleteCmd = &cobra.Command{
 			return HandleError(f, err, "delete milestone")
 		}
 
-		f.PrintSuccess("Milestone deleted successfully.")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Milestone deleted successfully.")
+		}, map[string]any{
+			"deleted":      true,
+			"milestone_id": args[0],
+		})
 	},
 }
 

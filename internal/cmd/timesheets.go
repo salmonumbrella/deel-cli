@@ -128,16 +128,13 @@ var timesheetsCreateEntryCmd = &cobra.Command{
 		f := getFormatter()
 
 		if createEntryTimesheetIDFlag == "" {
-			f.PrintError("--timesheet-id flag is required")
-			return fmt.Errorf("--timesheet-id flag is required")
+			return failValidation(cmd, f, "--timesheet-id flag is required")
 		}
 		if createEntryDateFlag == "" {
-			f.PrintError("--date flag is required")
-			return fmt.Errorf("--date flag is required")
+			return failValidation(cmd, f, "--date flag is required")
 		}
 		if createEntryHoursFlag <= 0 {
-			f.PrintError("--hours flag is required and must be greater than 0")
-			return fmt.Errorf("--hours flag is required and must be greater than 0")
+			return failValidation(cmd, f, "--hours flag is required and must be greater than 0")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -199,12 +196,10 @@ var timesheetsUpdateEntryCmd = &cobra.Command{
 
 		hoursSet := cmd.Flags().Changed("hours")
 		if !hoursSet && updateEntryDescriptionFlag == "" {
-			f.PrintError("At least one of --hours or --description is required")
-			return nil
+			return failValidation(cmd, f, "At least one of --hours or --description is required")
 		}
 		if hoursSet && updateEntryHoursFlag <= 0 {
-			f.PrintError("--hours must be greater than 0")
-			return nil
+			return failValidation(cmd, f, "--hours must be greater than 0")
 		}
 
 		details := map[string]string{
@@ -275,10 +270,8 @@ var timesheetsDeleteEntryCmd = &cobra.Command{
 			return err
 		}
 
-		if !timesheetsDeleteEntryForceFlag {
-			f.PrintText(fmt.Sprintf("Are you sure you want to delete timesheet entry %s?", args[0]))
-			f.PrintText("Use --force to confirm.")
-			return nil
+		if ok, err := requireForce(cmd, f, timesheetsDeleteEntryForceFlag, "delete", "timesheet entry", args[0], "deel timesheets delete-entry "+args[0]+" --force"); !ok {
+			return err
 		}
 
 		client, err := getClient()
@@ -290,8 +283,14 @@ var timesheetsDeleteEntryCmd = &cobra.Command{
 			return HandleError(f, err, "delete timesheet entry")
 		}
 
-		f.PrintSuccess("Timesheet entry deleted successfully.")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Timesheet entry deleted successfully.")
+		}, map[string]any{
+			"deleted":   true,
+			"entry_id":  args[0],
+			"resource":  "TimesheetEntry",
+			"operation": "DELETE",
+		})
 	},
 }
 
@@ -317,8 +316,7 @@ var timesheetsReviewCmd = &cobra.Command{
 		case "reject":
 			status = "rejected"
 		default:
-			f.PrintError("Invalid action %q. Must be 'approve' or 'reject'", action)
-			return fmt.Errorf("invalid action %q", action)
+			return failValidation(cmd, f, fmt.Sprintf("invalid action %q (must be 'approve' or 'reject')", action))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -411,29 +409,24 @@ var presetsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if presetsCreateNameFlag == "" {
-			f.PrintError("--name flag is required")
-			return fmt.Errorf("--name flag is required")
+			return failValidation(cmd, f, "--name flag is required")
 		}
 		if presetsCreateHoursPerDayFlag == "" {
-			f.PrintError("--hours-per-day flag is required")
-			return fmt.Errorf("--hours-per-day flag is required")
+			return failValidation(cmd, f, "--hours-per-day flag is required")
 		}
 		if presetsCreateHoursPerWeekFlag == "" {
-			f.PrintError("--hours-per-week flag is required")
-			return fmt.Errorf("--hours-per-week flag is required")
+			return failValidation(cmd, f, "--hours-per-week flag is required")
 		}
 
 		// Parse hours
 		hoursPerDay, err := strconv.ParseFloat(presetsCreateHoursPerDayFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --hours-per-day value: %v", err)
-			return fmt.Errorf("invalid --hours-per-day value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("invalid --hours-per-day value: %v", err))
 		}
 
 		hoursPerWeek, err := strconv.ParseFloat(presetsCreateHoursPerWeekFlag, 64)
 		if err != nil {
-			f.PrintError("Invalid --hours-per-week value: %v", err)
-			return fmt.Errorf("invalid --hours-per-week value: %w", err)
+			return failValidation(cmd, f, fmt.Sprintf("invalid --hours-per-week value: %v", err))
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -500,24 +493,21 @@ var presetsUpdateCmd = &cobra.Command{
 		if presetsUpdateHoursPerDayFlag != "" {
 			parsed, err := strconv.ParseFloat(presetsUpdateHoursPerDayFlag, 64)
 			if err != nil {
-				f.PrintError("Invalid --hours-per-day value: %v", err)
-				return fmt.Errorf("invalid --hours-per-day value: %w", err)
+				return failValidation(cmd, f, fmt.Sprintf("invalid --hours-per-day value: %v", err))
 			}
 			hoursPerDay = parsed
 		}
 		if presetsUpdateHoursPerWeekFlag != "" {
 			parsed, err := strconv.ParseFloat(presetsUpdateHoursPerWeekFlag, 64)
 			if err != nil {
-				f.PrintError("Invalid --hours-per-week value: %v", err)
-				return fmt.Errorf("invalid --hours-per-week value: %w", err)
+				return failValidation(cmd, f, fmt.Sprintf("invalid --hours-per-week value: %v", err))
 			}
 			hoursPerWeek = parsed
 		}
 		if presetsUpdateRateFlag != "" {
 			parsed, err := strconv.ParseFloat(presetsUpdateRateFlag, 64)
 			if err != nil {
-				f.PrintError("Invalid --rate value: %v", err)
-				return fmt.Errorf("invalid --rate value: %w", err)
+				return failValidation(cmd, f, fmt.Sprintf("invalid --rate value: %v", err))
 			}
 			rate = parsed
 		}
@@ -528,8 +518,7 @@ var presetsUpdateCmd = &cobra.Command{
 			presetsUpdateHoursPerWeekFlag == "" &&
 			presetsUpdateRateFlag == "" &&
 			presetsUpdateCurrencyFlag == "" {
-			f.PrintError("At least one update field is required")
-			return nil
+			return failValidation(cmd, f, "at least one update field is required")
 		}
 
 		details := map[string]string{

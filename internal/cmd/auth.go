@@ -44,15 +44,18 @@ var authLoginCmd = &cobra.Command{
 
 		result, err := server.Start(cmd.Context())
 		if err != nil {
-			f.PrintError("Authentication failed: %v", err)
-			return err
+			return HandleError(f, err, "auth login")
 		}
 
-		f.PrintSuccess("Successfully authenticated as %q", result.AccountName)
-		f.PrintText("")
-		f.PrintText("Test your connection with:")
-		f.PrintText("  deel auth test --account " + result.AccountName)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Successfully authenticated as %q", result.AccountName)
+			f.PrintText("")
+			f.PrintText("Test your connection with:")
+			f.PrintText("  deel auth test --account " + result.AccountName)
+		}, map[string]any{
+			"authenticated": true,
+			"account":       result.AccountName,
+		})
 	},
 }
 
@@ -66,8 +69,7 @@ var authAddCmd = &cobra.Command{
 		accountName := strings.ToLower(strings.TrimSpace(args[0]))
 
 		if err := auth.ValidateAccountName(accountName); err != nil {
-			f.PrintError("Invalid account name: %v", err)
-			return err
+			return failValidation(cmd, f, fmt.Sprintf("Invalid account name: %v", err))
 		}
 
 		// Prompt for token
@@ -95,8 +97,7 @@ var authAddCmd = &cobra.Command{
 		}
 
 		if err := auth.ValidateToken(token); err != nil {
-			f.PrintError("Invalid token: %v", err)
-			return err
+			return failValidation(cmd, f, fmt.Sprintf("Invalid token: %v", err))
 		}
 
 		store, err := secrets.OpenDefault()
@@ -109,8 +110,7 @@ var authAddCmd = &cobra.Command{
 		client := api.NewClient(token)
 		// Use /rest/v2/contracts with limit=1 as a lightweight validation endpoint
 		if _, err := client.Get(cmd.Context(), "/rest/v2/contracts?limit=1"); err != nil {
-			f.PrintError("Token validation failed: %v", err)
-			return fmt.Errorf("invalid token: failed to authenticate with Deel API")
+			return HandleError(f, err, "validate token")
 		}
 		f.PrintSuccess("Token validated successfully")
 
@@ -121,8 +121,12 @@ var authAddCmd = &cobra.Command{
 			return HandleError(f, err, "save credentials")
 		}
 
-		f.PrintSuccess("Credentials saved for account %q", accountName)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Credentials saved for account %q", accountName)
+		}, map[string]any{
+			"saved":   true,
+			"account": accountName,
+		})
 	},
 }
 
@@ -173,8 +177,7 @@ var authRemoveCmd = &cobra.Command{
 		accountName := strings.ToLower(strings.TrimSpace(args[0]))
 
 		if err := auth.ValidateAccountName(accountName); err != nil {
-			f.PrintError("Invalid account name: %v", err)
-			return err
+			return failValidation(cmd, f, fmt.Sprintf("Invalid account name: %v", err))
 		}
 
 		store, err := secrets.OpenDefault()
@@ -186,8 +189,12 @@ var authRemoveCmd = &cobra.Command{
 			return HandleError(f, err, "remove account")
 		}
 
-		f.PrintSuccess("Removed account %q", accountName)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Removed account %q", accountName)
+		}, map[string]any{
+			"removed": true,
+			"account": accountName,
+		})
 	},
 }
 
@@ -208,12 +215,14 @@ var authTestCmd = &cobra.Command{
 		// Use /rest/v2/contracts with limit=1 as a lightweight validation endpoint
 		_, err = client.Get(cmd.Context(), "/rest/v2/contracts?limit=1")
 		if err != nil {
-			f.PrintError("Connection failed: %v", err)
-			return err
+			return HandleError(f, err, "test connection")
 		}
 
-		f.PrintSuccess("Connection successful!")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Connection successful!")
+		}, map[string]any{
+			"ok": true,
+		})
 	},
 }
 
@@ -244,8 +253,7 @@ var authManageCmd = &cobra.Command{
 			if err.Error() == "setup cancelled" || err.Error() == "context canceled" {
 				return nil
 			}
-			f.PrintError("Error: %v", err)
-			return err
+			return HandleError(f, err, "auth manage")
 		}
 
 		return nil

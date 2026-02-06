@@ -278,13 +278,18 @@ var invoicesAdjustmentsApproveCmd = &cobra.Command{
 
 		// Try batch approval first
 		if err := client.ReviewInvoiceAdjustmentsBatch(cmd.Context(), args, "approved", invoiceAdjustmentReasonFlag); err == nil {
-			for _, id := range args {
-				f.PrintSuccess("Approved: %s", id)
-			}
-			return nil
+			return f.OutputFiltered(cmd.Context(), func() {
+				for _, id := range args {
+					f.PrintSuccess("Approved: %s", id)
+				}
+			}, map[string]any{
+				"status":   "approved",
+				"approved": args,
+			})
 		}
 
 		// Fall back to individual approval
+		var approved []string
 		var failed []string
 		for _, id := range args {
 			params := api.ReviewInvoiceAdjustmentParams{
@@ -298,12 +303,16 @@ var invoicesAdjustmentsApproveCmd = &cobra.Command{
 				continue
 			}
 			f.PrintSuccess("Approved: %s", id)
+			approved = append(approved, id)
 		}
 
 		if len(failed) > 0 {
 			return fmt.Errorf("failed to approve %d adjustment(s): %v", len(failed), failed)
 		}
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {}, map[string]any{
+			"status":   "approved",
+			"approved": approved,
+		})
 	},
 }
 
@@ -316,8 +325,7 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 		f := getFormatter()
 
 		if invoiceAdjustmentReasonFlag == "" {
-			f.PrintError("--reason is required when declining")
-			return fmt.Errorf("--reason is required when declining")
+			return failValidation(cmd, f, "--reason is required when declining")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -338,6 +346,7 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 		}
 
 		var failed []string
+		var declined []string
 		for _, id := range args {
 			params := api.ReviewInvoiceAdjustmentParams{
 				Status: "declined",
@@ -350,12 +359,16 @@ var invoicesAdjustmentsDeclineCmd = &cobra.Command{
 				continue
 			}
 			f.PrintSuccess("Declined: %s", id)
+			declined = append(declined, id)
 		}
 
 		if len(failed) > 0 {
 			return fmt.Errorf("failed to decline %d adjustment(s): %v", len(failed), failed)
 		}
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {}, map[string]any{
+			"status":   "declined",
+			"declined": declined,
+		})
 	},
 }
 
@@ -367,12 +380,10 @@ var invoicesAdjustmentsCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if invoiceAdjustmentTypeFlag == "" {
-			f.PrintError("--type is required")
-			return fmt.Errorf("--type is required")
+			return failValidation(cmd, f, "--type is required")
 		}
 		if invoiceAdjustmentAmountFlag == 0 {
-			f.PrintError("--amount is required")
-			return fmt.Errorf("--amount is required")
+			return failValidation(cmd, f, "--amount is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -439,6 +450,9 @@ var invoicesPDFCmd = &cobra.Command{
 		}
 
 		if outputPath == "-" {
+			if f.IsJSON() {
+				return fmt.Errorf("cannot write PDF bytes to stdout in --json mode (use --output <path>)")
+			}
 			if _, err := os.Stdout.Write(pdfBytes); err != nil {
 				return HandleError(f, err, "writing PDF to stdout")
 			}
@@ -449,8 +463,13 @@ var invoicesPDFCmd = &cobra.Command{
 			return HandleError(f, err, "saving PDF")
 		}
 
-		f.PrintSuccess("Saved invoice to %s", outputPath)
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Saved invoice to %s", outputPath)
+		}, map[string]any{
+			"saved":      true,
+			"invoice_id": args[0],
+			"path":       outputPath,
+		})
 	},
 }
 
