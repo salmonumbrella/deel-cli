@@ -9,6 +9,17 @@ import (
 	"github.com/salmonumbrella/deel-cli/internal/config"
 )
 
+func TestAgentErrorEmitted_Reset(t *testing.T) {
+	resetAgentErrorEmitted()
+	assert.False(t, AgentErrorEmitted())
+
+	markAgentErrorEmitted()
+	assert.True(t, AgentErrorEmitted())
+
+	resetAgentErrorEmitted()
+	assert.False(t, AgentErrorEmitted())
+}
+
 func TestIsAgentMode_ArgsOverrideEnv(t *testing.T) {
 	t.Setenv(config.EnvAgent, "1")
 	assert.True(t, IsAgentMode([]string{}))

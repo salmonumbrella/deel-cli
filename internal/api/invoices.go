@@ -234,7 +234,7 @@ func (c *Client) GetInvoicePDF(ctx context.Context, invoiceID string) ([]byte, e
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+c.token.Value())
 	req.Header.Set("Accept", "application/pdf")
 
 	resp, err := c.httpClient.Do(req)

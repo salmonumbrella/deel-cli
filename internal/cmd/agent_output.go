@@ -12,3 +12,8 @@ func markAgentErrorEmitted() {
 func AgentErrorEmitted() bool {
 	return agentErrorEmitted.Load()
 }
+
+// resetAgentErrorEmitted clears the emitted flag; used by tests to ensure isolation between runs.
+func resetAgentErrorEmitted() {
+	agentErrorEmitted.Store(false)
+}

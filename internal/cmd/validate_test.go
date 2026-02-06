@@ -134,6 +134,26 @@ func TestValidateCurrency(t *testing.T) {
 			input:       "",
 			expectError: true,
 		},
+		{
+			name:        "invalid - single letter",
+			input:       "U",
+			expectError: true,
+		},
+		{
+			name:        "invalid - special characters",
+			input:       "U$D",
+			expectError: true,
+		},
+		{
+			name:        "invalid - unicode letters",
+			input:       "ÜSD",
+			expectError: true,
+		},
+		{
+			name:        "invalid - spaces",
+			input:       "U S",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -261,6 +281,18 @@ func TestValidateDateRange(t *testing.T) {
 			endDate:     "not-a-date",
 			expectError: true,
 		},
+		{
+			name:        "valid range - across years",
+			startDate:   "2023-12-31",
+			endDate:     "2024-01-01",
+			expectError: false,
+		},
+		{
+			name:        "invalid - both bad dates",
+			startDate:   "bad",
+			endDate:     "also-bad",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -299,6 +331,24 @@ func TestConvertDateToRFC3339(t *testing.T) {
 			input:    "not-a-date",
 			expected: "",
 			hasError: true,
+		},
+		{
+			name:     "leap day",
+			input:    "2024-02-29",
+			expected: "2024-02-29T00:00:00Z",
+			hasError: false,
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+			hasError: true,
+		},
+		{
+			name:     "first day of year",
+			input:    "2024-01-01",
+			expected: "2024-01-01T00:00:00Z",
+			hasError: false,
 		},
 	}
 

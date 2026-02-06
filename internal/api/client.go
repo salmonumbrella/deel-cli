@@ -35,7 +35,7 @@ const (
 // Client is the Deel API client
 type Client struct {
 	httpClient     *http.Client
-	token          string
+	token          RedactedString
 	baseURL        string
 	debug          bool
 	idempotencyKey string
@@ -61,7 +61,7 @@ func NewClient(token string) *Client {
 				return nil
 			},
 		},
-		token:       token,
+		token:       NewRedactedString(token),
 		baseURL:     config.BaseURL,
 		maxRetries:  defaultMaxRetries,
 		baseBackoff: defaultBaseBackoff,
@@ -255,7 +255,7 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body any) (*
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+c.token.Value())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	if c.idempotencyKey != "" && method != http.MethodGet {
@@ -409,7 +409,7 @@ func (c *Client) doMultipartRequest(ctx context.Context, method, url string, bod
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+c.token.Value())
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
 	if c.idempotencyKey != "" && method != http.MethodGet {
@@ -445,32 +445,3 @@ func (e *APIError) APIMessage() string {
 	return e.Message
 }
 
-// FlexFloat64 handles JSON number fields that may be strings or numbers
-type FlexFloat64 float64
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (f *FlexFloat64) UnmarshalJSON(data []byte) error {
-	// Try as number first
-	var num float64
-	if err := json.Unmarshal(data, &num); err == nil {
-		*f = FlexFloat64(num)
-		return nil
-	}
-
-	// Try as string
-	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
-		if str == "" {
-			*f = 0
-			return nil
-		}
-		parsed, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			return fmt.Errorf("cannot parse %q as float64: %w", str, err)
-		}
-		*f = FlexFloat64(parsed)
-		return nil
-	}
-
-	return fmt.Errorf("cannot unmarshal %s into FlexFloat64", string(data))
-}

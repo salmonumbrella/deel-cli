@@ -107,7 +107,7 @@ func findCommand(root *cobra.Command, path []string) (*cobra.Command, error) {
 	c := root
 	for _, p := range path {
 		next, _, err := c.Find([]string{p})
-		if err != nil || next == nil {
+		if err != nil || next == nil || next == c {
 			return nil, fmt.Errorf("unknown command path: %v", path)
 		}
 		c = next

@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/salmonumbrella/deel-cli/internal/dryrun"
 )
 
 func TestFormatter_OutputWithQuery(t *testing.T) {
@@ -149,4 +151,100 @@ func TestFormatter_OutputFiltered_JSONL(t *testing.T) {
 	var out2 map[string]interface{}
 	require.NoError(t, json.Unmarshal(lines[1], &out2))
 	assert.Equal(t, "c2", out2["id"])
+}
+
+func TestFormatter_OutputFiltered_TextMode(t *testing.T) {
+	var buf bytes.Buffer
+	f := New(&buf, &buf, FormatText, "never")
+
+	called := false
+	err := f.OutputFiltered(context.Background(), func() {
+		called = true
+		f.PrintText("hello text")
+	}, map[string]interface{}{"id": "c1"})
+	require.NoError(t, err)
+	assert.True(t, called, "text callback should be invoked in text mode")
+	assert.Contains(t, buf.String(), "hello text")
+}
+
+func TestEnsureEnvelope_NilData(t *testing.T) {
+	result := ensureEnvelope(nil)
+	m, ok := result.(map[string]any)
+	require.True(t, ok)
+	assert.Nil(t, m["data"])
+}
+
+func TestEnsureEnvelope_AlreadyWrapped(t *testing.T) {
+	data := map[string]any{"data": []any{"a", "b"}}
+	result := ensureEnvelope(data)
+	// Should return the same map, not double-wrap
+	m, ok := result.(map[string]any)
+	require.True(t, ok)
+	assert.NotNil(t, m["data"])
+	arr, ok := m["data"].([]any)
+	require.True(t, ok)
+	assert.Len(t, arr, 2)
+}
+
+func TestExtractData_MapWithDataKey(t *testing.T) {
+	data := map[string]any{"data": "payload", "extra": "ignored"}
+	extracted, ok := extractData(data)
+	assert.True(t, ok)
+	assert.Equal(t, "payload", extracted)
+}
+
+func TestExtractData_MapWithoutDataKey(t *testing.T) {
+	data := map[string]any{"id": "123"}
+	extracted, ok := extractData(data)
+	assert.False(t, ok)
+	assert.Equal(t, data, extracted)
+}
+
+func TestExtractData_Struct(t *testing.T) {
+	type wrap struct {
+		Data string
+	}
+	data := wrap{Data: "payload"}
+	extracted, ok := extractData(data)
+	assert.True(t, ok)
+	assert.Equal(t, "payload", extracted)
+}
+
+func TestExtractData_Nil(t *testing.T) {
+	extracted, ok := extractData(nil)
+	assert.False(t, ok)
+	assert.Nil(t, extracted)
+}
+
+func TestFormatter_PrintDryRun_JSON(t *testing.T) {
+	var buf bytes.Buffer
+	f := New(&buf, &buf, FormatJSON, "never")
+
+	err := f.PrintDryRun(&dryrun.Preview{
+		Operation:   "CREATE",
+		Resource:    "Person",
+		Description: "Create person",
+		Details:     map[string]string{"Name": "Alice"},
+	})
+	require.NoError(t, err)
+
+	var out map[string]interface{}
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &out))
+	assert.Equal(t, true, out["dry_run"])
+	assert.NotNil(t, out["preview"])
+}
+
+func TestFormatter_PrintDryRun_Text(t *testing.T) {
+	var buf bytes.Buffer
+	f := New(&buf, &buf, FormatText, "never")
+
+	err := f.PrintDryRun(&dryrun.Preview{
+		Operation:   "DELETE",
+		Resource:    "Person",
+		Description: "Delete person",
+		Details:     map[string]string{"ID": "123"},
+	})
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "DELETE")
+	assert.Contains(t, buf.String(), "Person")
 }

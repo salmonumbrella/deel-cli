@@ -43,6 +43,12 @@ var (
 	BuildDate = "unknown"
 )
 
+// Architecture note: Package-level variables are used for flag storage and command
+// registration throughout the cmd package. This is the standard pattern for Cobra
+// CLIs and is acceptable for a single-process CLI tool. The incremental path forward
+// is to extract pure functions from RunE closures for testability (see validate.go,
+// list_helper.go) rather than a full dependency-injection rewrite.
+
 // Global flags
 var (
 	accountFlag        string

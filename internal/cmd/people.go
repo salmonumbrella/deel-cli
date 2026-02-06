@@ -36,8 +36,9 @@ COMMON WORKFLOWS:
 }
 
 var (
-	peopleEmailFlag string
-	peopleNameFlag  string
+	peopleEmailFlag      string
+	peopleNameFlag       string
+	peopleMaxResultsFlag int
 )
 
 var (
@@ -191,6 +192,7 @@ Examples:
 		searchName := strings.ToLower(peopleNameFlag)
 		var matches []api.Person
 		cursor := ""
+		pages := 0
 
 		for {
 			resp, err := client.ListPeople(cmd.Context(), api.PeopleListParams{
@@ -200,6 +202,7 @@ Examples:
 			if err != nil {
 				return HandleError(f, err, "searching people")
 			}
+			pages++
 
 			for _, p := range resp.Data {
 				fullName := strings.ToLower(p.FirstName + " " + p.LastName)
@@ -213,7 +216,17 @@ Examples:
 				}
 			}
 
+			// Early termination when --max-results is set
+			if peopleMaxResultsFlag > 0 && len(matches) >= peopleMaxResultsFlag {
+				matches = matches[:peopleMaxResultsFlag]
+				break
+			}
+
 			if resp.Page.Next == "" {
+				break
+			}
+			if pages >= maxPaginationPages {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: search stopped after %d pages (safety limit). Use --max-results to limit results or refine your query.\n", maxPaginationPages)
 				break
 			}
 			cursor = resp.Page.Next
@@ -1295,6 +1308,7 @@ func init() {
 
 	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for (exact match)")
 	peopleSearchCmd.Flags().StringVar(&peopleNameFlag, "name", "", "Name to search for (partial match, case-insensitive)")
+	peopleSearchCmd.Flags().IntVar(&peopleMaxResultsFlag, "max-results", 0, "Maximum results for name search (0 = unlimited)")
 
 	// People get command flags
 	peopleGetCmd.Flags().BoolVar(&peoplePersonalFlag, "personal", false, "Get personal info including numeric worker_id")
