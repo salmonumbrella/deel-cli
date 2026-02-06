@@ -24,35 +24,65 @@ On other platforms, it will show manual upgrade instructions.`,
 		// Check for updates
 		result, err := update.CheckForUpdate(cmd.Context(), Version)
 		if err != nil {
-			f.PrintWarning("Could not check for updates: %v", err)
-			return nil
+			return f.OutputFiltered(cmd.Context(), func() {
+				f.PrintWarning("Could not check for updates: %v", err)
+			}, map[string]any{
+				"checked": false,
+				"error":   err.Error(),
+			})
+		}
+
+		payload := map[string]any{
+			"checked":          true,
+			"current_version":  result.CurrentVersion,
+			"latest_version":   result.LatestVersion,
+			"update_url":       result.UpdateURL,
+			"update_available": result.UpdateAvailable,
 		}
 
 		if !result.UpdateAvailable {
-			if result.LatestVersion != "" {
-				f.PrintSuccess("deel-cli is up to date (version %s)", result.CurrentVersion)
-			} else {
-				f.PrintText("Running a development build, skipping update check")
-			}
-			return nil
+			return f.OutputFiltered(cmd.Context(), func() {
+				if result.LatestVersion != "" {
+					f.PrintSuccess("deel-cli is up to date (version %s)", result.CurrentVersion)
+				} else {
+					f.PrintText("Running a development build, skipping update check")
+				}
+			}, payload)
 		}
-
-		f.PrintText(fmt.Sprintf("Update available: %s -> %s", result.CurrentVersion, result.LatestVersion))
 
 		// Try to upgrade based on platform
 		if runtime.GOOS == "darwin" && isBrewInstalled() {
-			f.PrintText("Attempting upgrade via Homebrew...")
-			if err := runBrewUpgrade(); err != nil {
-				f.PrintWarning("Homebrew upgrade failed: %v", err)
-				showManualInstructions(f, result)
-			} else {
-				f.PrintSuccess("Successfully upgraded to %s", result.LatestVersion)
+			payload["upgrade"] = map[string]any{
+				"attempted": true,
+				"method":    "homebrew",
+				"success":   false,
 			}
-			return nil
+			if err := runBrewUpgrade(); err != nil {
+				payload["upgrade"].(map[string]any)["error"] = err.Error()
+				return f.OutputFiltered(cmd.Context(), func() {
+					f.PrintText(fmt.Sprintf("Update available: %s -> %s", result.CurrentVersion, result.LatestVersion))
+					f.PrintText("Attempting upgrade via Homebrew...")
+					f.PrintWarning("Homebrew upgrade failed: %v", err)
+					showManualInstructions(f, result)
+				}, payload)
+			}
+
+			payload["upgrade"].(map[string]any)["success"] = true
+			return f.OutputFiltered(cmd.Context(), func() {
+				f.PrintText(fmt.Sprintf("Update available: %s -> %s", result.CurrentVersion, result.LatestVersion))
+				f.PrintText("Attempting upgrade via Homebrew...")
+				f.PrintSuccess("Successfully upgraded to %s", result.LatestVersion)
+			}, payload)
 		}
 
-		showManualInstructions(f, result)
-		return nil
+		payload["upgrade"] = map[string]any{
+			"attempted": false,
+			"method":    "manual",
+		}
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintText(fmt.Sprintf("Update available: %s -> %s", result.CurrentVersion, result.LatestVersion))
+			showManualInstructions(f, result)
+		}, payload)
 	},
 }
 

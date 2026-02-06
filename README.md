@@ -131,7 +131,30 @@ deel people list
 - `DEEL_OUTPUT` - Output format: `text` (default) or `json`
 - `DEEL_COLOR` - Color mode: `auto` (default), `always`, or `never`
 - `DEEL_IDEMPOTENCY_KEY` - Idempotency key for write requests
+- `DEEL_AGENT` - Agent mode: force JSON output, disable color, emit compact JSON
 - `NO_COLOR` - Set to any value to disable colors (standard convention)
+
+### Agent Mode
+
+Agent mode makes the CLI easier to use from tools/agents by forcing JSON output and keeping stdout machine-readable.
+
+```bash
+# Enable per invocation
+deel --agent people list
+
+# Or enable globally
+export DEEL_AGENT=1
+deel people list
+```
+
+### JSONL (Streaming)
+
+For large lists, `--jsonl` outputs one JSON value per line (easy to stream/process):
+
+```bash
+deel people list --jsonl | head
+deel people list --jsonl --jq '{id, name}'
+```
 
 ## Security
 

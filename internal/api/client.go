@@ -25,9 +25,9 @@ func escapePath(segment string) string {
 }
 
 const (
-	maxRetries           = 3
-	baseBackoff          = 1 * time.Second
-	maxBackoff           = 30 * time.Second
+	defaultMaxRetries    = 3
+	defaultBaseBackoff   = 1 * time.Second
+	defaultMaxBackoff    = 30 * time.Second
 	circuitBreakerLimit  = 5
 	circuitBreakerWindow = 30 * time.Second
 )
@@ -39,6 +39,9 @@ type Client struct {
 	baseURL        string
 	debug          bool
 	idempotencyKey string
+	maxRetries     int
+	baseBackoff    time.Duration
+	maxBackoff     time.Duration
 
 	// Circuit breaker state
 	mu               sync.Mutex
@@ -58,8 +61,11 @@ func NewClient(token string) *Client {
 				return nil
 			},
 		},
-		token:   token,
-		baseURL: config.BaseURL,
+		token:       token,
+		baseURL:     config.BaseURL,
+		maxRetries:  defaultMaxRetries,
+		baseBackoff: defaultBaseBackoff,
+		maxBackoff:  defaultMaxBackoff,
 	}
 }
 
@@ -71,6 +77,28 @@ func (c *Client) SetDebug(debug bool) {
 // SetIdempotencyKey sets the idempotency key used for write requests.
 func (c *Client) SetIdempotencyKey(key string) {
 	c.idempotencyKey = key
+}
+
+// SetTimeout sets the HTTP client timeout.
+func (c *Client) SetTimeout(timeout time.Duration) {
+	if timeout <= 0 {
+		return
+	}
+	c.httpClient.Timeout = timeout
+}
+
+// SetRetryConfig configures retry/backoff for requests.
+func (c *Client) SetRetryConfig(maxRetries int, baseBackoff, maxBackoff time.Duration) {
+	if maxRetries < 0 {
+		maxRetries = 0
+	}
+	c.maxRetries = maxRetries
+	if baseBackoff > 0 {
+		c.baseBackoff = baseBackoff
+	}
+	if maxBackoff > 0 {
+		c.maxBackoff = maxBackoff
+	}
 }
 
 // SetBaseURL sets the base URL for API requests.
@@ -114,7 +142,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 	url := c.baseURL + path
 
 	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		// Check context before each attempt
 		select {
 		case <-ctx.Done():
@@ -236,9 +264,9 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body any) (*
 }
 
 func (c *Client) calculateBackoff(attempt int) time.Duration {
-	backoff := baseBackoff * time.Duration(math.Pow(2, float64(attempt-1)))
-	if backoff > maxBackoff {
-		backoff = maxBackoff
+	backoff := c.baseBackoff * time.Duration(math.Pow(2, float64(attempt-1)))
+	if backoff > c.maxBackoff {
+		backoff = c.maxBackoff
 	}
 	// Add jitter (0-25% of backoff)
 	jitter := time.Duration(rand.Float64() * 0.25 * float64(backoff))
@@ -248,7 +276,7 @@ func (c *Client) calculateBackoff(attempt int) time.Duration {
 func (c *Client) parseRetryAfter(resp *http.Response) time.Duration {
 	retryAfter := resp.Header.Get("Retry-After")
 	if retryAfter == "" {
-		return baseBackoff
+		return c.baseBackoff
 	}
 
 	// Try parsing as seconds
@@ -261,7 +289,7 @@ func (c *Client) parseRetryAfter(resp *http.Response) time.Duration {
 		return time.Until(t)
 	}
 
-	return baseBackoff
+	return c.baseBackoff
 }
 
 func (c *Client) parseError(statusCode int, body []byte) error {
@@ -348,7 +376,7 @@ func (c *Client) doMultipart(ctx context.Context, method, path string, body io.R
 	url := c.baseURL + path
 
 	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		// Check context before each attempt
 		select {
 		case <-ctx.Done():

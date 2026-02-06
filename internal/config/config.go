@@ -21,4 +21,7 @@ const (
 
 	// EnvIdempotencyKey is the environment variable for idempotency key header
 	EnvIdempotencyKey = "DEEL_IDEMPOTENCY_KEY"
+
+	// EnvAgent enables agent-optimized behavior (JSON output, compact formatting, etc.).
+	EnvAgent = "DEEL_AGENT"
 )

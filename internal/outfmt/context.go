@@ -10,6 +10,9 @@ const (
 	queryKey    contextKey = "query_filter"
 	dataOnlyKey contextKey = "data_only"
 	rawKey      contextKey = "raw_output"
+	agentKey    contextKey = "agent_mode"
+	prettyKey   contextKey = "pretty_json"
+	jsonlKey    contextKey = "jsonl"
 )
 
 // WithFormat returns a context with the output format set.
@@ -64,6 +67,45 @@ func WithRaw(ctx context.Context, enabled bool) context.Context {
 // GetRaw returns true if raw output is enabled in the context.
 func GetRaw(ctx context.Context) bool {
 	if v, ok := ctx.Value(rawKey).(bool); ok {
+		return v
+	}
+	return false
+}
+
+// WithAgent returns a context with agent mode enabled/disabled.
+func WithAgent(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, agentKey, enabled)
+}
+
+// IsAgent returns true if agent mode is enabled in the context.
+func IsAgent(ctx context.Context) bool {
+	if v, ok := ctx.Value(agentKey).(bool); ok {
+		return v
+	}
+	return false
+}
+
+// WithPrettyJSON controls whether JSON output should be pretty-printed.
+func WithPrettyJSON(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, prettyKey, enabled)
+}
+
+// PrettyJSON returns true if pretty JSON is enabled in the context.
+func PrettyJSON(ctx context.Context) bool {
+	if v, ok := ctx.Value(prettyKey).(bool); ok {
+		return v
+	}
+	return true
+}
+
+// WithJSONL enables JSON Lines output (one JSON value per line).
+func WithJSONL(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, jsonlKey, enabled)
+}
+
+// JSONL returns true if JSON Lines output is enabled.
+func JSONL(ctx context.Context) bool {
+	if v, ok := ctx.Value(jsonlKey).(bool); ok {
 		return v
 	}
 	return false

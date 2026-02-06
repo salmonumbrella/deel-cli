@@ -3,9 +3,11 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +18,23 @@ import (
 	"github.com/salmonumbrella/deel-cli/internal/outfmt"
 	"github.com/salmonumbrella/deel-cli/internal/secrets"
 )
+
+func emitAgentFlagError(ctx context.Context, message string) {
+	if !outfmt.IsAgent(ctx) || AgentErrorEmitted() {
+		return
+	}
+	// Keep output compact and machine-readable.
+	enc := json.NewEncoder(os.Stdout)
+	_ = enc.Encode(map[string]any{
+		"ok": false,
+		"error": map[string]any{
+			"operation": "validating flags",
+			"category":  "validation",
+			"message":   message,
+		},
+	})
+	markAgentErrorEmitted()
+}
 
 // Version info (set by ldflags)
 var (
@@ -30,6 +49,12 @@ var (
 	outputFlag         string
 	colorFlag          string
 	debugFlag          bool
+	agentFlag          bool
+	timeoutFlag        time.Duration
+	retriesFlag        int
+	retryBaseFlag      time.Duration
+	retryMaxFlag       time.Duration
+	jsonlFlag          bool
 	queryFlag          string
 	jqFlag             string
 	jsonFlag           bool
@@ -56,28 +81,84 @@ JSON output:
   --json              # Output JSON (lists include data/page; single resources are wrapped in data)
   --json --items      # Output only the data array/object (for piping to jq)
   --json --raw        # Output raw JSON without the data envelope
-  --json --jq '.data[].name'  # Apply JQ filter to JSON output`,
+  --json --jq '.data[].name'  # Apply JQ filter to JSON output
+
+Agent mode:
+  --agent             # Force JSON, disable color, and emit compact JSON for tools/agents`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+
 		if jsonFlag {
 			if outputFlag != "" && outputFlag != "json" {
+				emitAgentFlagError(ctx, fmt.Sprintf("cannot use --json with --output %q", outputFlag))
 				return fmt.Errorf("cannot use --json with --output %q", outputFlag)
 			}
 			outputFlag = "json"
 		}
 		if jqFlag != "" {
 			if queryFlag != "" && queryFlag != jqFlag {
+				emitAgentFlagError(ctx, "cannot use --jq and --query with different values")
 				return fmt.Errorf("cannot use --jq and --query with different values")
 			}
 			queryFlag = jqFlag
 		}
+
+		if jsonlFlag {
+			if rawFlag {
+				emitAgentFlagError(ctx, "cannot use --jsonl with --raw")
+				return fmt.Errorf("cannot use --jsonl with --raw")
+			}
+			if dataOnlyFlag {
+				emitAgentFlagError(ctx, "cannot use --jsonl with --items/--data-only (JSONL already streams items)")
+				return fmt.Errorf("cannot use --jsonl with --items/--data-only (JSONL already streams items)")
+			}
+			if outputFlag != "" && outputFlag != "json" {
+				emitAgentFlagError(ctx, fmt.Sprintf("cannot use --jsonl with --output %q (JSONL requires JSON output)", outputFlag))
+				return fmt.Errorf("cannot use --jsonl with --output %q (JSONL requires JSON output)", outputFlag)
+			}
+			outputFlag = "json"
+			jsonFlag = true
+			ctx = outfmt.WithPrettyJSON(ctx, false)
+			ctx = outfmt.WithJSONL(ctx, true)
+		} else {
+			ctx = outfmt.WithJSONL(ctx, false)
+		}
+
+		// Agent mode forces JSON output + no color + compact JSON.
+		if agentFlag {
+			// Some commands intentionally emit non-JSON bytes to stdout.
+			if cmd.Name() == "completion" {
+				emitAgentFlagError(ctx, "--agent is not supported for completion scripts")
+				return fmt.Errorf("--agent is not supported for completion scripts")
+			}
+			if outputFlag != "" && outputFlag != "json" {
+				emitAgentFlagError(ctx, fmt.Sprintf("cannot use --agent with --output %q (agent mode requires JSON output)", outputFlag))
+				return fmt.Errorf("cannot use --agent with --output %q (agent mode requires JSON output)", outputFlag)
+			}
+			outputFlag = "json"
+			jsonFlag = true
+			colorFlag = "never"
+			ctx = outfmt.WithAgent(ctx, true)
+			// Don't override PrettyJSON if JSONL has already forced compact output.
+			if !jsonlFlag {
+				ctx = outfmt.WithPrettyJSON(ctx, false)
+			}
+		} else {
+			ctx = outfmt.WithAgent(ctx, false)
+			if !jsonlFlag {
+				ctx = outfmt.WithPrettyJSON(ctx, true)
+			}
+		}
+
 		// Validate output format
 		if outputFlag != "" {
 			switch outputFlag {
 			case "text", "json":
 				// Valid
 			default:
+				emitAgentFlagError(ctx, fmt.Sprintf("invalid output format %q (must be 'text' or 'json')", outputFlag))
 				return fmt.Errorf("invalid output format %q (must be 'text' or 'json')", outputFlag)
 			}
 		}
@@ -87,28 +168,36 @@ JSON output:
 			case "auto", "always", "never":
 				// Valid
 			default:
+				emitAgentFlagError(ctx, fmt.Sprintf("invalid color mode %q (must be 'auto', 'always', or 'never')", colorFlag))
 				return fmt.Errorf("invalid color mode %q (must be 'auto', 'always', or 'never')", colorFlag)
 			}
 		}
+
+		// Set output format in context (used by helpers that need to know if we're in JSON mode).
+		format := "text"
+		if outputFlag != "" {
+			format = outputFlag
+		} else if envOutput := os.Getenv(config.EnvOutput); envOutput != "" {
+			format = envOutput
+		}
+		ctx = outfmt.WithFormat(ctx, format)
+
 		// Set query filter in context
 		if queryFlag != "" {
-			ctx := outfmt.WithQuery(cmd.Context(), queryFlag)
-			cmd.SetContext(ctx)
+			ctx = outfmt.WithQuery(ctx, queryFlag)
 		}
 		// Set data-only mode in context
 		if dataOnlyFlag {
-			ctx := outfmt.WithDataOnly(cmd.Context(), true)
-			cmd.SetContext(ctx)
+			ctx = outfmt.WithDataOnly(ctx, true)
 		}
 		if rawFlag {
-			ctx := outfmt.WithRaw(cmd.Context(), true)
-			cmd.SetContext(ctx)
+			ctx = outfmt.WithRaw(ctx, true)
 		}
 		// Set dry-run mode in context
 		if dryRunFlag {
-			ctx := dryrun.WithDryRun(cmd.Context(), true)
-			cmd.SetContext(ctx)
+			ctx = dryrun.WithDryRun(ctx, true)
 		}
+		cmd.SetContext(ctx)
 		return nil
 	},
 }
@@ -117,6 +206,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&accountFlag, "account", "", "Account to use (overrides DEEL_ACCOUNT)")
 	rootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "Output format: text or json (default: text)")
 	rootCmd.PersistentFlags().BoolVar(&jsonFlag, "json", false, "Output JSON (alias for --output json)")
+	rootCmd.PersistentFlags().BoolVar(&agentFlag, "agent", agentEnabledFromEnv(), "Agent mode: force JSON output, disable color, emit compact JSON")
+	rootCmd.PersistentFlags().BoolVar(&jsonlFlag, "jsonl", false, "Stream JSON lines output (one JSON value per line; implies JSON output)")
 	rootCmd.PersistentFlags().StringVar(&colorFlag, "color", "", "Color mode: auto, always, or never (default: auto)")
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug output")
 	rootCmd.PersistentFlags().StringVar(&queryFlag, "query", "", "JQ filter for JSON output")
@@ -127,6 +218,25 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dataOnlyFlag, "items", false, "Alias for --data-only")
 	rootCmd.PersistentFlags().BoolVar(&rawFlag, "raw", false, "Output raw JSON without the data envelope (use with --json)")
 	rootCmd.PersistentFlags().StringVar(&idempotencyKeyFlag, "idempotency-key", "", "Idempotency key for write requests")
+	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 30*time.Second, "HTTP request timeout")
+	rootCmd.PersistentFlags().IntVar(&retriesFlag, "retries", 3, "Max retry attempts for transient failures")
+	rootCmd.PersistentFlags().DurationVar(&retryBaseFlag, "retry-base", 1*time.Second, "Base backoff for retries")
+	rootCmd.PersistentFlags().DurationVar(&retryMaxFlag, "retry-max", 30*time.Second, "Max backoff for retries")
+
+	// Agent-mode help: emit JSON schema instead of human help text.
+	defaultHelp := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if agentFlag || agentEnabledFromEnv() {
+			info := buildCommandInfo(cmd)
+			enc := json.NewEncoder(os.Stdout)
+			_ = enc.Encode(map[string]any{
+				"ok":     true,
+				"result": info,
+			})
+			return
+		}
+		defaultHelp(cmd, args)
+	})
 
 	// Add subcommands
 	rootCmd.AddCommand(authCmd)
@@ -186,10 +296,37 @@ func getFormatter() *outfmt.Formatter {
 	}
 
 	f := outfmt.New(os.Stdout, os.Stderr, format, colorMode)
+	f.SetAgentMode(agentFlag)
+	if agentFlag {
+		f.SetPrettyJSON(false)
+	}
 	f.SetQuery(queryFlag)
 	f.SetDataOnly(dataOnlyFlag)
 	f.SetRaw(rawFlag)
 	return f
+}
+
+func categoryString(c climerrors.Category) string {
+	switch c {
+	case climerrors.CategoryAuth:
+		return "auth"
+	case climerrors.CategoryForbidden:
+		return "forbidden"
+	case climerrors.CategoryNotFound:
+		return "not_found"
+	case climerrors.CategoryValidation:
+		return "validation"
+	case climerrors.CategoryRateLimit:
+		return "rate_limit"
+	case climerrors.CategoryServer:
+		return "server"
+	case climerrors.CategoryNetwork:
+		return "network"
+	case climerrors.CategoryConfig:
+		return "config"
+	default:
+		return "unknown"
+	}
 }
 
 // HandleError wraps an error with context and prints it using the formatter
@@ -203,6 +340,21 @@ func HandleError(f *outfmt.Formatter, err error, operation string) error {
 	climerrors.FormatError(&buf, cliErr)
 	f.PrintError("%s", strings.TrimSpace(buf.String()))
 
+	// In agent mode, emit a structured JSON error on stdout so tools can parse it.
+	// Only emit the first error object to avoid breaking stdout with multiple JSON blobs.
+	if f.IsJSON() && f.IsAgentMode() && !AgentErrorEmitted() {
+		_ = f.PrintJSON(map[string]any{
+			"ok": false,
+			"error": map[string]any{
+				"operation":   cliErr.Operation,
+				"category":    categoryString(cliErr.Category),
+				"message":     climerrors.FriendlyMessage(cliErr.Err),
+				"suggestions": cliErr.Suggestions,
+			},
+		})
+		markAgentErrorEmitted()
+	}
+
 	// Return a simple error with friendly message so cobra doesn't print raw JSON
 	friendlyMsg := climerrors.FriendlyMessage(err)
 	return fmt.Errorf("failed %s: %s", operation, friendlyMsg)
@@ -214,6 +366,8 @@ func getClient() (*api.Client, error) {
 	if token := os.Getenv(config.EnvToken); token != "" {
 		client := api.NewClient(token)
 		client.SetDebug(debugFlag)
+		client.SetTimeout(timeoutFlag)
+		client.SetRetryConfig(retriesFlag, retryBaseFlag, retryMaxFlag)
 		if idempotencyKeyFlag != "" {
 			client.SetIdempotencyKey(idempotencyKeyFlag)
 		} else if envKey := os.Getenv(config.EnvIdempotencyKey); envKey != "" {
@@ -269,6 +423,8 @@ func getClient() (*api.Client, error) {
 
 	client := api.NewClient(creds.Token)
 	client.SetDebug(debugFlag)
+	client.SetTimeout(timeoutFlag)
+	client.SetRetryConfig(retriesFlag, retryBaseFlag, retryMaxFlag)
 	if idempotencyKeyFlag != "" {
 		client.SetIdempotencyKey(idempotencyKeyFlag)
 	} else if envKey := os.Getenv(config.EnvIdempotencyKey); envKey != "" {
@@ -281,9 +437,16 @@ func getClient() (*api.Client, error) {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("deel version %s\n", Version)
-		fmt.Printf("  commit: %s\n", Commit)
-		fmt.Printf("  built:  %s\n", BuildDate)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintText(fmt.Sprintf("deel version %s", Version))
+			f.PrintText("  commit: " + Commit)
+			f.PrintText("  built:  " + BuildDate)
+		}, map[string]string{
+			"version":   Version,
+			"commit":    Commit,
+			"buildDate": BuildDate,
+		})
 	},
 }

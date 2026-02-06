@@ -35,6 +35,8 @@ type Formatter struct {
 	query     string
 	dataOnly  bool
 	raw       bool
+	agent     bool
+	pretty    bool
 }
 
 // New creates a new Formatter
@@ -44,9 +46,25 @@ func New(out, errOut io.Writer, format Format, colorMode string) *Formatter {
 		errOut:    errOut,
 		format:    format,
 		colorMode: colorMode,
+		pretty:    true,
 	}
 	f.profile = f.detectColorProfile()
 	return f
+}
+
+// SetAgentMode controls agent-optimized behavior (compact JSON, structured errors, etc.).
+func (f *Formatter) SetAgentMode(enabled bool) {
+	f.agent = enabled
+}
+
+// IsAgentMode returns true if agent mode is enabled on the formatter.
+func (f *Formatter) IsAgentMode() bool {
+	return f.agent
+}
+
+// SetPrettyJSON controls whether JSON output is pretty-printed.
+func (f *Formatter) SetPrettyJSON(enabled bool) {
+	f.pretty = enabled
 }
 
 // SetQuery sets an optional JQ-style query for JSON output.
@@ -87,13 +105,20 @@ func (f *Formatter) IsJSON() bool {
 // PrintJSON outputs data as JSON
 func (f *Formatter) PrintJSON(data any) error {
 	enc := json.NewEncoder(f.out)
-	enc.SetIndent("", "  ")
+	if f.pretty {
+		enc.SetIndent("", "  ")
+	}
 	return enc.Encode(data)
 }
 
 // PrintText outputs plain text
 func (f *Formatter) PrintText(text string) {
-	if _, err := fmt.Fprintln(f.out, text); err != nil {
+	// In JSON mode, keep stdout clean for machine parsing.
+	out := f.out
+	if f.IsJSON() {
+		out = f.errOut
+	}
+	if _, err := fmt.Fprintln(out, text); err != nil {
 		return
 	}
 }
@@ -115,7 +140,12 @@ func (f *Formatter) PrintSuccess(format string, args ...any) {
 	if f.profile != termenv.Ascii {
 		msg = termenv.String(msg).Foreground(f.profile.Color("2")).String()
 	}
-	if _, err := fmt.Fprintln(f.out, msg); err != nil {
+	// In JSON mode, keep stdout clean for machine parsing.
+	out := f.out
+	if f.IsJSON() {
+		out = f.errOut
+	}
+	if _, err := fmt.Fprintln(out, msg); err != nil {
 		return
 	}
 }
@@ -250,6 +280,12 @@ func (f *Formatter) Output(textFn func(), jsonData any) error {
 // OutputFiltered writes data with optional JQ filtering from context.
 func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData any) error {
 	if f.IsJSON() {
+		origPretty := f.pretty
+		if ctx != nil {
+			f.pretty = PrettyJSON(ctx)
+		}
+		defer func() { f.pretty = origPretty }()
+
 		query := GetQuery(ctx)
 		if query == "" {
 			query = f.query
@@ -262,6 +298,47 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 		if ctx != nil && GetRaw(ctx) {
 			raw = true
 		}
+
+		// JSON Lines output: stream one JSON value per line (compact).
+		if ctx != nil && JSONL(ctx) {
+			f.pretty = false
+
+			target := jsonData
+			if extracted, ok := extractData(jsonData); ok {
+				target = extracted
+			}
+
+			v := reflect.ValueOf(target)
+			for v.Kind() == reflect.Pointer {
+				if v.IsNil() {
+					break
+				}
+				v = v.Elem()
+			}
+			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
+				// Not a list; fall back to normal JSON output (still compact due to pretty=false).
+				goto normalJSON
+			}
+
+			enc := json.NewEncoder(f.out)
+			for i := 0; i < v.Len(); i++ {
+				item := v.Index(i).Interface()
+				out := any(item)
+				if query != "" {
+					result, err := filter.Apply(item, query)
+					if err != nil {
+						return err
+					}
+					out = result
+				}
+				if err := enc.Encode(out); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+	normalJSON:
 		data := jsonData
 		queryTarget := jsonData
 		if dataOnly {
@@ -279,6 +356,15 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 			}
 			return f.PrintJSON(result)
 		}
+
+		// Agent mode: normalize success output unless the user is requesting a raw/custom format.
+		if ctx != nil && IsAgent(ctx) && query == "" && !dataOnly && !raw {
+			return f.PrintJSON(map[string]any{
+				"ok":     true,
+				"result": data,
+			})
+		}
+
 		return f.PrintJSON(data)
 	}
 	textFn()
