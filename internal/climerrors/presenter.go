@@ -2,6 +2,7 @@ package climerrors
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,7 +16,8 @@ type Messager interface {
 // FriendlyMessage extracts a clean message from any error
 func FriendlyMessage(err error) string {
 	// Try to get raw message from API error
-	if m, ok := err.(Messager); ok {
+	var m Messager
+	if errors.As(err, &m) {
 		msg := m.APIMessage()
 		// Try to parse JSON error message
 		if parsed := parseAPIMessage(msg); parsed != "" {
@@ -28,7 +30,8 @@ func FriendlyMessage(err error) string {
 	}
 
 	// Fall back to status text for API errors
-	if sc, ok := err.(StatusCoder); ok {
+	var sc StatusCoder
+	if errors.As(err, &sc) {
 		return http.StatusText(sc.APIStatusCode())
 	}
 

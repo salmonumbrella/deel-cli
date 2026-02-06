@@ -56,7 +56,8 @@ type StatusCoder interface {
 // Categorize determines the error category from an error
 func Categorize(err error) Category {
 	// Check for API errors with status codes
-	if sc, ok := err.(StatusCoder); ok {
+	var sc StatusCoder
+	if errors.As(err, &sc) {
 		return categoryFromStatus(sc.APIStatusCode())
 	}
 

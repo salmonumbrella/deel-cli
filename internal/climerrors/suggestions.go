@@ -56,6 +56,12 @@ func SuggestionsFor(cat Category, operation string) []string {
 
 func suggestionsForNotFound(operation string) []string {
 	op := strings.ToLower(operation)
+	if strings.Contains(op, "finding task contract") || strings.Contains(op, "finding task contracts") {
+		return []string{
+			"Provide --contract-id to avoid cross-contract lookup",
+			"List tasks in a contract with: deel tasks list --contract-id <id>",
+		}
+	}
 	if strings.Contains(op, "getting") || strings.Contains(op, "get ") {
 		return []string{
 			"Check that the ID is correct",

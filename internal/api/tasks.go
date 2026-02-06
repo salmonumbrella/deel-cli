@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -217,6 +218,63 @@ func (c *Client) ReviewMultipleTasks(ctx context.Context, contractID string, tas
 	return err
 }
 
+// GetTask returns a single task by ID within a contract.
+// Some Deel API deployments may not support a direct GET endpoint; in that case we fall back to listing.
+func (c *Client) GetTask(ctx context.Context, contractID, taskID string) (*Task, error) {
+	if contractID == "" {
+		return nil, fmt.Errorf("contract_id is required")
+	}
+	if taskID == "" {
+		return nil, fmt.Errorf("task_id is required")
+	}
+
+	path := fmt.Sprintf("/rest/v2/contracts/%s/tasks/%s", escapePath(contractID), escapePath(taskID))
+	resp, err := c.Get(ctx, path)
+	if err == nil {
+		if t, derr := decodeData[Task](resp); derr == nil {
+			t.ContractID = contractID
+			return t, nil
+		}
+		// Some endpoints may not use a data envelope.
+		if t, derr := decodeJSON[Task](resp); derr == nil {
+			t.ContractID = contractID
+			return t, nil
+		}
+	}
+
+	// Fall back to listing tasks and searching for the ID.
+	cursor := ""
+	for {
+		list, lerr := c.ListTasks(ctx, TasksListParams{
+			ContractID: contractID,
+			Limit:      100,
+			Cursor:     cursor,
+		})
+		if lerr != nil {
+			// Prefer the original error if the direct endpoint failed for reasons other than 404.
+			if err != nil {
+				return nil, err
+			}
+			return nil, lerr
+		}
+
+		for _, t := range list.Data {
+			if t.ID == taskID {
+				task := t
+				task.ContractID = contractID
+				return &task, nil
+			}
+		}
+
+		if list.Page.Next == "" {
+			break
+		}
+		cursor = list.Page.Next
+	}
+
+	return nil, &APIError{StatusCode: 404, Message: fmt.Sprintf("task %s not found in contract %s", taskID, contractID)}
+}
+
 // FindTaskContract searches for a task across all task-based contracts and returns the contract ID
 // This is useful when you have a task ID but don't know which contract it belongs to
 func (c *Client) FindTaskContract(ctx context.Context, taskID string) (string, *Task, error) {
@@ -263,5 +321,79 @@ func (c *Client) FindTaskContract(ctx context.Context, taskID string) (string, *
 		}
 	}
 
-	return "", nil, fmt.Errorf("task %s not found in any active task-based contract", taskID)
+	return "", nil, &APIError{StatusCode: 404, Message: fmt.Sprintf("task %s not found in any active task-based contract", taskID)}
+}
+
+// FindTasksContracts searches for multiple tasks across all active task-based contracts.
+// It returns a mapping of task_id -> contract_id, plus any found task objects (with ContractID set).
+func (c *Client) FindTasksContracts(ctx context.Context, taskIDs []string) (map[string]string, map[string]*Task, error) {
+	remaining := make(map[string]struct{}, len(taskIDs))
+	for _, id := range taskIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		remaining[id] = struct{}{}
+	}
+
+	contractByTask := make(map[string]string, len(remaining))
+	taskByID := make(map[string]*Task, len(remaining))
+
+	if len(remaining) == 0 {
+		return contractByTask, taskByID, &APIError{StatusCode: 400, Message: "no task IDs provided"}
+	}
+
+	// Get all active task-based contracts (payg_tasks, pay_as_you_go_time_based, etc.)
+	taskTypes := []string{"payg_tasks", "pay_as_you_go_time_based", "ongoing_time_based"}
+
+	for _, contractType := range taskTypes {
+		cursor := ""
+		for {
+			resp, err := c.ListContracts(ctx, ContractsListParams{
+				Limit:  100,
+				Cursor: cursor,
+				Type:   contractType,
+				Status: "in_progress",
+			})
+			if err != nil {
+				// Skip contract types that error (e.g., no access)
+				break
+			}
+
+			for _, contract := range resp.Data {
+				tasksResp, err := c.ListTasks(ctx, TasksListParams{
+					ContractID: contract.ID,
+					Limit:      100,
+				})
+				if err != nil {
+					continue // Skip contracts we can't access tasks for
+				}
+
+				for _, task := range tasksResp.Data {
+					if _, ok := remaining[task.ID]; !ok {
+						continue
+					}
+					t := task
+					t.ContractID = contract.ID
+					contractByTask[task.ID] = contract.ID
+					taskByID[task.ID] = &t
+					delete(remaining, task.ID)
+					if len(remaining) == 0 {
+						return contractByTask, taskByID, nil
+					}
+				}
+			}
+
+			if resp.Page.Next == "" {
+				break
+			}
+			cursor = resp.Page.Next
+		}
+	}
+
+	missing := make([]string, 0, len(remaining))
+	for id := range remaining {
+		missing = append(missing, id)
+	}
+	return contractByTask, taskByID, &APIError{StatusCode: 404, Message: fmt.Sprintf("task(s) not found in any active task-based contract: %s", strings.Join(missing, ", "))}
 }

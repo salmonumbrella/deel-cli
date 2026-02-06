@@ -38,8 +38,7 @@ var tasksListCmd = &cobra.Command{
 		f := getFormatter()
 
 		if tasksContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
+			return failValidation(cmd, f, "--contract-id is required")
 		}
 
 		client, err := getClient()
@@ -83,16 +82,13 @@ var tasksCreateCmd = &cobra.Command{
 		f := getFormatter()
 
 		if tasksContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
+			return failValidation(cmd, f, "--contract-id is required")
 		}
 		if tasksTitleFlag == "" {
-			f.PrintError("--title is required")
-			return fmt.Errorf("title is required")
+			return failValidation(cmd, f, "--title is required")
 		}
 		if tasksAmountFlag <= 0 {
-			f.PrintError("--amount is required and must be positive")
-			return fmt.Errorf("amount is required and must be positive")
+			return failValidation(cmd, f, "--amount is required and must be positive")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -155,12 +151,10 @@ task-based contracts to find the task (this may take a few seconds).`,
 
 		amountSet := cmd.Flags().Changed("amount")
 		if tasksUpdateTitleFlag == "" && tasksUpdateDescriptionFlag == "" && !amountSet {
-			f.PrintError("At least one of --title, --description, or --amount is required")
-			return fmt.Errorf("at least one of --title, --description, or --amount is required")
+			return failValidation(cmd, f, "At least one of --title, --description, or --amount is required")
 		}
 		if amountSet && tasksUpdateAmountFlag <= 0 {
-			f.PrintError("--amount must be positive")
-			return fmt.Errorf("amount must be positive")
+			return failValidation(cmd, f, "--amount must be positive")
 		}
 
 		client, err := getClient()
@@ -173,10 +167,9 @@ task-based contracts to find the task (this may take a few seconds).`,
 			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
 			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
 			if err != nil {
-				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
 				f.PrintText("\nTo find the contract ID:")
 				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
-				return fmt.Errorf("task not found: %w", err)
+				return HandleError(f, err, "finding task contract")
 			}
 			contractID = foundContractID
 			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
@@ -226,6 +219,55 @@ task-based contracts to find the task (this may take a few seconds).`,
 	},
 }
 
+// Flags for get command
+var tasksGetContractIDFlag string
+
+var tasksGetCmd = &cobra.Command{
+	Use:   "get <task-id>",
+	Short: "Get a task by ID",
+	Long: `Get a task by ID.
+
+If --contract-id is not provided, the CLI will search across all active
+task-based contracts to find the task (this may take a few seconds).`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		f := getFormatter()
+		taskID := args[0]
+
+		client, err := getClient()
+		if err != nil {
+			return HandleError(f, err, "initializing client")
+		}
+
+		contractID := tasksGetContractIDFlag
+		if contractID == "" {
+			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
+			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
+			if err != nil {
+				return HandleError(f, err, "finding task contract")
+			}
+			contractID = foundContractID
+			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
+		}
+
+		task, err := client.GetTask(cmd.Context(), contractID, taskID)
+		if err != nil {
+			return HandleError(f, err, "getting task")
+		}
+
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintText("ID:       " + task.ID)
+			f.PrintText("Contract: " + contractID)
+			f.PrintText("Title:    " + task.Title)
+			if task.Description != "" {
+				f.PrintText("Desc:     " + task.Description)
+			}
+			f.PrintText(fmt.Sprintf("Amount:   %.2f %s", task.Amount, task.Currency))
+			f.PrintText("Status:   " + task.Status)
+		}, task)
+	},
+}
+
 // Flags for review-many command
 var (
 	tasksReviewManyContractIDFlag string
@@ -239,11 +281,6 @@ var tasksReviewManyCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
-		if tasksReviewManyContractIDFlag == "" {
-			f.PrintError("--contract-id is required")
-			return fmt.Errorf("contract-id is required")
-		}
-
 		status := strings.ToLower(tasksReviewManyStatusFlag)
 		switch status {
 		case "approve", "approved":
@@ -251,13 +288,11 @@ var tasksReviewManyCmd = &cobra.Command{
 		case "reject", "rejected":
 			status = "rejected"
 		default:
-			f.PrintError("--status must be approve or reject")
-			return fmt.Errorf("status must be approve or reject")
+			return failValidation(cmd, f, "--status must be approve or reject")
 		}
 
 		if len(tasksReviewManyIDsFlag) == 0 {
-			f.PrintError("--ids is required")
-			return fmt.Errorf("ids is required")
+			return failValidation(cmd, f, "--ids is required")
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -278,12 +313,37 @@ var tasksReviewManyCmd = &cobra.Command{
 			return HandleError(f, err, "initializing client")
 		}
 
-		if err := client.ReviewMultipleTasks(cmd.Context(), tasksReviewManyContractIDFlag, tasksReviewManyIDsFlag, status); err != nil {
-			return HandleError(f, err, "review tasks")
+		// If contract ID isn't provided, resolve it per task and group by contract.
+		contractToTasks := map[string][]string{}
+		if tasksReviewManyContractIDFlag != "" {
+			contractToTasks[tasksReviewManyContractIDFlag] = append(contractToTasks[tasksReviewManyContractIDFlag], tasksReviewManyIDsFlag...)
+		} else {
+			f.PrintText("Looking up contracts for tasks...")
+			contractByTask, _, err := client.FindTasksContracts(cmd.Context(), tasksReviewManyIDsFlag)
+			if err != nil {
+				f.PrintText("Hint: Provide --contract-id to avoid this lookup and reduce API calls.")
+				return HandleError(f, err, "finding task contracts")
+			}
+			for _, taskID := range tasksReviewManyIDsFlag {
+				contractID := contractByTask[taskID]
+				contractToTasks[contractID] = append(contractToTasks[contractID], taskID)
+			}
 		}
 
-		f.PrintSuccess("Tasks %s successfully.", status)
-		return nil
+		for contractID, taskIDs := range contractToTasks {
+			if err := client.ReviewMultipleTasks(cmd.Context(), contractID, taskIDs, status); err != nil {
+				return HandleError(f, err, "review tasks")
+			}
+		}
+
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Tasks %s successfully.", status)
+		}, map[string]any{
+			"operation": "REVIEW",
+			"resource":  "Task",
+			"status":    status,
+			"tasks":     contractToTasks,
+		})
 	},
 }
 
@@ -312,10 +372,9 @@ task-based contracts to find the task (this may take a few seconds).`,
 			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
 			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
 			if err != nil {
-				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
 				f.PrintText("\nTo find the contract ID:")
 				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
-				return fmt.Errorf("task not found: %w", err)
+				return HandleError(f, err, "finding task contract")
 			}
 			contractID = foundContractID
 			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
@@ -333,18 +392,25 @@ task-based contracts to find the task (this may take a few seconds).`,
 			return err
 		}
 
-		if !tasksForceFlag {
-			f.PrintText(fmt.Sprintf("Are you sure you want to delete task %s?", taskID))
-			f.PrintText("Use --force to confirm.")
-			return nil
+		suggested := "deel tasks delete " + taskID + " --force"
+		if contractID != "" {
+			suggested = "deel tasks delete " + taskID + " --contract-id " + contractID + " --force"
+		}
+		if ok, err := requireForce(cmd, f, tasksForceFlag, "delete", "task", taskID, suggested); !ok {
+			return err
 		}
 
 		if err := client.DeleteTask(cmd.Context(), contractID, taskID); err != nil {
 			return HandleError(f, err, "deleting task")
 		}
 
-		f.PrintSuccess("Task deleted successfully.")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Task deleted successfully.")
+		}, map[string]any{
+			"deleted":     true,
+			"task_id":     taskID,
+			"contract_id": contractID,
+		})
 	},
 }
 
@@ -376,10 +442,9 @@ task-based contracts to find the task (this may take a few seconds).`,
 			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
 			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
 			if err != nil {
-				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
 				f.PrintText("\nTo find the contract ID:")
 				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
-				return fmt.Errorf("task not found: %w", err)
+				return HandleError(f, err, "finding task contract")
 			}
 			contractID = foundContractID
 			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
@@ -402,8 +467,15 @@ task-based contracts to find the task (this may take a few seconds).`,
 			return HandleError(f, err, "approving task")
 		}
 
-		f.PrintSuccess("Task approved successfully.")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Task approved successfully.")
+		}, map[string]any{
+			"operation":   "REVIEW",
+			"resource":    "Task",
+			"status":      "approved",
+			"task_id":     taskID,
+			"contract_id": contractID,
+		})
 	},
 }
 
@@ -429,10 +501,9 @@ task-based contracts to find the task (this may take a few seconds).`,
 			f.PrintText(fmt.Sprintf("Looking up contract for task %s...", taskID))
 			foundContractID, _, err := client.FindTaskContract(cmd.Context(), taskID)
 			if err != nil {
-				f.PrintError("Could not find task. Either provide --contract-id or check the task ID.")
 				f.PrintText("\nTo find the contract ID:")
 				f.PrintText("  deel contracts list --json --items | jq '.[] | select(.type | contains(\"payg\")) | {id, title, worker_name}'")
-				return fmt.Errorf("task not found: %w", err)
+				return HandleError(f, err, "finding task contract")
 			}
 			contractID = foundContractID
 			f.PrintText(fmt.Sprintf("Found task in contract: %s", contractID))
@@ -455,8 +526,15 @@ task-based contracts to find the task (this may take a few seconds).`,
 			return HandleError(f, err, "rejecting task")
 		}
 
-		f.PrintSuccess("Task rejected successfully.")
-		return nil
+		return f.OutputFiltered(cmd.Context(), func() {
+			f.PrintSuccess("Task rejected successfully.")
+		}, map[string]any{
+			"operation":   "REVIEW",
+			"resource":    "Task",
+			"status":      "rejected",
+			"task_id":     taskID,
+			"contract_id": contractID,
+		})
 	},
 }
 
@@ -481,23 +559,27 @@ func init() {
 	tasksUpdateCmd.Flags().StringVar(&tasksUpdateDescriptionFlag, "description", "", "Task description")
 	tasksUpdateCmd.Flags().Float64Var(&tasksUpdateAmountFlag, "amount", 0, "Task amount")
 
+	// Get command flags
+	tasksGetCmd.Flags().StringVar(&tasksGetContractIDFlag, "contract-id", "", "Contract ID (optional)")
+
 	// Review-many command flags
-	tasksReviewManyCmd.Flags().StringVar(&tasksReviewManyContractIDFlag, "contract-id", "", "Contract ID (required)")
+	tasksReviewManyCmd.Flags().StringVar(&tasksReviewManyContractIDFlag, "contract-id", "", "Contract ID (optional)")
 	tasksReviewManyCmd.Flags().StringVar(&tasksReviewManyStatusFlag, "status", "", "approve or reject")
 	tasksReviewManyCmd.Flags().StringSliceVar(&tasksReviewManyIDsFlag, "ids", nil, "Task IDs (comma-separated or repeat)")
 
 	// Delete command flags
-	tasksDeleteCmd.Flags().StringVar(&tasksDeleteContractIDFlag, "contract-id", "", "Contract ID (required)")
+	tasksDeleteCmd.Flags().StringVar(&tasksDeleteContractIDFlag, "contract-id", "", "Contract ID (optional)")
 	tasksDeleteCmd.Flags().BoolVar(&tasksForceFlag, "force", false, "Confirm deletion")
 
 	// Approve command flags
-	tasksApproveCmd.Flags().StringVar(&tasksApproveContractIDFlag, "contract-id", "", "Contract ID (required)")
+	tasksApproveCmd.Flags().StringVar(&tasksApproveContractIDFlag, "contract-id", "", "Contract ID (optional)")
 
 	// Reject command flags
-	tasksRejectCmd.Flags().StringVar(&tasksRejectContractIDFlag, "contract-id", "", "Contract ID (required)")
+	tasksRejectCmd.Flags().StringVar(&tasksRejectContractIDFlag, "contract-id", "", "Contract ID (optional)")
 
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
+	tasksCmd.AddCommand(tasksGetCmd)
 	tasksCmd.AddCommand(tasksUpdateCmd)
 	tasksCmd.AddCommand(tasksDeleteCmd)
 	tasksCmd.AddCommand(tasksApproveCmd)
