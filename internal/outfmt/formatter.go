@@ -319,7 +319,7 @@ func (f *Formatter) OutputFiltered(ctx context.Context, textFn func(), jsonData 
 				enc := json.NewEncoder(f.out)
 				for i := 0; i < v.Len(); i++ {
 					item := v.Index(i).Interface()
-					out := any(item)
+					out := item
 					if query != "" {
 						result, err := filter.Apply(item, query)
 						if err != nil {

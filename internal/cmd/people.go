@@ -226,7 +226,7 @@ Examples:
 				break
 			}
 			if pages >= maxPaginationPages {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: search stopped after %d pages (safety limit). Use --max-results to limit results or refine your query.\n", maxPaginationPages)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: search stopped after %d pages (safety limit). Use --max-results to limit results or refine your query.\n", maxPaginationPages)
 				break
 			}
 			cursor = resp.Page.Next

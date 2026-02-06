@@ -8,7 +8,7 @@ import (
 	"github.com/salmonumbrella/deel-cli/internal/outfmt"
 )
 
-func requireForce(cmd *cobra.Command, f *outfmt.Formatter, force bool, action, resource, id string, suggestedCommand string) (bool, error) {
+func requireForce(cmd *cobra.Command, f *outfmt.Formatter, force bool, action, resource, id string, suggestedCommand string) (bool, error) { //nolint:unparam // action kept as param for future extensibility
 	if force {
 		return true, nil
 	}

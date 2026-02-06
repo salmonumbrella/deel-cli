@@ -16,7 +16,7 @@ func TestRedactedString_Value(t *testing.T) {
 func TestRedactedString_String(t *testing.T) {
 	r := NewRedactedString("secret-token")
 	assert.Equal(t, "[REDACTED]", r.String())
-	assert.Equal(t, "[REDACTED]", fmt.Sprintf("%s", r))
+	// Verify the Stringer interface works through fmt formatting
 	assert.Equal(t, "[REDACTED]", fmt.Sprintf("%v", r))
 }
 

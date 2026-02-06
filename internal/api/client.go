@@ -444,4 +444,3 @@ func (e *APIError) APIStatusCode() int {
 func (e *APIError) APIMessage() string {
 	return e.Message
 }
-
