@@ -125,7 +125,7 @@ type ManualVerification struct {
 	Status       string   `json:"status"`
 	Notes        string   `json:"notes,omitempty"`
 	CreatedAt    string   `json:"created_at"`
-	DocumentURLs []string `json:"document_urls,omitempty"`
+	DocumentURLs []string `json:"document_urls"`
 }
 
 // CreateManualVerification creates a manual verification record

@@ -27,13 +27,13 @@ type commandInfo struct {
 	Short       string      `json:"short,omitempty"`
 	Long        string      `json:"long,omitempty"`
 	Example     string      `json:"example,omitempty"`
-	Aliases     []string    `json:"aliases,omitempty"`
+	Aliases     []string    `json:"aliases"`
 	Hidden      bool        `json:"hidden,omitempty"`
 	Deprecated  string      `json:"deprecated,omitempty"`
-	Flags       []flagInfo  `json:"flags,omitempty"`
-	PFlags      []flagInfo  `json:"persistent_flags,omitempty"`
-	Subcommands []string    `json:"subcommands,omitempty"`
-	ValidArgs   []string    `json:"valid_args,omitempty"`
+	Flags       []flagInfo  `json:"flags"`
+	PFlags      []flagInfo  `json:"persistent_flags"`
+	Subcommands []string    `json:"subcommands"`
+	ValidArgs   []string    `json:"valid_args"`
 	Annotations interface{} `json:"annotations,omitempty"`
 }
 

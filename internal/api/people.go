@@ -39,7 +39,7 @@ type Person struct {
 	StartDate     string       `json:"start_date"`
 	Country       string       `json:"country"`
 	HiringType    string       `json:"hiring_type,omitempty"`
-	Employments   []Employment `json:"employments,omitempty"`
+	Employments   []Employment `json:"employments"`
 }
 
 // UnmarshalJSON implements custom unmarshaling to compute the Name field

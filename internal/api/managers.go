@@ -10,7 +10,7 @@ type Manager struct {
 	LastName  string   `json:"last_name"`
 	Role      string   `json:"role"`
 	Status    string   `json:"status"`
-	TeamIDs   []string `json:"team_ids,omitempty"`
+	TeamIDs   []string `json:"team_ids"`
 	CreatedAt string   `json:"created_at"`
 }
 

@@ -26,7 +26,7 @@ type GPBankGuide struct {
 	Country         string            `json:"country"`
 	RequiredFields  []string          `json:"required_fields"`
 	OptionalFields  []string          `json:"optional_fields"`
-	SupportedBanks  []string          `json:"supported_banks,omitempty"`
+	SupportedBanks  []string          `json:"supported_banks"`
 	ValidationRules map[string]string `json:"validation_rules,omitempty"`
 }
 

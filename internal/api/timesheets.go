@@ -14,7 +14,7 @@ type Timesheet struct {
 	PeriodStart string           `json:"period_start"`
 	PeriodEnd   string           `json:"period_end"`
 	TotalHours  float64          `json:"total_hours"`
-	Entries     []TimesheetEntry `json:"entries,omitempty"`
+	Entries     []TimesheetEntry `json:"entries"`
 	CreatedAt   string           `json:"created_at"`
 }
 

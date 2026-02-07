@@ -15,8 +15,8 @@ type TimeOffApproval struct {
 // TimeOffValidation represents the validation result for a time off request
 type TimeOffValidation struct {
 	Valid    bool     `json:"valid"`
-	Errors   []string `json:"errors,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
+	Errors   []string `json:"errors"`
+	Warnings []string `json:"warnings"`
 }
 
 // WorkSchedule represents a profile's work schedule

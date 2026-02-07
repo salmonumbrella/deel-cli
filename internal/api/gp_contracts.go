@@ -43,7 +43,7 @@ type GPCompensation struct {
 	Currency      string        `json:"currency"`
 	PayFrequency  string        `json:"pay_frequency"`
 	EffectiveDate string        `json:"effective_date"`
-	Allowances    []GPAllowance `json:"allowances,omitempty"`
+	Allowances    []GPAllowance `json:"allowances"`
 }
 
 // GPAllowance represents an allowance in a GP compensation package

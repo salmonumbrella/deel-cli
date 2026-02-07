@@ -22,7 +22,7 @@ type EORContract struct {
 	JobTitle       string       `json:"job_title"`
 	SeniorityLevel string       `json:"seniority_level,omitempty"`
 	Scope          string       `json:"scope,omitempty"`
-	Benefits       []EORBenefit `json:"benefits,omitempty"`
+	Benefits       []EORBenefit `json:"benefits"`
 	CreatedAt      string       `json:"created_at"`
 }
 
