@@ -10,15 +10,13 @@ import (
 
 // Contract represents a Deel contract
 type Contract struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Type        string `json:"type"`
-	Status      string `json:"status"`
-	WorkerName  string `json:"worker_name"`
-	WorkerEmail string `json:"worker_email"`
-	// Worker is an ergonomic alias for scripting (e.g. jq: .worker.name).
-	// Keep WorkerName/WorkerEmail for backwards compatibility.
-	Worker             ContractWorker `json:"worker"`
+	ID                 string         `json:"id"`
+	Title              string         `json:"title"`
+	Type               string         `json:"type"`
+	Status             string         `json:"status"`
+	WorkerName         string         `json:"worker_name"`
+	WorkerEmail        string         `json:"worker_email"`
+	Worker             ContractWorker `json:"worker"` // ergonomic alias for scripting (jq: .worker.name)
 	Entity             string         `json:"entity"`
 	EntityID           string         `json:"entity_id"`
 	StartDate          string         `json:"start_date"`
@@ -28,6 +26,9 @@ type Contract struct {
 	Country            string         `json:"country"`
 }
 
+// ContractWorker is an ergonomic alias exposing worker fields as a nested
+// object in JSON output. It is populated by Contract.UnmarshalJSON and is
+// intentionally distinct from the raw API worker shape (full_name → name).
 type ContractWorker struct {
 	Name    string `json:"name"`
 	Email   string `json:"email"`

@@ -78,7 +78,7 @@ var contractsListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "List contracts (default: active)",
 	Long:    "List contracts in your organization. Defaults to active contracts; use --status to query other statuses and --entity-id or --country to filter.",
-	Example: "  deel contracts list -o json --query '.data[] | {id, worker_name, status}'\n  deel contracts list --entity-id le-123 --all\n  deel contracts list --country TW --all",
+	Example: "  deel contracts list --json --items --jq '.[] | {id, worker_name, worker: .worker.name, status}'\n  deel contracts list --entity-id le-123 --all\n  deel contracts list --country TW --all",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, f, err := initClient("initializing client")
 		if err != nil {
