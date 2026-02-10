@@ -10,19 +10,28 @@ import (
 
 // Contract represents a Deel contract
 type Contract struct {
-	ID                 string  `json:"id"`
-	Title              string  `json:"title"`
-	Type               string  `json:"type"`
-	Status             string  `json:"status"`
-	WorkerName         string  `json:"worker_name"`
-	WorkerEmail        string  `json:"worker_email"`
-	Entity             string  `json:"entity"`
-	EntityID           string  `json:"entity_id"`
-	StartDate          string  `json:"start_date"`
-	EndDate            string  `json:"end_date"`
-	Currency           string  `json:"currency"`
-	CompensationAmount float64 `json:"compensation_amount"`
-	Country            string  `json:"country"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Type        string `json:"type"`
+	Status      string `json:"status"`
+	WorkerName  string `json:"worker_name"`
+	WorkerEmail string `json:"worker_email"`
+	// Worker is an ergonomic alias for scripting (e.g. jq: .worker.name).
+	// Keep WorkerName/WorkerEmail for backwards compatibility.
+	Worker             ContractWorker `json:"worker"`
+	Entity             string         `json:"entity"`
+	EntityID           string         `json:"entity_id"`
+	StartDate          string         `json:"start_date"`
+	EndDate            string         `json:"end_date"`
+	Currency           string         `json:"currency"`
+	CompensationAmount float64        `json:"compensation_amount"`
+	Country            string         `json:"country"`
+}
+
+type ContractWorker struct {
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Country string `json:"country"`
 }
 
 // rawContract is used for parsing the nested API response
@@ -66,6 +75,11 @@ func (c *Contract) UnmarshalJSON(data []byte) error {
 	c.EndDate = raw.EndDate
 	c.WorkerName = raw.Worker.FullName
 	c.WorkerEmail = raw.Worker.Email
+	c.Worker = ContractWorker{
+		Name:    raw.Worker.FullName,
+		Email:   raw.Worker.Email,
+		Country: raw.Worker.Country,
+	}
 	c.Entity = raw.Client.LegalEntity.Name
 	if raw.Client.LegalEntity.ID != "" {
 		c.EntityID = raw.Client.LegalEntity.ID

@@ -87,8 +87,11 @@ deel contracts list --json --items
 deel contracts get <contract-id> --json
 deel contracts get <contract-id> --json --raw
 deel contracts list --json --jq '.data[] | .id'
+deel contracts list --json --items --jq '.[] | {id, worker_name, worker: .worker.name, status}'
 deel people list --json --items --jq '.[] | {id, name, email}'
 ```
+
+Note: contract JSON includes `worker_name` (flat string) and `worker.name` (alias) for easier jq querying. If you use `jq` in `zsh`, wrap the jq program in single quotes (don't write `\!=` or `\!` inside jq; it becomes an invalid character).
 
 **Terminal:**
 ```bash
