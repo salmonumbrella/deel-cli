@@ -27,22 +27,25 @@ type Employment struct {
 
 // Person represents a Deel person/worker
 type Person struct {
-	ID            string       `json:"id"`
-	HRISProfileID string       `json:"hris_profile_id"`
-	FirstName     string       `json:"first_name"`
-	LastName      string       `json:"last_name"`
-	Name          string       `json:"name"` // Computed: FirstName + LastName
-	Email         string       `json:"email"`
-	JobTitle      string       `json:"job_title"`
-	DepartmentRaw any          `json:"department"` // API returns string or object
-	Status        string       `json:"status"`
-	StartDate     string       `json:"start_date"`
-	Country       string       `json:"country"`
-	HiringType    string       `json:"hiring_type,omitempty"`
-	Employments   []Employment `json:"employments"`
+	ID                 string       `json:"id"`
+	HRISProfileID      string       `json:"hris_profile_id"`
+	FirstName          string       `json:"first_name"`
+	LastName           string       `json:"last_name"`
+	PreferredFirstName string       `json:"preferred_first_name"`
+	PreferredLastName  string       `json:"preferred_last_name"`
+	Name               string       `json:"name"` // Computed: PreferredFirst+PreferredLast or First+Last
+	Email              string       `json:"email"`
+	JobTitle           string       `json:"job_title"`
+	DepartmentRaw      any          `json:"department"` // API returns string or object
+	Status             string       `json:"status"`
+	StartDate          string       `json:"start_date"`
+	Country            string       `json:"country"`
+	HiringType         string       `json:"hiring_type,omitempty"`
+	Employments        []Employment `json:"employments"`
 }
 
-// UnmarshalJSON implements custom unmarshaling to compute the Name field
+// UnmarshalJSON implements custom unmarshaling to compute the Name field.
+// Prefers preferred names over legal names when available.
 func (p *Person) UnmarshalJSON(data []byte) error {
 	type Alias Person
 	aux := &struct {
@@ -53,13 +56,21 @@ func (p *Person) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	// Compute Name from FirstName and LastName
-	p.Name = p.FirstName
-	if p.LastName != "" {
+	// Prefer preferred name, fall back to legal name
+	first := p.PreferredFirstName
+	if first == "" {
+		first = p.FirstName
+	}
+	last := p.PreferredLastName
+	if last == "" {
+		last = p.LastName
+	}
+	p.Name = first
+	if last != "" {
 		if p.Name != "" {
 			p.Name += " "
 		}
-		p.Name += p.LastName
+		p.Name += last
 	}
 	return nil
 }

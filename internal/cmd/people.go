@@ -208,10 +208,16 @@ Examples:
 				fullName := strings.ToLower(p.FirstName + " " + p.LastName)
 				firstName := strings.ToLower(p.FirstName)
 				lastName := strings.ToLower(p.LastName)
+				prefFirst := strings.ToLower(p.PreferredFirstName)
+				prefLast := strings.ToLower(p.PreferredLastName)
+				prefFull := strings.ToLower(strings.TrimSpace(p.PreferredFirstName + " " + p.PreferredLastName))
 
 				if strings.Contains(fullName, searchName) ||
 					strings.Contains(firstName, searchName) ||
-					strings.Contains(lastName, searchName) {
+					strings.Contains(lastName, searchName) ||
+					strings.Contains(prefFull, searchName) ||
+					strings.Contains(prefFirst, searchName) ||
+					strings.Contains(prefLast, searchName) {
 					matches = append(matches, p)
 				}
 			}

@@ -24,7 +24,7 @@ Manage contracts, people, payroll, time off, and more from the command line.
 - **Organization** - view org structure and legal entities
 - **Payments & Payouts** - payment breakdowns, receipts, and withdrawals
 - **Payroll** - access payslips, payments, and receipts
-- **People** - list workers and custom fields
+- **People** - search workers by legal or preferred name, list and manage custom fields
 - **Reports** - generate reports for payroll and contracts
 - **Screenings** - manage screenings and verification flows
 - **Shifts** - view shift schedules and rates
@@ -185,6 +185,7 @@ deel auth test [--account <name>]    # Test credentials
 ```bash
 deel people list [--limit <n>] [--cursor <token>] [--all]    # List all people
 deel people get <hris-profile-id>                    # Get person details
+deel people search --name <name>                     # Find person by name (matches legal + preferred names)
 deel people search --email <email>                   # Find person by email
 deel people create --email <email> --first-name <name> --last-name <name> --type <type> --country <cc>
 deel people update <id> [--first-name <name>] [--last-name <name>] [--phone <phone>] [--nationality <cc>]
