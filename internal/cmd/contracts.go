@@ -335,7 +335,7 @@ var contractsCreateCmd = &cobra.Command{
 			return failValidation(cmd, f, "--title is required")
 		}
 		if contractTypeFlag == "" {
-			return failValidation(cmd, f, "--type is required (fixed_rate, pay_as_you_go, milestone, task_based)")
+			return failValidation(cmd, f, "--type is required (payg_tasks, pay_as_you_go_time_based, payg_milestones, ongoing_time_based)")
 		}
 		if contractWorkerEmailFlag == "" {
 			return failValidation(cmd, f, "--worker-email is required")
@@ -824,7 +824,7 @@ func init() {
 
 	// Create command flags
 	contractsCreateCmd.Flags().StringVar(&contractTitleFlag, "title", "", "Contract title (required)")
-	contractsCreateCmd.Flags().StringVar(&contractTypeFlag, "type", "", "Contract type: fixed_rate, pay_as_you_go, milestone, task_based (required)")
+	contractsCreateCmd.Flags().StringVar(&contractTypeFlag, "type", "", "Contract type: payg_tasks, pay_as_you_go_time_based, payg_milestones, ongoing_time_based (required)")
 	contractsCreateCmd.Flags().StringVar(&contractWorkerEmailFlag, "worker-email", "", "Worker email address (required)")
 	contractsCreateCmd.Flags().StringVar(&contractWorkerFirstFlag, "worker-first", "", "Worker first name")
 	contractsCreateCmd.Flags().StringVar(&contractWorkerLastFlag, "worker-last", "", "Worker last name")

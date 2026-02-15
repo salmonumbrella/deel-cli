@@ -128,7 +128,7 @@ func TestCreateContract(t *testing.T) {
 		data, ok := body["data"].(map[string]any)
 		require.True(t, ok, "body should have 'data' wrapper")
 		assert.Equal(t, "New Contract", data["title"])
-		assert.Equal(t, "fixed_rate", data["type"])
+		assert.Equal(t, "ongoing_time_based", data["type"])
 	}, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"id":     "c-new",
@@ -305,7 +305,7 @@ func TestCreateContractWithExtendedFields(t *testing.T) {
 	client := testClient(server)
 	result, err := client.CreateContract(context.Background(), CreateContractParams{
 		Title:         "Host Contract",
-		Type:          "pay_as_you_go_time_based",
+		Type:          "payg_tasks",
 		WorkerEmail:   "worker@example.com",
 		Currency:      "CAD",
 		Rate:          23.00,

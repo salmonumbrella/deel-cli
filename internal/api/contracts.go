@@ -256,17 +256,22 @@ type createContractRequest struct {
 	PaymentCycle        string                `json:"payment_cycle,omitempty"`
 	ContractTemplateID  string                `json:"contract_template_id,omitempty"`
 	Client              *createContractClient `json:"client,omitempty"`
-	Manager             *entityRef            `json:"manager,omitempty"` // Top-level manager assignment (Deel bug: may not work)
+	Manager             *entityRef            `json:"manager,omitempty"` // Ignored by API; CLI assigns via HRIS endpoint after 60s wait
 	CompensationDetails *compensationDetails  `json:"compensation_details,omitempty"`
 	Meta                map[string]any        `json:"meta"`
 	SpecialClause       string                `json:"special_clause,omitempty"`
 }
 
 // mapContractType converts CLI contract types to API types
+// Valid API types: payg_tasks, pay_as_you_go_time_based, payg_milestones, ongoing_time_based
 func mapContractType(cliType string) string {
 	switch cliType {
-	case "pay_as_you_go_time_based", "payg_time_based":
+	case "payg", "task_based":
 		return "payg_tasks"
+	case "fixed_rate", "fixed":
+		return "ongoing_time_based"
+	case "milestone", "milestones":
+		return "payg_milestones"
 	default:
 		return cliType
 	}
@@ -348,8 +353,8 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		req.SpecialClause = params.SpecialClause
 	}
 
-	// NOTE: Manager assignment via contract creation API does NOT work (Deel bug).
-	// Use the worker relations endpoint after the worker signs instead.
+	// Manager assignment via create API is ignored by Deel.
+	// CLI handles this via HRIS worker relations endpoint after 60s wait.
 
 	// Add client structure if legal entity or group specified
 	if params.LegalEntityID != "" || params.GroupID != "" {
@@ -362,20 +367,26 @@ func (c *Client) CreateContract(ctx context.Context, params CreateContractParams
 		}
 	}
 
-	// Add compensation details (matching n8n format exactly - no amount, no scale)
+	// Add compensation details
 	if params.Currency != "" || params.CycleEnd > 0 || params.Frequency != "" {
 		cycleEndType := ""
 		if params.CycleEnd > 0 {
 			cycleEndType = params.CycleEndType
 		}
-		req.CompensationDetails = &compensationDetails{
+		comp := &compensationDetails{
 			CurrencyCode:   params.Currency,
 			CycleEnd:       params.CycleEnd,
 			CycleEndType:   cycleEndType,
 			Frequency:      params.Frequency,
-			PaymentDueType: "REGULAR", // n8n uses REGULAR
-			PaymentDueDays: 5,         // n8n uses 5
+			PaymentDueType: "REGULAR",
+			PaymentDueDays: 5,
 		}
+		// For time-based contracts, include rate as amount if provided
+		if params.Rate > 0 {
+			comp.Amount = params.Rate
+			comp.Scale = "hourly"
+		}
+		req.CompensationDetails = comp
 	}
 
 	reqWrapper := wrapData(req)
