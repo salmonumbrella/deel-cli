@@ -6,11 +6,13 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -712,6 +714,10 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 // openBrowser opens the URL in the default browser.
 // For security, only localhost URLs are allowed.
 func openBrowser(url string) error {
+	if shouldSkipAutoBrowserOpen() {
+		return nil
+	}
+
 	// Validate URL is localhost only to prevent command injection
 	if !strings.HasPrefix(url, "http://127.0.0.1:") &&
 		!strings.HasPrefix(url, "http://localhost:") {
@@ -732,6 +738,23 @@ func openBrowser(url string) error {
 	}
 
 	return cmd.Start()
+}
+
+func shouldSkipAutoBrowserOpen() bool {
+	// Skip browser launch in unit/integration tests.
+	if flag.Lookup("test.v") != nil {
+		return true
+	}
+
+	// Explicit opt-outs for local automation/CI.
+	for _, env := range []string{"DEEL_NO_BROWSER", "NO_BROWSER"} {
+		v := strings.TrimSpace(strings.ToLower(os.Getenv(env)))
+		if v == "1" || v == "true" || v == "yes" {
+			return true
+		}
+	}
+
+	return false
 }
 
 // HTML Templates
