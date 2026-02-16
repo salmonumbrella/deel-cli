@@ -1066,31 +1066,31 @@ var managersCreateCmd = &cobra.Command{
 // Flags for assign-manager command
 var (
 	assignManagerEmailFlag     string
+	assignManagerNameFlag      string
 	assignManagerManagerIDFlag string
 	assignManagerStartDateFlag string
 )
 
 var assignManagerCmd = &cobra.Command{
 	Use:   "assign-manager",
-	Short: "Assign a manager to a worker by email",
-	Long: `Assign a manager to a worker using their email address.
-This is a convenience command that looks up the worker's profile ID by email
-and creates a worker relation using the worker-relations API.
+	Short: "Assign a manager to a worker",
+	Long: `Assign a manager to a worker using their email or name.
 
-NOTE: The worker must have signed their contract and appear in the People directory
-before you can assign a manager. This typically happens after:
-  1. Contract is created and signed by client
-  2. Worker is invited
-  3. Worker signs the contract
+Looks up the worker's HRIS profile ID and creates a worker relation
+using the worker-relations API.
+
+NOTE: The worker must have signed their contract and completed onboarding
+before you can assign a manager. Until then, the worker's HRIS profile
+is not ready (empty profile ID).
 
 Examples:
-  deel people assign-manager --email worker@example.com --manager fd470477-d950-47dd-93eb-d31830d6caca
-  deel people assign-manager --email worker@example.com --manager fd470477-... --start-date 2026-01-20`,
+  deel people assign-manager --name "Szu Yun" --manager 1da5cf8e-... --start-date 2026-02-16
+  deel people assign-manager --email worker@example.com --manager fd470477-...`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		f := getFormatter()
 
-		if assignManagerEmailFlag == "" {
-			return failValidation(cmd, f, "--email flag is required")
+		if assignManagerEmailFlag == "" && assignManagerNameFlag == "" {
+			return failValidation(cmd, f, "--email or --name is required")
 		}
 		if assignManagerManagerIDFlag == "" {
 			return failValidation(cmd, f, "--manager flag is required")
@@ -1101,14 +1101,77 @@ Examples:
 			return HandleError(f, err, "initializing client")
 		}
 
-		// Look up the worker by email
-		person, err := client.SearchPeopleByEmail(cmd.Context(), assignManagerEmailFlag)
-		if err != nil {
-			return HandleError(f, err, "searching worker by email")
+		var person *api.Person
+
+		if assignManagerNameFlag != "" {
+			// Name-based search: fetch all people and filter client-side
+			searchName := strings.ToLower(assignManagerNameFlag)
+			var matches []api.Person
+			cursor := ""
+			pages := 0
+
+			for {
+				resp, err := client.ListPeople(cmd.Context(), api.PeopleListParams{
+					Limit:  100,
+					Cursor: cursor,
+				})
+				if err != nil {
+					return HandleError(f, err, "searching people by name")
+				}
+				pages++
+
+				for _, p := range resp.Data {
+					fullName := strings.ToLower(p.FirstName + " " + p.LastName)
+					firstName := strings.ToLower(p.FirstName)
+					lastName := strings.ToLower(p.LastName)
+					prefFirst := strings.ToLower(p.PreferredFirstName)
+					prefLast := strings.ToLower(p.PreferredLastName)
+					prefFull := strings.ToLower(strings.TrimSpace(p.PreferredFirstName + " " + p.PreferredLastName))
+
+					if strings.Contains(fullName, searchName) ||
+						strings.Contains(firstName, searchName) ||
+						strings.Contains(lastName, searchName) ||
+						strings.Contains(prefFull, searchName) ||
+						strings.Contains(prefFirst, searchName) ||
+						strings.Contains(prefLast, searchName) {
+						matches = append(matches, p)
+					}
+				}
+
+				if resp.Page.Next == "" {
+					break
+				}
+				if pages >= maxPaginationPages {
+					break
+				}
+				cursor = resp.Page.Next
+			}
+
+			if len(matches) == 0 {
+				return fail(cmd, f, "searching worker by name", "client", "No worker found matching: "+assignManagerNameFlag)
+			}
+			if len(matches) > 1 {
+				f.PrintText(fmt.Sprintf("Multiple matches found for \"%s\":\n", assignManagerNameFlag))
+				table := f.NewTable("ID", "NAME", "EMAIL", "STATUS")
+				for _, p := range matches {
+					table.AddRow(p.HRISProfileID, p.Name, p.Email, p.Status)
+				}
+				table.Render()
+				return fail(cmd, f, "searching worker by name", "client", "Multiple workers match — use --email or a more specific --name")
+			}
+			person = &matches[0]
+		} else {
+			// Email-based search
+			p, err := client.SearchPeopleByEmail(cmd.Context(), assignManagerEmailFlag)
+			if err != nil {
+				return HandleError(f, err, "searching worker by email")
+			}
+			person = p
 		}
 
 		if person.HRISProfileID == "" {
-			return fail(cmd, f, "validating worker profile", "server", "Worker found but has no profile ID")
+			return fail(cmd, f, "validating worker profile", "server",
+				"Worker found ("+person.Name+") but HRIS profile not ready yet. The worker must sign and complete onboarding first.")
 		}
 
 		// Use start date from flag or person's start date
@@ -1116,9 +1179,13 @@ Examples:
 		if startDate == "" {
 			startDate = person.StartDate
 		}
-		// StartDate is required, so if still empty, error out
 		if startDate == "" {
 			return failValidation(cmd, f, "--start-date is required (worker has no start date on file)")
+		}
+
+		workerLabel := person.Name
+		if assignManagerEmailFlag != "" {
+			workerLabel = person.Name + " (" + assignManagerEmailFlag + ")"
 		}
 
 		if ok, err := handleDryRun(cmd, f, &dryrun.Preview{
@@ -1126,17 +1193,15 @@ Examples:
 			Resource:    "WorkerRelation",
 			Description: "Assign manager to worker",
 			Details: map[string]string{
-				"WorkerEmail": assignManagerEmailFlag,
-				"WorkerName":  person.Name,
-				"ProfileID":   person.HRISProfileID,
-				"ManagerID":   assignManagerManagerIDFlag,
-				"StartDate":   startDate,
+				"WorkerName": person.Name,
+				"ProfileID":  person.HRISProfileID,
+				"ManagerID":  assignManagerManagerIDFlag,
+				"StartDate":  startDate,
 			},
 		}); ok {
 			return err
 		}
 
-		// Use the HRIS parent relation endpoint (recommended by Deel support)
 		params := api.SetWorkerManagerParams{
 			ManagerID: assignManagerManagerIDFlag,
 			StartDate: startDate,
@@ -1149,7 +1214,7 @@ Examples:
 
 		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintSuccess("Manager assigned successfully")
-			f.PrintText("Worker:      " + person.Name + " (" + assignManagerEmailFlag + ")")
+			f.PrintText("Worker:      " + workerLabel)
 			f.PrintText("Profile ID:  " + person.HRISProfileID)
 			f.PrintText("Manager ID:  " + assignManagerManagerIDFlag)
 			if relation != nil {
@@ -1377,7 +1442,8 @@ func init() {
 	relationsCreateCmd.Flags().StringVar(&relationsCreateStartDateFlag, "start-date", "", "Start date YYYY-MM-DD (required)")
 
 	// Assign-manager command flags
-	assignManagerCmd.Flags().StringVar(&assignManagerEmailFlag, "email", "", "Worker email address (required)")
+	assignManagerCmd.Flags().StringVar(&assignManagerEmailFlag, "email", "", "Worker email address (one of --email or --name required)")
+	assignManagerCmd.Flags().StringVar(&assignManagerNameFlag, "name", "", "Worker name to search for (one of --email or --name required)")
 	assignManagerCmd.Flags().StringVar(&assignManagerManagerIDFlag, "manager", "", "Manager ID (required)")
 	assignManagerCmd.Flags().StringVar(&assignManagerStartDateFlag, "start-date", "", "Start date YYYY-MM-DD (default: worker's start date)")
 

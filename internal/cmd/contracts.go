@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -51,8 +50,7 @@ var (
 	contractCycleEndFlag     int
 	contractCycleEndTypeFlag string
 	contractFrequencyFlag    string
-	contractManagerFlag      string
-	contractManagerWaitFlag  time.Duration
+	contractManagerFlag string
 
 	// Terminate command flags
 	terminateReasonFlag    string
@@ -419,96 +417,14 @@ var contractsCreateCmd = &cobra.Command{
 			},
 		}
 
-		managerAssignment := map[string]any{}
 		if contractManagerFlag != "" {
-			managerAssignment = map[string]any{
+			result["manager_assignment"] = map[string]any{
 				"requested_manager_id": contractManagerFlag,
-				"attempted":            false,
-				"assigned":             false,
+				"deferred":            true,
 			}
-			result["manager_assignment"] = managerAssignment
-
-			waitDuration := contractManagerWaitFlag
-			if waitDuration <= 0 {
-				managerAssignment["reason"] = "automatic_manager_assignment_disabled"
-				return f.OutputFiltered(cmd.Context(), func() {
-					f.PrintSuccess("Contract created successfully")
-					f.PrintText("Contract ID: " + contract.ID)
-					f.PrintText("Status: " + contract.Status)
-					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
-					f.PrintText("\nNext steps:")
-					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
-					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
-					f.PrintText("")
-					f.PrintText("NOTE: Manager assignment during contract creation is not supported by Deel API.")
-					f.PrintText("After the worker signs and appears in the People directory, assign their manager:")
-					f.PrintText("  deel people assign-manager --email " + contractWorkerEmailFlag + " --manager " + contractManagerFlag)
-				}, result)
-			}
-
-			workerEmail := contract.WorkerEmail
-			if workerEmail == "" {
-				workerEmail = contractWorkerEmailFlag
-			}
-
-			f.PrintText("")
-			f.PrintText(fmt.Sprintf("Waiting up to %s for worker to appear in People...", waitDuration))
-
-			person, err := waitForPersonByEmail(cmd.Context(), client, workerEmail, waitDuration)
-			if err != nil {
-				f.PrintWarning("Manager not assigned automatically: %v", err)
-				f.PrintText("Assign manually once ready:")
-				f.PrintText("  deel people assign-manager --email " + workerEmail + " --manager " + contractManagerFlag)
-				managerAssignment["attempted"] = true
-				managerAssignment["error"] = err.Error()
-				managerAssignment["worker_email"] = workerEmail
-				return f.OutputFiltered(cmd.Context(), func() {
-					f.PrintSuccess("Contract created successfully")
-					f.PrintText("Contract ID: " + contract.ID)
-					f.PrintText("Status: " + contract.Status)
-					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
-					f.PrintText("\nNext steps:")
-					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
-					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
-				}, result)
-			}
-
-			startDate := contract.StartDate
-			if startDate == "" {
-				startDate = contractStartDateFlag
-			}
-			if startDate == "" {
-				startDate = person.StartDate
-			}
-
-			_, err = client.SetWorkerManager(cmd.Context(), person.HRISProfileID, api.SetWorkerManagerParams{
-				ManagerID: contractManagerFlag,
-				StartDate: startDate,
-			})
-			if err != nil {
-				f.PrintWarning("Manager not assigned automatically: %v", err)
-				f.PrintText("Assign manually once ready:")
-				f.PrintText("  deel people assign-manager --email " + workerEmail + " --manager " + contractManagerFlag)
-				managerAssignment["attempted"] = true
-				managerAssignment["error"] = err.Error()
-				managerAssignment["worker_email"] = workerEmail
-				managerAssignment["hris_profile_id"] = person.HRISProfileID
-				return f.OutputFiltered(cmd.Context(), func() {
-					f.PrintSuccess("Contract created successfully")
-					f.PrintText("Contract ID: " + contract.ID)
-					f.PrintText("Status: " + contract.Status)
-					f.PrintText("URL: https://app.deel.com/contract/" + contract.ID + "/contracts")
-					f.PrintText("\nNext steps:")
-					f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
-					f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
-				}, result)
-			}
-
-			managerAssignment["attempted"] = true
-			managerAssignment["assigned"] = true
-			managerAssignment["worker_email"] = workerEmail
-			managerAssignment["hris_profile_id"] = person.HRISProfileID
-			managerAssignment["start_date"] = startDate
+			result["next_steps"] = append(result["next_steps"].([]string),
+				"deel people assign-manager --name \""+contractWorkerFirstFlag+" "+contractWorkerLastFlag+"\" --manager "+contractManagerFlag,
+			)
 		}
 
 		return f.OutputFiltered(cmd.Context(), func() {
@@ -519,13 +435,15 @@ var contractsCreateCmd = &cobra.Command{
 			f.PrintText("\nNext steps:")
 			f.PrintText("  1. Sign the contract: deel contracts sign " + contract.ID)
 			f.PrintText("  2. Invite worker: deel contracts invite " + contract.ID + " --email " + contractWorkerEmailFlag)
-			if contractManagerFlag != "" && managerAssignment["assigned"] == true {
+			if contractManagerFlag != "" {
 				f.PrintText("")
-				f.PrintSuccess("Manager assigned successfully")
-				if workerEmail, ok := managerAssignment["worker_email"].(string); ok && workerEmail != "" {
-					f.PrintText("Worker:  " + workerEmail)
+				f.PrintText("After worker signs, assign manager:")
+				workerName := strings.TrimSpace(contractWorkerFirstFlag + " " + contractWorkerLastFlag)
+				if workerName != "" {
+					f.PrintText("  deel people assign-manager --name \"" + workerName + "\" --manager " + contractManagerFlag)
+				} else {
+					f.PrintText("  deel people assign-manager --email " + contractWorkerEmailFlag + " --manager " + contractManagerFlag)
 				}
-				f.PrintText("Manager: " + contractManagerFlag)
 			}
 		}, result)
 	},
@@ -846,8 +764,7 @@ func init() {
 	contractsCreateCmd.Flags().StringVar(&contractFrequencyFlag, "frequency", "", "Payment frequency: monthly, weekly, biweekly, semimonthly")
 	contractsCreateCmd.Flags().StringVar(&contractSeniorityFlag, "seniority", "", "Seniority level ID (e.g., junior, mid, senior)")
 	contractsCreateCmd.Flags().StringVar(&contractSpecialClauseFlag, "special-clause", "", "Special clause text for contract")
-	contractsCreateCmd.Flags().StringVar(&contractManagerFlag, "manager", "", "Manager ID for workplace information")
-	contractsCreateCmd.Flags().DurationVar(&contractManagerWaitFlag, "assign-manager-wait", 60*time.Second, "Wait time before assigning manager (0 to skip)")
+	contractsCreateCmd.Flags().StringVar(&contractManagerFlag, "manager", "", "Manager ID (printed in next steps for deferred assignment)")
 
 	// Sign command flags
 	contractsSignCmd.Flags().StringVar(&signSignerFlag, "signer", "", "Full name of person signing on behalf of client (required)")
