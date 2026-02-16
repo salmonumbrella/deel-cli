@@ -50,7 +50,7 @@ var (
 	contractCycleEndFlag     int
 	contractCycleEndTypeFlag string
 	contractFrequencyFlag    string
-	contractManagerFlag string
+	contractManagerFlag      string
 
 	// Terminate command flags
 	terminateReasonFlag    string
@@ -420,7 +420,7 @@ var contractsCreateCmd = &cobra.Command{
 		if contractManagerFlag != "" {
 			result["manager_assignment"] = map[string]any{
 				"requested_manager_id": contractManagerFlag,
-				"deferred":            true,
+				"deferred":             true,
 			}
 			result["next_steps"] = append(result["next_steps"].([]string),
 				"deel people assign-manager --name \""+contractWorkerFirstFlag+" "+contractWorkerLastFlag+"\" --manager "+contractManagerFlag,
