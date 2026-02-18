@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -18,6 +19,9 @@ import (
 	"github.com/salmonumbrella/deel-cli/internal/outfmt"
 	"github.com/salmonumbrella/deel-cli/internal/secrets"
 )
+
+//go:embed help.txt
+var helpText string
 
 func emitAgentFlagError(ctx context.Context, message string) {
 	if !outfmt.IsAgent(ctx) || AgentErrorEmitted() {
@@ -229,7 +233,8 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&retryBaseFlag, "retry-base", 1*time.Second, "Base backoff for retries")
 	rootCmd.PersistentFlags().DurationVar(&retryMaxFlag, "retry-max", 30*time.Second, "Max backoff for retries")
 
-	// Agent-mode help: emit JSON schema instead of human help text.
+	// Override help: static help.txt for root, JSON schema for agent mode,
+	// Cobra default for subcommands.
 	defaultHelp := rootCmd.HelpFunc()
 	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		if agentFlag || agentEnabledFromEnv() {
@@ -239,6 +244,11 @@ func init() {
 				"ok":     true,
 				"result": info,
 			})
+			return
+		}
+		// Static help.txt for root command only; subcommands use Cobra.
+		if cmd.Name() == rootCmd.Name() && !cmd.HasParent() {
+			fmt.Print(helpText)
 			return
 		}
 		defaultHelp(cmd, args)

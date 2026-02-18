@@ -45,6 +45,7 @@ var (
 	peopleLimitFlag  int
 	peopleCursorFlag string
 	peopleAllFlag    bool
+	peopleLightFlag  bool
 )
 
 var peopleListCmd = &cobra.Command{
@@ -84,6 +85,13 @@ Tip: To find someone by name, use 'deel people search --name "Name"' instead.`,
 		}
 
 		response := makeListResponse(people, page)
+
+		if peopleLightFlag {
+			lightResp := makeListResponse(toLightPeople(people), page)
+			return outputList(cmd, f, people, hasMore, "No people found.", []string{"ID", "NAME", "EMAIL", "JOB TITLE", "STATUS"}, func(p api.Person) []string {
+				return []string{p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status}
+			}, lightResp)
+		}
 
 		return outputList(cmd, f, people, hasMore, "No people found.", []string{"ID", "NAME", "EMAIL", "JOB TITLE", "STATUS"}, func(p api.Person) []string {
 			return []string{p.HRISProfileID, p.Name, p.Email, p.JobTitle, p.Status}
@@ -138,6 +146,11 @@ var peopleGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting person")
 		}
 
+		var jsonPayload any = person
+		if peopleLightFlag {
+			jsonPayload = toLightPerson(*person)
+		}
+
 		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("Name:       " + person.Name)
 			f.PrintText("Email:      " + person.Email)
@@ -146,7 +159,7 @@ var peopleGetCmd = &cobra.Command{
 			f.PrintText("Status:     " + person.Status)
 			f.PrintText("Country:    " + person.Country)
 			f.PrintText("Start Date: " + person.StartDate)
-		}, person)
+		}, jsonPayload)
 	},
 }
 
@@ -1376,6 +1389,8 @@ func init() {
 	peopleListCmd.Flags().IntVar(&peopleLimitFlag, "limit", 100, "Maximum results")
 	peopleListCmd.Flags().StringVar(&peopleCursorFlag, "cursor", "", "Pagination cursor")
 	peopleListCmd.Flags().BoolVar(&peopleAllFlag, "all", false, "Fetch all pages")
+	peopleListCmd.Flags().BoolVar(&peopleLightFlag, "light", false, "Minimal payload (saves tokens)")
+	flagAlias(peopleListCmd.Flags(), "light", "li")
 
 	peopleSearchCmd.Flags().StringVar(&peopleEmailFlag, "email", "", "Email to search for (exact match)")
 	peopleSearchCmd.Flags().StringVar(&peopleNameFlag, "name", "", "Name to search for (partial match, case-insensitive)")
@@ -1383,6 +1398,8 @@ func init() {
 
 	// People get command flags
 	peopleGetCmd.Flags().BoolVar(&peoplePersonalFlag, "personal", false, "Get personal info including numeric worker_id")
+	peopleGetCmd.Flags().BoolVar(&peopleLightFlag, "light", false, "Minimal payload (saves tokens)")
+	flagAlias(peopleGetCmd.Flags(), "light", "li")
 
 	// People create command flags
 	peopleCreateCmd.Flags().StringVar(&peopleCreateEmailFlag, "email", "", "Email (required)")

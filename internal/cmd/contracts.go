@@ -25,6 +25,7 @@ var (
 	contractsAllFlag      bool
 	contractsEntityIDFlag string
 	contractsCountryFlag  string
+	contractsLightFlag    bool
 
 	// Create command flags
 	contractTitleFlag         string
@@ -156,6 +157,17 @@ var contractsListCmd = &cobra.Command{
 
 		response := makeListResponse(allContracts, page)
 
+		if contractsLightFlag {
+			lightResp := makeListResponse(toLightContracts(allContracts), page)
+			return outputList(cmd, f, allContracts, hasMore, "No contracts found.", []string{"ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS"}, func(c api.Contract) []string {
+				entityID := c.EntityID
+				if entityID == "" {
+					entityID = "-"
+				}
+				return []string{c.ID, c.Title, c.WorkerName, c.Entity, entityID, c.Type, c.Status}
+			}, lightResp)
+		}
+
 		return outputList(cmd, f, allContracts, hasMore, "No contracts found.", []string{"ID", "TITLE", "WORKER", "ENTITY", "ENTITY ID", "TYPE", "STATUS"}, func(c api.Contract) []string {
 			entityID := c.EntityID
 			if entityID == "" {
@@ -182,6 +194,11 @@ var contractsGetCmd = &cobra.Command{
 			return HandleError(f, err, "getting contract")
 		}
 
+		var jsonPayload any = contract
+		if contractsLightFlag {
+			jsonPayload = toLightContract(*contract)
+		}
+
 		return f.OutputFiltered(cmd.Context(), func() {
 			f.PrintText("ID:           " + contract.ID)
 			f.PrintText("Title:        " + contract.Title)
@@ -200,7 +217,7 @@ var contractsGetCmd = &cobra.Command{
 				f.PrintText("End Date:     " + contract.EndDate)
 			}
 			f.PrintText("URL:          https://app.deel.com/contract/" + contract.ID + "/contracts")
-		}, contract)
+		}, jsonPayload)
 	},
 }
 
@@ -739,6 +756,12 @@ func init() {
 	contractsListCmd.Flags().BoolVar(&contractsAllFlag, "all", false, "Fetch all pages")
 	contractsListCmd.Flags().StringVar(&contractsEntityIDFlag, "entity-id", "", "Filter by legal entity ID (client-side)")
 	contractsListCmd.Flags().StringVar(&contractsCountryFlag, "country", "", "Filter by worker country code (client-side)")
+	contractsListCmd.Flags().BoolVar(&contractsLightFlag, "light", false, "Minimal payload (saves tokens)")
+	flagAlias(contractsListCmd.Flags(), "light", "li")
+
+	// Get command light flag
+	contractsGetCmd.Flags().BoolVar(&contractsLightFlag, "light", false, "Minimal payload (saves tokens)")
+	flagAlias(contractsGetCmd.Flags(), "light", "li")
 
 	// Create command flags
 	contractsCreateCmd.Flags().StringVar(&contractTitleFlag, "title", "", "Contract title (required)")

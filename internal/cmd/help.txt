@@ -1,0 +1,270 @@
+deel - CLI for Deel workforce management platform
+
+IMPORTANT: Always use the shortest alias. Full names waste tokens.
+
+Aliases (resource -> short):
+  time-off=pto  background-checks=bgcheck  immigration=visa
+  milestones=ms  cost-centers=cc  calc=calculator
+
+Aliases (subcommand -> short):
+  list=ls  get=g  create=mk  update=up  delete=rm  search=q
+
+People (workforce):
+  deel people ls                       List all people
+  deel people ls --li                  Light: id, name, email, status, country
+  deel people g ID                     Get person by HRIS profile ID
+  deel people g ID --li                Light: id, name, email, job_title, status
+  deel people q EMAIL                  Search by email
+  deel people mk --email E --first F --last L  Create person
+  deel people up ID --name "N" --email "E"     Update person
+  deel people working-location ID --country US Set work location
+  deel people set-department ID --dept D       Assign department
+  deel people custom-fields ls         List custom fields
+  deel people adjustments ls ID        List adjustments for person
+  deel people managers ls ID           List managers for person
+  deel people relations ls ID          List worker relations
+
+Contracts:
+  deel contracts ls                    List contracts (default: active)
+  deel contracts ls --li               Light: id, title, status, worker, type
+  deel contracts ls --status all       All statuses
+  deel contracts g ID                  Get contract by ID
+  deel contracts g ID --li             Light: id, title, status, worker, dates
+  deel contracts mk --title T --type T --email E  Create contract
+  deel contracts sign ID --signer "Name"   Sign contract
+  deel contracts terminate ID --now        Terminate immediately
+  deel contracts amendments ID         List amendments
+  deel contracts amend ID              Create amendment
+  deel contracts payment-dates ID      Payment schedule
+  deel contracts pdf ID                Get PDF download URL
+  deel contracts invite ID --email E   Send invitation email
+  deel contracts invite-link ID        Get invite link
+  deel contracts templates             List contract templates
+  deel contracts termination-reasons   List termination reasons
+
+Time off:
+  deel pto ls                          List time off requests
+  deel pto ls --person ID              Filter by person
+  deel pto ls --status approved        Filter by status
+  deel pto mk --person ID --policy P --start D --end D  Create request
+  deel pto cancel ID                   Cancel request
+  deel pto approve ID                  Approve request
+  deel pto reject ID                   Reject request
+  deel pto validate --person ID --policy P --start D --end D  Validate dates
+  deel pto policies                    List policies
+  deel pto entitlements --person ID    Get entitlements
+  deel pto schedule --person ID        Get schedule
+
+Payroll:
+  deel payroll payslips --person ID    Get payslips
+  deel payroll payslips --gp           Global Payroll payslips
+  deel payroll payments                List payroll payments
+  deel payroll receipts                List receipts
+  deel payroll download-pdf ID         Download payslip PDF
+
+Invoices:
+  deel invoices ls                     List invoices
+  deel invoices g ID                   Get invoice details
+  deel invoices adjustments g ID       Get adjustment
+  deel invoices adjustments mk --invoice I --amount A  Create adjustment
+  deel invoices adjustments approve ID Approve adjustment
+  deel invoices adjustments decline ID Decline adjustment
+  deel invoices pdf ID                 Get invoice PDF URL
+  deel invoices deel-invoices          Deel invoices (platform fees)
+
+Payments:
+  deel payments off-cycle ls           List off-cycle payments
+  deel payments off-cycle mk           Create off-cycle payment
+  deel payments breakdown ID           Payment breakdown
+  deel payments receipts ID            Payment receipts
+
+Reports:
+  deel reports payments                Detailed payments report
+
+Payouts:
+  deel payouts withdraw --amount A --currency C  Withdraw funds
+  deel payouts auto-withdrawal set --amount A    Set auto-withdrawal
+  deel payouts balances                Account balances
+
+Benefits:
+  deel benefits ls --country US        List benefits by country
+  deel benefits employee --employee ID Employee benefits
+
+Teams & org:
+  deel teams ls                        List teams
+  deel teams g ID                      Get team details
+  deel org g                           Get organization info
+  deel org structures                  Org structures
+  deel org entities                    Legal entities list
+  deel org groups ls                   List groups
+  deel org groups g ID                 Get group
+  deel org groups mk --name N          Create group
+  deel org legal-entities ls           List legal entities
+  deel org legal-entities mk           Create legal entity
+  deel org departments ls              List departments
+  deel org lookups currencies          Available currencies
+  deel org lookups countries           Available countries
+  deel org lookups job-titles          Job title catalog
+  deel org lookups seniority-levels    Seniority levels
+  deel org lookups time-off-types      Time off type catalog
+
+Onboarding:
+  deel onboarding ls                   List onboarding tasks
+  deel onboarding g ID                 Get onboarding details
+
+Compliance:
+  deel compliance docs                 Compliance documents
+  deel compliance templates            Compliance templates
+  deel compliance validations          Run validations
+
+Background checks:
+  deel bgcheck options                 Available check types
+  deel bgcheck ls                      List background checks
+
+Immigration:
+  deel visa cases                      List immigration cases
+  deel visa docs                       Immigration documents
+  deel visa visa-types                 Available visa types
+  deel visa check --country C          Check requirements
+  deel visa mk --person ID --type T    Create immigration case
+  deel visa upload ID --file F         Upload document
+
+ATS (recruiting):
+  deel ats offers                      List job offers
+  deel ats jobs ls                     List jobs
+  deel ats jobs mk --title T           Create job
+  deel ats postings ls                 List job postings
+  deel ats postings g ID               Get posting details
+  deel ats applications ls             List applications
+  deel ats candidates ls               List ATS candidates
+  deel ats departments ls              ATS departments
+  deel ats locations ls                Hiring locations
+  deel ats rejection-reasons ls        Rejection reasons
+
+Shifts & timesheets:
+  deel shifts ls                       List shifts
+  deel shifts rates                    Shift rates
+  deel timesheets ls                   List timesheets
+  deel timesheets g ID                 Get timesheet
+  deel timesheets create-entry ID      Add time entry
+  deel timesheets review ID            Review timesheet
+  deel timesheets presets ls           List presets
+
+Milestones & tasks:
+  deel ms ls CONTRACT                  List milestones
+  deel ms mk CONTRACT --title T --amount A  Create milestone
+  deel ms rm CONTRACT MILESTONE        Delete milestone
+  deel tasks ls CONTRACT               List tasks
+  deel tasks g CONTRACT TASK           Get task
+  deel tasks mk CONTRACT --title T     Create task
+  deel tasks approve CONTRACT TASK     Approve task
+  deel tasks reject CONTRACT TASK      Reject task
+  deel tasks review-many CONTRACT --ids 1,2  Batch review
+
+EOR contracts:
+  deel eor mk                          Create EOR contract
+  deel eor g ID                        Get EOR contract
+  deel eor sign ID                     Sign EOR contract
+  deel eor cancel ID                   Cancel EOR contract
+  deel eor amend ID                    Amend EOR contract
+  deel eor amendments ls ID            List amendments
+  deel eor terminate ID                Terminate EOR
+  deel eor workers mk                  Create EOR worker
+  deel eor bank-accounts add ID        Add bank account
+
+Global Payroll:
+  deel gp mk                           Create GP contract
+  deel gp bank-accounts ls ID          List bank accounts
+  deel gp bank-accounts add ID         Add bank account
+  deel gp reports g2n                  Gross-to-net report
+  deel gp terminate ID                 Terminate GP contract
+  deel gp shifts mk ID                 Create GP shift
+  deel gp rates ls ID                  List GP rates
+  deel gp rates mk ID                  Create GP rate
+
+Candidates & screenings:
+  deel candidates add                  Add candidate
+  deel candidates up ID                Update candidate
+  deel screenings veriff               Start Veriff identity check
+  deel screenings kyc                  KYC verification
+  deel screenings aml                  AML screening
+  deel screenings submit-kyc           Submit KYC data
+  deel screenings verify               Verify screening
+
+Cost centers:
+  deel cc ls                           List cost centers
+  deel cc sync                         Sync cost centers
+
+Offboarding:
+  deel offboarding g ID                Get offboarding details
+  deel offboarding termination ID      Initiate termination
+
+Calculators:
+  deel calc cost --country C --salary S --currency CUR  Employer cost
+  deel calc take-home --country C --salary S --currency CUR  Take-home pay
+  deel calc salary-histogram --role R --country C  Salary data
+
+Webhooks:
+  deel webhooks ls                     List webhooks
+  deel webhooks g ID                   Get webhook details
+  deel webhooks mk --url U --events E  Create webhook
+  deel webhooks up ID --url U          Update webhook
+  deel webhooks enable ID              Enable webhook
+  deel webhooks disable ID             Disable webhook
+  deel webhooks rm ID                  Delete webhook
+  deel webhooks event-types            List event types
+  deel webhooks verify --secret S --signature SIG --payload P  Verify signature
+
+Tokens:
+  deel tokens mk --worker W            Create worker access token
+
+Output formats:
+  --json              Full JSON output
+  --json --items      Data array/object only (for piping)
+  --json --raw        Raw JSON without data envelope
+  --jsonl             Newline-delimited JSON (streaming)
+  --agent             Agent mode: compact JSON, no color
+  --jq EXPR           Built-in JQ filter
+  -o text             Human-readable table (default)
+
+Common flags:
+  --account NAME      Account to use (overrides DEEL_ACCOUNT)
+  --li                Light mode: minimal payload (on people, contracts)
+  --dry-run           Preview without executing
+  --debug             Enable debug output
+  --timeout DURATION  HTTP timeout (default: 30s)
+  --retries N         Max retry attempts (default: 3)
+
+Exit codes:
+  0  Success
+  1  General error
+  2  Usage error (invalid flags/arguments)
+  3  Auth error (invalid or missing credentials)
+  4  Not found
+  5  Permission denied (403)
+  6  Rate limited (429)
+  7  Server error (5xx)
+  8  Network error (timeout, DNS, TLS)
+
+Environment:
+  DEEL_TOKEN            API token (direct auth, skips keychain)
+  DEEL_ACCOUNT          Default account name
+  DEEL_OUTPUT           Default output format (text|json)
+  DEEL_COLOR            Color mode (auto|always|never)
+  DEEL_AGENT            Enable agent mode (1|true)
+  DEEL_IDEMPOTENCY_KEY  Idempotency key for writes
+
+Auth:
+  deel auth login              Browser-based setup
+  deel auth add NAME           Add credentials manually
+  deel auth list               List configured accounts
+  deel auth test               Test connection
+  deel auth manage             Manage accounts in browser
+  deel auth remove NAME        Remove an account
+
+Discovery:
+  deel meta commands --json    Full command tree as JSON
+  deel meta help CMD --json    Command schema as JSON
+  deel CMD --help              Detailed help for any command
+
+Use "deel CMD --help" for detailed help on any command.
