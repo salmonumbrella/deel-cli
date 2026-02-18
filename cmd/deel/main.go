@@ -19,6 +19,8 @@ func main() {
 	agentMode := cmd.IsAgentMode(args)
 
 	if err := cmd.ExecuteContext(ctx, args); err != nil {
+		exitCode := cmd.ExitCode(err)
+
 		if agentMode {
 			// If no structured error was emitted, fall back to a minimal JSON error object.
 			if !cmd.AgentErrorEmitted() {
@@ -32,10 +34,10 @@ func main() {
 					_, _ = os.Stdout.Write(append(b, '\n'))
 				}
 			}
-			os.Exit(1)
+			os.Exit(exitCode)
 		}
 
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		os.Exit(exitCode)
 	}
 }
