@@ -36,11 +36,11 @@ func (p *Preview) Write(w io.Writer) error {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("[DRY-RUN] %s %s\n", p.Operation, p.Resource))
+	fmt.Fprintf(&sb, "[DRY-RUN] %s %s\n", p.Operation, p.Resource)
 
 	// Description
 	if p.Description != "" {
-		sb.WriteString(fmt.Sprintf("  %s\n", p.Description))
+		fmt.Fprintf(&sb, "  %s\n", p.Description)
 	}
 
 	// Details
@@ -54,7 +54,7 @@ func (p *Preview) Write(w io.Writer) error {
 			}
 		}
 		for k, v := range p.Details {
-			sb.WriteString(fmt.Sprintf("    %-*s: %s\n", maxLen, k, v))
+			fmt.Fprintf(&sb, "    %-*s: %s\n", maxLen, k, v)
 		}
 	}
 
@@ -62,7 +62,7 @@ func (p *Preview) Write(w io.Writer) error {
 	if len(p.Warnings) > 0 {
 		sb.WriteString("\n  Warnings:\n")
 		for _, w := range p.Warnings {
-			sb.WriteString(fmt.Sprintf("    - Warning: %s\n", w))
+			fmt.Fprintf(&sb, "    - Warning: %s\n", w)
 		}
 	}
 
