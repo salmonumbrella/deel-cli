@@ -1,12 +1,16 @@
+# lefthook.yml
+# Pre-commit and pre-push hooks for deel-cli
+
 pre-commit:
   parallel: true
   commands:
     fmt:
       glob: "*.go"
-      run: gofumpt -l -d {staged_files}
+      run: gofumpt -w {staged_files}
+      stage_fixed: true
     lint:
       glob: "*.go"
-      run: golangci-lint run --new-from-rev=HEAD --timeout 2m {staged_files}
+      run: golangci-lint run --new-from-rev=HEAD --timeout 2m
     build:
       glob: "*.go"
       run: go build ./...
