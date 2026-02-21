@@ -33,6 +33,9 @@ Thumbs.db
 # Specstory
 .specstory/
 
+# Private journal
+.private-journal/
+
 # Environment
 .env
 .env.local
