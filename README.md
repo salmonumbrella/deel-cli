@@ -136,6 +136,8 @@ deel people list
 - `DEEL_IDEMPOTENCY_KEY` - Idempotency key for write requests
 - `DEEL_AGENT` - Agent mode: force JSON output, disable color, emit compact JSON
 - `DEEL_KEYRING_PASSWORD` - Passphrase for encrypted file keyring storage (useful on headless Linux/CI)
+- `DEEL_CREDENTIALS_DIR` - Override encrypted keyring directory for this CLI
+- `CW_CREDENTIALS_DIR` - OpenClaw shared credentials root (Deel uses `<root>/deel-cli/keyring`)
 - `NO_COLOR` - Set to any value to disable colors (standard convention)
 
 ### Agent Mode
@@ -171,6 +173,12 @@ Credentials are stored securely in your system's keychain:
 - **Windows**: Credential Manager
 
 On headless Linux, set `DEEL_KEYRING_PASSWORD` for non-interactive use (for example systemd or CI jobs).
+Set `DEEL_CREDENTIALS_DIR` (or shared `CW_CREDENTIALS_DIR`) to relocate encrypted keyring files.
+
+### OpenClaw Integration
+
+If `~/.openclaw/.env` exists, Deel CLI auto-loads it on startup.
+Existing process env vars win over file values.
 
 ## Commands
 

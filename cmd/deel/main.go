@@ -9,11 +9,14 @@ import (
 	"syscall"
 
 	"github.com/salmonumbrella/deel-cli/internal/cmd"
+	"github.com/salmonumbrella/deel-cli/internal/config"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	_ = config.LoadOpenClawEnv()
 
 	args := os.Args[1:]
 	agentMode := cmd.IsAgentMode(args)

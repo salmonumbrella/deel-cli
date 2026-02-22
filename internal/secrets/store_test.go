@@ -232,3 +232,42 @@ func TestEnsureKeyringDirPathIsFile(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a directory")
 }
+
+func TestEnsureKeyringDir_FromDeelCredentialsDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv(config.EnvCredentialsDir, "~/openclaw/deel-keyring")
+
+	keyringDir, err := ensureKeyringDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, "openclaw", "deel-keyring"), keyringDir)
+
+	info, err := os.Stat(keyringDir)
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+}
+
+func TestEnsureKeyringDir_FromOpenClawCredentialsDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv(config.EnvOpenClawCredentialsDir, "~/.openclaw/credentials")
+
+	keyringDir, err := ensureKeyringDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".openclaw", "credentials", config.AppName, "keyring"), keyringDir)
+
+	info, err := os.Stat(keyringDir)
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+}
+
+func TestResolveKeyringDir_EnvPrecedence(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv(config.EnvCredentialsDir, "~/deel-only")
+	t.Setenv(config.EnvOpenClawCredentialsDir, "~/.openclaw/credentials")
+
+	keyringDir, err := resolveKeyringDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, "deel-only"), keyringDir)
+}

@@ -253,6 +253,12 @@ Environment:
   DEEL_COLOR            Color mode (auto|always|never)
   DEEL_AGENT            Enable agent mode (1|true)
   DEEL_IDEMPOTENCY_KEY  Idempotency key for writes
+  DEEL_KEYRING_PASSWORD Passphrase for encrypted file keyring backend
+  DEEL_CREDENTIALS_DIR  Override encrypted keyring directory for Deel CLI
+  CW_CREDENTIALS_DIR    OpenClaw shared credentials root (uses <root>/deel-cli/keyring)
+
+OpenClaw:
+  ~/.openclaw/.env is auto-loaded if present (existing env vars take precedence)
 
 Auth:
   deel auth login              Browser-based setup

@@ -24,4 +24,11 @@ const (
 
 	// EnvAgent enables agent-optimized behavior (JSON output, compact formatting, etc.).
 	EnvAgent = "DEEL_AGENT"
+
+	// EnvCredentialsDir overrides the directory used for encrypted file keyring storage.
+	EnvCredentialsDir = "DEEL_CREDENTIALS_DIR"
+
+	// EnvOpenClawCredentialsDir is an OpenClaw-compatible shared credentials root.
+	// When set, Deel keyring data is stored under <value>/deel-cli/keyring.
+	EnvOpenClawCredentialsDir = "CW_CREDENTIALS_DIR"
 )

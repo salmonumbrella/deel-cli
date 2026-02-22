@@ -90,12 +90,11 @@ func openKeyring(goos string, dbusAddr string) (keyring.Keyring, error) {
 }
 
 func ensureKeyringDir() (string, error) {
-	configDir, err := os.UserConfigDir()
+	keyringDir, err := resolveKeyringDir()
 	if err != nil {
-		return "", fmt.Errorf("locate config directory: %w", err)
+		return "", err
 	}
 
-	keyringDir := filepath.Join(configDir, config.AppName, "keyring")
 	info, err := os.Stat(keyringDir)
 	switch {
 	case err == nil:
@@ -111,6 +110,41 @@ func ensureKeyringDir() (string, error) {
 	}
 
 	return keyringDir, nil
+}
+
+func resolveKeyringDir() (string, error) {
+	if dir, ok, err := credentialsDirFromEnv(); err != nil {
+		return "", err
+	} else if ok {
+		return dir, nil
+	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("locate config directory: %w", err)
+	}
+
+	return filepath.Join(configDir, config.AppName, "keyring"), nil
+}
+
+func credentialsDirFromEnv() (dir string, ok bool, err error) {
+	if explicit := strings.TrimSpace(os.Getenv(config.EnvCredentialsDir)); explicit != "" {
+		expanded, err := keyring.ExpandTilde(explicit)
+		if err != nil {
+			return "", false, fmt.Errorf("expand %s: %w", config.EnvCredentialsDir, err)
+		}
+		return filepath.Clean(expanded), true, nil
+	}
+
+	if shared := strings.TrimSpace(os.Getenv(config.EnvOpenClawCredentialsDir)); shared != "" {
+		expanded, err := keyring.ExpandTilde(shared)
+		if err != nil {
+			return "", false, fmt.Errorf("expand %s: %w", config.EnvOpenClawCredentialsDir, err)
+		}
+		return filepath.Join(filepath.Clean(expanded), config.AppName, "keyring"), true, nil
+	}
+
+	return "", false, nil
 }
 
 func shouldForceFileBackend(goos string, dbusAddr string) bool {
