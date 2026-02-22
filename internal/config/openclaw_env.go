@@ -39,7 +39,11 @@ func loadEnvFile(path string) error {
 		}
 		return fmt.Errorf("open env file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to close env file %s: %v\n", path, closeErr)
+		}
+	}()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
