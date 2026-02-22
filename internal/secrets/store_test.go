@@ -1,12 +1,16 @@
 package secrets
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/99designs/keyring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/salmonumbrella/deel-cli/internal/config"
 )
 
 func newTestStore() *KeyringStore {
@@ -151,4 +155,80 @@ func TestStore_SetDefaultsCreatedAt(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, got.CreatedAt.Before(before))
 	assert.False(t, got.CreatedAt.After(after))
+}
+
+func TestShouldForceFileBackend(t *testing.T) {
+	tests := []struct {
+		name     string
+		goos     string
+		dbusAddr string
+		want     bool
+	}{
+		{name: "linux headless", goos: "linux", dbusAddr: "", want: true},
+		{name: "linux headless whitespace", goos: "linux", dbusAddr: "   ", want: true},
+		{name: "linux desktop", goos: "linux", dbusAddr: "unix:path=/run/user/1000/bus", want: false},
+		{name: "darwin headless", goos: "darwin", dbusAddr: "", want: false},
+	}
+
+	for _, tt := range tests {
+		got := shouldForceFileBackend(tt.goos, tt.dbusAddr)
+		assert.Equal(t, tt.want, got, tt.name)
+	}
+}
+
+func TestFileKeyringPasswordFuncFrom_EnvVar(t *testing.T) {
+	prompt := fileKeyringPasswordFuncFrom("secret-passphrase", true, false)
+	password, err := prompt("ignored")
+	require.NoError(t, err)
+	assert.Equal(t, "secret-passphrase", password)
+}
+
+func TestFileKeyringPasswordFuncFrom_EmptyEnvVar(t *testing.T) {
+	prompt := fileKeyringPasswordFuncFrom("", true, false)
+	password, err := prompt("ignored")
+	require.NoError(t, err)
+	assert.Equal(t, "", password)
+}
+
+func TestFileKeyringPasswordFuncFrom_NoTTY(t *testing.T) {
+	prompt := fileKeyringPasswordFuncFrom("", false, false)
+	password, err := prompt("ignored")
+	require.Error(t, err)
+	assert.Empty(t, password)
+	assert.ErrorIs(t, err, errNoTTY)
+	assert.Contains(t, err.Error(), keyringPasswordEnv)
+}
+
+func TestEnsureKeyringDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	configDir, err := os.UserConfigDir()
+	require.NoError(t, err)
+
+	keyringDir, err := ensureKeyringDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(configDir, config.AppName, "keyring"), keyringDir)
+
+	info, err := os.Stat(keyringDir)
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+}
+
+func TestEnsureKeyringDirPathIsFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	configDir, err := os.UserConfigDir()
+	require.NoError(t, err)
+
+	keyringDir := filepath.Join(configDir, config.AppName, "keyring")
+	require.NoError(t, os.MkdirAll(filepath.Dir(keyringDir), 0o700))
+	require.NoError(t, os.WriteFile(keyringDir, []byte("not-a-directory"), 0o600))
+
+	_, err = ensureKeyringDir()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a directory")
 }

@@ -2,13 +2,18 @@ package secrets
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/99designs/keyring"
+	"golang.org/x/term"
 
 	"github.com/salmonumbrella/deel-cli/internal/config"
 )
@@ -16,9 +21,14 @@ import (
 const (
 	// CredentialRotationThreshold is the age after which credentials should be rotated
 	CredentialRotationThreshold = 90 * 24 * time.Hour
+
+	keyringPasswordEnv = "DEEL_KEYRING_PASSWORD"
 )
 
-var warnedAccounts sync.Map
+var (
+	warnedAccounts sync.Map
+	errNoTTY       = errors.New("no TTY available for keyring file backend password prompt")
+)
 
 // Store defines the interface for credential storage
 type Store interface {
@@ -48,13 +58,83 @@ type storedCredentials struct {
 
 // OpenDefault opens the default keyring store
 func OpenDefault() (Store, error) {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName: config.AppName,
-	})
+	ring, err := openKeyring(runtime.GOOS, os.Getenv("DBUS_SESSION_BUS_ADDRESS"))
 	if err != nil {
 		return nil, err
 	}
 	return &KeyringStore{ring: ring}, nil
+}
+
+func openKeyring(goos string, dbusAddr string) (keyring.Keyring, error) {
+	keyringDir, err := ensureKeyringDir()
+	if err != nil {
+		return nil, fmt.Errorf("ensure keyring dir: %w", err)
+	}
+
+	var allowedBackends []keyring.BackendType
+	if shouldForceFileBackend(goos, dbusAddr) {
+		allowedBackends = []keyring.BackendType{keyring.FileBackend}
+	}
+
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName:      config.AppName,
+		AllowedBackends:  allowedBackends,
+		FileDir:          keyringDir,
+		FilePasswordFunc: fileKeyringPasswordFunc(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open keyring: %w", err)
+	}
+
+	return ring, nil
+}
+
+func ensureKeyringDir() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("locate config directory: %w", err)
+	}
+
+	keyringDir := filepath.Join(configDir, config.AppName, "keyring")
+	info, err := os.Stat(keyringDir)
+	switch {
+	case err == nil:
+		if !info.IsDir() {
+			return "", fmt.Errorf("keyring path %q is not a directory", keyringDir)
+		}
+	case os.IsNotExist(err):
+		if err := os.MkdirAll(keyringDir, 0o700); err != nil {
+			return "", fmt.Errorf("create keyring directory: %w", err)
+		}
+	case err != nil:
+		return "", fmt.Errorf("inspect keyring directory: %w", err)
+	}
+
+	return keyringDir, nil
+}
+
+func shouldForceFileBackend(goos string, dbusAddr string) bool {
+	return goos == "linux" && strings.TrimSpace(dbusAddr) == ""
+}
+
+func fileKeyringPasswordFunc() keyring.PromptFunc {
+	password, passwordSet := os.LookupEnv(keyringPasswordEnv)
+	return fileKeyringPasswordFuncFrom(password, passwordSet, term.IsTerminal(int(os.Stdin.Fd())))
+}
+
+func fileKeyringPasswordFuncFrom(password string, passwordSet bool, isTTY bool) keyring.PromptFunc {
+	// Treat "set to empty string" as intentional; empty passphrase is valid.
+	if passwordSet {
+		return keyring.FixedStringPrompt(password)
+	}
+
+	if isTTY {
+		return keyring.TerminalPrompt
+	}
+
+	return func(_ string) (string, error) {
+		return "", fmt.Errorf("%w; set %s", errNoTTY, keyringPasswordEnv)
+	}
 }
 
 // Keys returns all keys in the keyring

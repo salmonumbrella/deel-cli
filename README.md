@@ -135,6 +135,7 @@ deel people list
 - `DEEL_COLOR` - Color mode: `auto` (default), `always`, or `never`
 - `DEEL_IDEMPOTENCY_KEY` - Idempotency key for write requests
 - `DEEL_AGENT` - Agent mode: force JSON output, disable color, emit compact JSON
+- `DEEL_KEYRING_PASSWORD` - Passphrase for encrypted file keyring storage (useful on headless Linux/CI)
 - `NO_COLOR` - Set to any value to disable colors (standard convention)
 
 ### Agent Mode
@@ -166,7 +167,10 @@ deel people list --jsonl --jq '{id, name}'
 Credentials are stored securely in your system's keychain:
 - **macOS**: Keychain Access
 - **Linux**: Secret Service (GNOME Keyring, KWallet)
+- **Linux (headless/no D-Bus session)**: encrypted file keyring in your user config directory (default: `~/.config/deel-cli/keyring/`)
 - **Windows**: Credential Manager
+
+On headless Linux, set `DEEL_KEYRING_PASSWORD` for non-interactive use (for example systemd or CI jobs).
 
 ## Commands
 
